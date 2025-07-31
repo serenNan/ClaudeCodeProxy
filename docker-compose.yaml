@@ -1,0 +1,7 @@
+﻿services:
+  claudecodeproxy.host:
+    image: claudecodeproxy.host
+    build:
+      context: .
+      dockerfile: src/ClaudeCodeProxy.Host/Dockerfile
+

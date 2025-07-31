@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CopilotDiffPersistence">
+    <option name="pendingDiffs">
+      <map>
+        <entry key="$PROJECT_DIR$/src/ClaudeCodeProxy.Domain/AggregateRoot.cs">
+          <value>
+            <PendingDiffInfo>
+              <option name="filePath" value="$PROJECT_DIR$/src/ClaudeCodeProxy.Domain/AggregateRoot.cs" />
+              <option name="updatedContent" value="namespace ClaudeCodeProxy.Domain;&#10;&#10;public abstract class AggregateRoot&lt;TKey&gt; : Entity&lt;TKey&gt;&#10;{&#10;    private readonly List&lt;DomainEvent&gt; _domainEvents = new();&#10;    public IReadOnlyCollection&lt;DomainEvent&gt; DomainEvents =&gt; _domainEvents.AsReadOnly();&#10;&#10;    protected void AddDomainEvent(DomainEvent domainEvent)&#10;    {&#10;        _domainEvents.Add(domainEvent);&#10;    }&#10;&#10;    public void ClearDomainEvents()&#10;    {&#10;        _domainEvents.Clear();&#10;    }&#10;}&#10;" />
+            </PendingDiffInfo>
+          </value>
+        </entry>
+        <entry key="$PROJECT_DIR$/src/ClaudeCodeProxy.Domain/DomainEvent.cs">
+          <value>
+            <PendingDiffInfo>
+              <option name="filePath" value="$PROJECT_DIR$/src/ClaudeCodeProxy.Domain/DomainEvent.cs" />
+              <option name="updatedContent" value="namespace ClaudeCodeProxy.Domain;&#10;&#10;public abstract class DomainEvent&#10;{&#10;    public DateTime OccurredOn { get; protected set; } = DateTime.UtcNow;&#10;}&#10;" />
+            </PendingDiffInfo>
+          </value>
+        </entry>
+        <entry key="$PROJECT_DIR$/src/ClaudeCodeProxy.Domain/ValueObject.cs">
+          <value>
+            <PendingDiffInfo>
+              <option name="filePath" value="$PROJECT_DIR$/src/ClaudeCodeProxy.Domain/ValueObject.cs" />
+              <option name="updatedContent" value="namespace ClaudeCodeProxy.Domain;&#10;&#10;public abstract class ValueObject&#10;{&#10;    protected abstract IEnumerable&lt;object&gt; GetEqualityComponents();&#10;&#10;    public override bool Equals(object? obj)&#10;    {&#10;        if (obj == null || obj.GetType() != GetType())&#10;            return false;&#10;&#10;        var other = (ValueObject)obj;&#10;        return GetEqualityComponents().SequenceEqual(other.GetEqualityComponents());&#10;    }&#10;&#10;    public override int GetHashCode()&#10;    {&#10;        return GetEqualityComponents()&#10;            .Aggregate(1, (current, obj) =&gt;&#10;            {&#10;                unchecked&#10;                {&#10;                    return current * 23 + (obj?.GetHashCode() ?? 0);&#10;                }&#10;            });&#10;    }&#10;}&#10;" />
+            </PendingDiffInfo>
+          </value>
+        </entry>
+        <entry key="$PROJECT_DIR$/src/ClaudeCodeProxy.Host/Controllers/AuthController.cs">
+          <value>
+            <PendingDiffInfo>
+              <option name="filePath" value="$PROJECT_DIR$/src/ClaudeCodeProxy.Host/Controllers/AuthController.cs" />
+              <option name="updatedContent" value="using ClaudeCodeProxy.Host.Models;&#10;using ClaudeCodeProxy.Host.Services;&#10;using Microsoft.AspNetCore.Mvc;&#10;&#10;namespace ClaudeCodeProxy.Host.Controllers;&#10;&#10;/// &lt;summary&gt;&#10;/// 认证控制器&#10;/// &lt;/summary&gt;&#10;[ApiController]&#10;[Route(&quot;api/[controller]&quot;)]&#10;public class AuthController : ControllerBase&#10;{&#10;    private readonly IAuthService _authService;&#10;&#10;    public AuthController(IAuthService authService)&#10;    {&#10;        _authService = authService;&#10;    }&#10;&#10;    /// &lt;summary&gt;&#10;    /// 用户登录&#10;    /// &lt;/summary&gt;&#10;    /// &lt;param name=&quot;request&quot;&gt;登录请求&lt;/param&gt;&#10;    /// &lt;returns&gt;登录响应&lt;/returns&gt;&#10;    [HttpPost(&quot;login&quot;)]&#10;    public async Task&lt;IActionResult&gt; Login([FromBody] LoginRequest request)&#10;    {&#10;        if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))&#10;        {&#10;            return BadRequest(new&#10;            {&#10;                message = &quot;用户名和密码不能为空&quot;,&#10;                code = &quot;400&quot;&#10;            });&#10;        }&#10;&#10;        var response = await _authService.LoginAsync(request);&#10;        &#10;        if (response == null)&#10;        {&#10;            return Unauthorized(new&#10;            {&#10;                message = &quot;用户名或密码错误&quot;,&#10;                code = &quot;401&quot;&#10;            });&#10;        }&#10;&#10;        return Ok(response);&#10;    }&#10;&#10;    /// &lt;summary&gt;&#10;    /// 获取当前用户信息&#10;    /// &lt;/summary&gt;&#10;    /// &lt;returns&gt;用户信息&lt;/returns&gt;&#10;    [HttpGet(&quot;me&quot;)]&#10;    [Microsoft.AspNetCore.Authorization.Authorize]&#10;    public IActionResult GetCurrentUser()&#10;    {&#10;        var username = User.Identity?.Name;&#10;        var userId = User.FindFirst(&quot;userId&quot;)?.Value;&#10;        &#10;        return Ok(new&#10;        {&#10;            userId = userId,&#10;            username = username,&#10;            roles = User.FindAll(&quot;role&quot;).Select(c =&gt; c.Value).ToArray()&#10;        });&#10;    }&#10;}" />
+            </PendingDiffInfo>
+          </value>
+        </entry>
+        <entry key="$PROJECT_DIR$/src/ClaudeCodeProxy.Host/Models/LoginRequest.cs">
+          <value>
+            <PendingDiffInfo>
+              <option name="filePath" value="$PROJECT_DIR$/src/ClaudeCodeProxy.Host/Models/LoginRequest.cs" />
+              <option name="updatedContent" value="namespace ClaudeCodeProxy.Host.Models;&#10;&#10;/// &lt;summary&gt;&#10;/// 登录请求模型&#10;/// &lt;/summary&gt;&#10;public class LoginRequest&#10;{&#10;    /// &lt;summary&gt;&#10;    /// 用户名&#10;    /// &lt;/summary&gt;&#10;    public string Username { get; set; } = string.Empty;&#10;&#10;    /// &lt;summary&gt;&#10;    /// 密码&#10;    /// &lt;/summary&gt;&#10;    public string Password { get; set; } = string.Empty;&#10;}" />
+            </PendingDiffInfo>
+          </value>
+        </entry>
+        <entry key="$PROJECT_DIR$/src/ClaudeCodeProxy.Host/Models/LoginResponse.cs">
+          <value>
+            <PendingDiffInfo>
+              <option name="filePath" value="$PROJECT_DIR$/src/ClaudeCodeProxy.Host/Models/LoginResponse.cs" />
+              <option name="updatedContent" value="namespace ClaudeCodeProxy.Host.Models;&#10;&#10;/// &lt;summary&gt;&#10;/// 登录响应模型&#10;/// &lt;/summary&gt;&#10;public class LoginResponse&#10;{&#10;    /// &lt;summary&gt;&#10;    /// 访问令牌&#10;    /// &lt;/summary&gt;&#10;    public string AccessToken { get; set; } = string.Empty;&#10;&#10;    /// &lt;summary&gt;&#10;    /// 刷新令牌&#10;    /// &lt;/summary&gt;&#10;    public string RefreshToken { get; set; } = string.Empty;&#10;&#10;    /// &lt;summary&gt;&#10;    /// 令牌类型&#10;    /// &lt;/summary&gt;&#10;    public string TokenType { get; set; } = &quot;Bearer&quot;;&#10;&#10;    /// &lt;summary&gt;&#10;    /// 过期时间（秒）&#10;    /// &lt;/summary&gt;&#10;    public int ExpiresIn { get; set; }&#10;&#10;    /// &lt;summary&gt;&#10;    /// 用户名&#10;    /// &lt;/summary&gt;&#10;    public string Username { get; set; } = string.Empty;&#10;}" />
+            </PendingDiffInfo>
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+</project>
