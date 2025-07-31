@@ -1,19 +1,18 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Key, Plus, Edit2, Trash2, Eye, EyeOff } from 'lucide-react';
 import { apiService } from '@/services/api';
 import type { ApiKey } from '@/services/api';
+import CreateApiKeyForm from '@/components/CreateApiKeyForm';
+import { Label } from '@/components/ui/label';
 
 export default function ApiKeysPage() {
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingKey, setEditingKey] = useState<ApiKey | null>(null);
-  const [formData, setFormData] = useState({ name: '', key: '' });
   const [visibleKeys, setVisibleKeys] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -31,21 +30,9 @@ export default function ApiKeysPage() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      if (editingKey) {
-        await apiService.updateApiKey(editingKey.id, formData);
-      } else {
-        await apiService.createApiKey(formData);
-      }
-      await fetchApiKeys();
-      setShowForm(false);
-      setEditingKey(null);
-      setFormData({ name: '', key: '' });
-    } catch (error) {
-      console.error('Failed to save API key:', error);
-    }
+  const handleSubmit = async (apiKey: ApiKey) => {
+    setApiKeys(prev => [...prev, apiKey]);
+    setShowForm(false);
   };
 
   const handleDelete = async (id: string) => {
@@ -69,7 +56,6 @@ export default function ApiKeysPage() {
 
   const handleEdit = (key: ApiKey) => {
     setEditingKey(key);
-    setFormData({ name: key.name, key: key.key });
     setShowForm(true);
   };
 
@@ -110,54 +96,13 @@ export default function ApiKeysPage() {
       </div>
 
       {showForm && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{editingKey ? '编辑' : '添加'} API Key</CardTitle>
-            <CardDescription>
-              {editingKey ? '更新现有的 API Key 信息' : '创建新的 API Key'}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">名称</Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="输入 API Key 名称"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="key">API Key</Label>
-                <Input
-                  id="key"
-                  value={formData.key}
-                  onChange={(e) => setFormData({ ...formData, key: e.target.value })}
-                  placeholder="输入 API Key"
-                  required
-                />
-              </div>
-              <div className="flex space-x-2">
-                <Button type="submit">
-                  {editingKey ? '更新' : '创建'}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setShowForm(false);
-                    setEditingKey(null);
-                    setFormData({ name: '', key: '' });
-                  }}
-                >
-                  取消
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
+        <CreateApiKeyForm
+          onSuccess={handleSubmit}
+          onCancel={() => {
+            setShowForm(false);
+            setEditingKey(null);
+          }}
+        />
       )}
 
       <div className="grid gap-4">

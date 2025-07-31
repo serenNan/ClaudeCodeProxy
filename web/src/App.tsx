@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Navigate, RouterProvider, createBrowserRouter } from 'react-router-dom';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ToastProvider } from '@/contexts/ToastContext';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
@@ -10,29 +10,37 @@ import AccountsPage from '@/pages/accounts';
 import SettingsPage from '@/pages/settings';
 import './App.css';
 
+const router = createBrowserRouter([
+  {
+    path: '/login',
+    element: <LoginPage />,
+  },
+  {
+    path: '/',
+    element: (
+      <ProtectedRoute>
+        <AdminLayout />
+      </ProtectedRoute>
+    ),
+    children: [
+      { index: true, element: <DashboardPage /> },
+      { path: 'apikeys', element: <ApiKeysPage /> },
+      { path: 'accounts', element: <AccountsPage /> },
+      { path: 'settings', element: <SettingsPage /> },
+    ],
+  },
+  {
+    path: '*',
+    element: <Navigate to="/" replace />,
+  },
+]);
+
 function App() {
   return (
     <AuthProvider>
       <ToastProvider>
-        <Router>
-          <Routes>
-            <Route path="/login" element={<LoginPage />} />
-            <Route
-              path="/"
-              element={
-                <ProtectedRoute>
-                  <AdminLayout />
-                </ProtectedRoute>
-              }
-            >
-              <Route index element={<DashboardPage />} />
-              <Route path="apikeys" element={<ApiKeysPage />} />
-              <Route path="accounts" element={<AccountsPage />} />
-              <Route path="settings" element={<SettingsPage />} />
-            </Route>
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </Router>
+        <RouterProvider
+          router={router} />
       </ToastProvider>
     </AuthProvider>
   );
