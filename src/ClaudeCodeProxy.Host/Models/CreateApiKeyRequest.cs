@@ -5,6 +5,7 @@ namespace ClaudeCodeProxy.Host.Models;
 /// </summary>
 public record CreateApiKeyRequest(
     string Name,
+    string KeyValue,
     string? Description = null,
     List<string>? Tags = null,
     int? TokenLimit = null,
