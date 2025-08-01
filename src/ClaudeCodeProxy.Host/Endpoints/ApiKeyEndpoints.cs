@@ -54,6 +54,27 @@ public static class ApiKeyEndpoints
             .Produces<ApiResponse>(204)
             .Produces<ApiResponse>(404);
 
+        // 启用API Key
+        group.MapPatch("/{id:guid}/enable", EnableApiKey)
+            .WithName("EnableApiKey")
+            .WithSummary("启用API Key")
+            .Produces<ApiResponse>(200)
+            .Produces<ApiResponse>(404);
+
+        // 禁用API Key
+        group.MapPatch("/{id:guid}/disable", DisableApiKey)
+            .WithName("DisableApiKey")
+            .WithSummary("禁用API Key")
+            .Produces<ApiResponse>(200)
+            .Produces<ApiResponse>(404);
+
+        // 切换API Key启用状态
+        group.MapPatch("/{id:guid}/toggle", ToggleApiKeyEnabled)
+            .WithName("ToggleApiKeyEnabled")
+            .WithSummary("切换API Key启用状态")
+            .Produces<ApiResponse>(200)
+            .Produces<ApiResponse>(404);
+
         // 验证API Key
         group.MapPost("/validate", ValidateApiKey)
             .WithName("ValidateApiKey")
@@ -181,6 +202,75 @@ public static class ApiKeyEndpoints
         catch (Exception ex)
         {
             return TypedResults.BadRequest($"验证API Key失败: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 启用API Key
+    /// </summary>
+    private static async Task<Results<Ok, NotFound<string>>> EnableApiKey(
+        Guid id,
+        ApiKeyService apiKeyService)
+    {
+        try
+        {
+            var success = await apiKeyService.EnableApiKeyAsync(id);
+            if (!success)
+            {
+                return TypedResults.NotFound($"未找到ID为 {id} 的API Key");
+            }
+
+            return TypedResults.Ok();
+        }
+        catch (Exception ex)
+        {
+            return TypedResults.NotFound($"启用API Key失败: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 禁用API Key
+    /// </summary>
+    private static async Task<Results<Ok, NotFound<string>>> DisableApiKey(
+        Guid id,
+        ApiKeyService apiKeyService)
+    {
+        try
+        {
+            var success = await apiKeyService.DisableApiKeyAsync(id);
+            if (!success)
+            {
+                return TypedResults.NotFound($"未找到ID为 {id} 的API Key");
+            }
+
+            return TypedResults.Ok();
+        }
+        catch (Exception ex)
+        {
+            return TypedResults.NotFound($"禁用API Key失败: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 切换API Key启用状态
+    /// </summary>
+    private static async Task<Results<Ok, NotFound<string>>> ToggleApiKeyEnabled(
+        Guid id,
+        ApiKeyService apiKeyService)
+    {
+        try
+        {
+            var success = await apiKeyService.ToggleApiKeyEnabledAsync(id);
+            if (!success)
+            {
+                return TypedResults.NotFound($"未找到ID为 {id} 的API Key");
+            }
+
+            return TypedResults.Ok();
+        }
+        catch (Exception ex)
+        {
+            return TypedResults.NotFound($"切换API Key状态失败: {ex.Message}");
         }
     }
 }

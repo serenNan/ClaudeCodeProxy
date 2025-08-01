@@ -7,11 +7,9 @@ namespace Thor.Abstractions.Anthropic;
 
 public class AnthropicMessageInput
 {
-    [JsonPropertyName("role")] 
-    public string Role { get; set; }
+    [JsonPropertyName("role")] public string Role { get; set; }
 
-    [JsonIgnore]
-    public string? Content;
+    [JsonIgnore] public string? Content;
 
     [JsonPropertyName("content")]
     public object? ContentCalculated
@@ -40,7 +38,8 @@ public class AnthropicMessageInput
                 }
                 else if (str.ValueKind == JsonValueKind.Array)
                 {
-                    Contents = JsonSerializer.Deserialize<IList<AnthropicMessageContent>>(value?.ToString(),ThorJsonSerializer.DefaultOptions);
+                    Contents = JsonSerializer.Deserialize<IList<AnthropicMessageContent>>(value?.ToString(),
+                        ThorJsonSerializer.DefaultOptions);
                 }
             }
             else
@@ -50,6 +49,7 @@ public class AnthropicMessageInput
         }
     }
 
-    [JsonIgnore]
-    public IList<AnthropicMessageContent>? Contents;
+    [JsonIgnore] public IList<AnthropicMessageContent>? Contents;
+    
+    [JsonPropertyName("cache_control")] public AnthropicCacheControl? CacheControl { get; set; }
 }

@@ -110,6 +110,10 @@ public class AnthropicTooChoiceInput
 
 public class AnthropicMessageTool
 {
+    [JsonPropertyName("type")] public string? Type { get; set; }
+
+    [JsonPropertyName("user_location")] public object? UserLocation { get; set; }
+
     [JsonPropertyName("name")] public string name { get; set; }
 
     [JsonPropertyName("description")] public string? Description { get; set; }

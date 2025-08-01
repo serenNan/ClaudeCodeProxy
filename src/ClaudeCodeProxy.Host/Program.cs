@@ -5,6 +5,7 @@ using ClaudeCodeProxy.Host.Endpoints;
 using ClaudeCodeProxy.Host.Filters;
 using ClaudeCodeProxy.Core;
 using ClaudeCodeProxy.Core.AI;
+using ClaudeCodeProxy.Core.Extensions;
 using ClaudeCodeProxy.EntityFrameworkCore.Sqlite;
 using ClaudeCodeProxy.Host.Helper;
 using Making.Jwt.Extensions;
@@ -57,10 +58,22 @@ public static class Program
 
     private static void ConfigureServices(IServiceCollection services, IConfiguration configuration)
     {
+        services.ConfigureHttpJsonOptions(options =>
+        {
+            options.SerializerOptions.WriteIndented = true;
+            options.SerializerOptions.IncludeFields = true;
+            options.SerializerOptions.Converters.Add(
+                new System.Text.Json.Serialization.JsonStringEnumConverter(System.Text.Json.JsonNamingPolicy
+                    .CamelCase));
+            options.SerializerOptions.DefaultIgnoreCondition =
+                System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
+        });
         services.AddHttpClient();
         services.AddMemoryCache();
 
         services.AddScoped<OAuthHelper>();
+
+        services.AddScoped<SessionHelper>();
 
         // 添加Entity Framework Core with SQLite
         services.AddDbContext<MasterDbContext>(options =>
@@ -73,7 +86,11 @@ public static class Program
         services.AddScoped<AuthService>();
         services.AddScoped<AccountsService>();
         services.AddScoped<ClaudeProxyService>();
-        services.AddScoped<IAnthropicChatCompletionsService, AnthropicChatService>();
+        services.AddScoped<StatisticsService>();
+
+        services.AddScoped<MessageService>();
+
+        services.AddCoreServices();
 
         // 添加全局过滤器
         services.AddScoped<GlobalResponseFilter>();
@@ -86,6 +103,9 @@ public static class Program
         {
             options.SerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
             options.SerializerOptions.WriteIndented = true;
+            options.SerializerOptions.Converters.Add(
+                new System.Text.Json.Serialization.JsonStringEnumConverter(System.Text.Json.JsonNamingPolicy
+                    .CamelCase));
         });
 
         // 添加授权和认证服务
@@ -112,6 +132,10 @@ public static class Program
                 .AllowAnyHeader();
         });
 
+        // 静态文件服务
+        app.UseDefaultFiles();
+        app.UseStaticFiles();
+
         // 认证和授权中间件
         app.UseJwtAuthentication();
     }
@@ -128,6 +152,7 @@ public static class Program
         app.MapMessageEndpoints();
         app.MapAuthEndpoints();
         app.MapClaudeProxyEndpoints();
+        app.MapDashboardEndpoints();
 
         // 健康检查端点
         app.MapGet("/health", () => Results.Ok(new { Status = "Healthy", Timestamp = DateTime.UtcNow }))
@@ -135,8 +160,7 @@ public static class Program
             .WithSummary("健康检查")
             .WithTags("System");
 
-        // 根路径重定向到API文档
-        app.MapGet("/", () => Results.Redirect("/scalar"))
-            .ExcludeFromDescription();
+        // SPA fallback - 所有非API请求都返回index.html
+        app.MapFallbackToFile("index.html");
     }
 }

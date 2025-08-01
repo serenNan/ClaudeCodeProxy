@@ -1,4 +1,6 @@
 ﻿using System.Collections.Concurrent;
+using System.Net;
+using ClaudeCodeProxy.Domain;
 
 namespace ClaudeCodeProxy.Core;
 
@@ -24,7 +26,7 @@ public static class HttpClientFactory
                 }
                 else
                 {
-                    _poolSize = Environment.ProcessorCount;
+                    _poolSize = 5; // 默认池大小
                 }
 
                 if (_poolSize < 1)
@@ -39,31 +41,46 @@ public static class HttpClientFactory
 
     private static readonly ConcurrentDictionary<string, Lazy<List<HttpClient>>> HttpClientPool = new();
 
-    public static HttpClient GetHttpClient(string key)
+    public static HttpClient GetHttpClient(string key, ProxyConfig? config)
     {
         return HttpClientPool.GetOrAdd(key, k => new Lazy<List<HttpClient>>(() =>
         {
+            // 创建好代理
+            var proxy = new HttpClientHandler()
+            {
+                AllowAutoRedirect = true,
+                AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate,
+                UseCookies = true,
+                UseDefaultCredentials = false,
+                PreAuthenticate = false,
+                MaxAutomaticRedirections = 3
+            };
+            if (config != null && !string.IsNullOrEmpty(config.Host) && config.Port > 0)
+            {
+                proxy.Proxy = new WebProxy(config.Host, config.Port)
+                {
+                    BypassProxyOnLocal = true,
+                    UseDefaultCredentials = false,
+                };
+                if (!string.IsNullOrEmpty(config.Username) && !string.IsNullOrEmpty(config.Password))
+                {
+                    proxy.Proxy.Credentials = new NetworkCredential(config.Username, config.Password);
+                }
+
+                proxy.UseProxy = true;
+            }
+            else
+            {
+                proxy.UseProxy = false;
+            }
+
             var clients = new List<HttpClient>(PoolSize);
 
             for (var i = 0; i < PoolSize; i++)
             {
-                clients.Add(new HttpClient(new SocketsHttpHandler
+                clients.Add(new HttpClient(proxy)
                 {
-                    PooledConnectionLifetime = TimeSpan.FromMinutes(30),
-                    PooledConnectionIdleTimeout = TimeSpan.FromMinutes(30),
-                    EnableMultipleHttp2Connections = true,
-                    // 连接超时5分钟
-                    ConnectTimeout = TimeSpan.FromMinutes(5),
-                    MaxAutomaticRedirections = 3,
-                    AllowAutoRedirect = true,
-                    Expect100ContinueTimeout = TimeSpan.FromMinutes(30),
-                })
-                {
-                    Timeout = TimeSpan.FromMinutes(30),
-                    DefaultRequestHeaders =
-                    {
-                        { "User-Agent", "Thor" },
-                    }
+                    Timeout = TimeSpan.FromMinutes(30)
                 });
             }
 

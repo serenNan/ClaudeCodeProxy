@@ -10,12 +10,132 @@ interface LoginResponse {
   };
 }
 
+// Dashboard 相关类型定义
+export interface DashboardResponse {
+  totalApiKeys: number;
+  activeApiKeys: number;
+  totalAccounts: number;
+  activeAccounts: number;
+  rateLimitedAccounts: number;
+  todayRequests: number;
+  totalRequests: number;
+  todayInputTokens: number;
+  todayOutputTokens: number;
+  todayCacheCreateTokens: number;
+  todayCacheReadTokens: number;
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  totalCacheCreateTokens: number;
+  totalCacheReadTokens: number;
+  realtimeRPM: number;
+  realtimeTPM: number;
+  metricsWindow: number;
+  isHistoricalMetrics: boolean;
+  systemStatus: string;
+  uptimeSeconds: number;
+}
+
+export interface CostDataResponse {
+  todayCosts: {
+    totalCost: number;
+    formatted: {
+      totalCost: string;
+    };
+  };
+  totalCosts: {
+    totalCost: number;
+    formatted: {
+      totalCost: string;
+    };
+  };
+}
+
+export interface UptimeResponse {
+  uptimeSeconds: number;
+  uptimeText: string;
+  startTime: string;
+}
+
+export interface ModelStatistics {
+  model: string;
+  requests: number;
+  allTokens: number;
+  cost: number;
+  formatted?: {
+    total: string;
+  };
+}
+
+export interface TrendDataPoint {
+  date?: string;
+  hour?: string;
+  label?: string;
+  inputTokens: number;
+  outputTokens: number;
+  cacheCreateTokens: number;
+  cacheReadTokens: number;
+  requests: number;
+  cost: number;
+}
+
+export interface DateFilterRequest {
+  type: 'preset' | 'custom';
+  preset?: string;
+  customRange?: string[];
+  startTime?: string;
+  endTime?: string;
+}
+
+export interface TrendDataRequest {
+  granularity: 'day' | 'hour';
+  dateFilter?: DateFilterRequest;
+}
+
+export interface ApiKeysTrendRequest {
+  metric: 'requests' | 'tokens';
+  granularity: 'day' | 'hour';
+  dateFilter?: DateFilterRequest;
+}
+
+export interface TopApiKeyInfo {
+  id: string;
+  name: string;
+  usage: number;
+  cost: number;
+}
+
+export interface ApiKeysTrendResponse {
+  data: any[];
+  topApiKeys: TopApiKeyInfo[];
+  totalApiKeys: number;
+}
 
 interface ApiKey {
   id: string;
   name: string;
   keyValue: string;
-  isEnabled : boolean;
+  description?: string;
+  tags?: string[];
+  tokenLimit?: number;
+  rateLimitWindow?: number;
+  rateLimitRequests?: number;
+  concurrencyLimit: number;
+  dailyCostLimit: number;
+  expiresAt?: string;
+  permissions: string;
+  claudeAccountId?: string;
+  claudeConsoleAccountId?: string;
+  geminiAccountId?: string;
+  enableModelRestriction: boolean;
+  restrictedModels?: string[];
+  enableClientRestriction: boolean;
+  allowedClients?: string[];
+  isEnabled: boolean;
+  lastUsedAt?: string;
+  totalUsageCount: number;
+  totalCost: number;
+  model?: string;
+  service: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -35,7 +155,7 @@ interface Account {
   platform: 'claude' | 'claude-console' | 'gemini';
   sessionKey?: string;
   isEnabled: boolean;
-  lastUsed?: string;
+  lastUsedAt?: string;
   createdAt: string;
   updatedAt: string;
   description?: string;
@@ -106,7 +226,18 @@ class ApiService {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
-    return response.json();
+    // 对于204 No Content响应，不尝试解析JSON
+    if (response.status === 204) {
+      return undefined as T;
+    }
+
+    // 检查响应是否有内容
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      return response.json();
+    }
+
+    return undefined as T;
   }
 
   // Auth
@@ -158,7 +289,27 @@ class ApiService {
           id: '1',
           name: 'Production Key',
           keyValue: 'sk-ant-api03-1234567890abcdef',
+          description: 'Production API Key',
+          tags: ['production'],
+          tokenLimit: 1000000,
+          rateLimitWindow: 60,
+          rateLimitRequests: 1000,
+          concurrencyLimit: 10,
+          dailyCostLimit: 100,
+          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          permissions: 'all',
+          claudeAccountId: undefined,
+          claudeConsoleAccountId: undefined,
+          enableModelRestriction: false,
+          restrictedModels: [],
+          enableClientRestriction: false,
+          allowedClients: [],
           isEnabled: true,
+          lastUsedAt: new Date().toISOString(),
+          totalUsageCount: 0,
+          totalCost: 0,
+          model: 'claude-3-5-sonnet-20241022',
+          service: 'claude',
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },
@@ -166,7 +317,27 @@ class ApiService {
           id: '2',
           name: 'Development Key',
           keyValue: 'sk-ant-api03-0987654321fedcba',
+          description: 'Development API Key',
+          tags: ['development'],
+          tokenLimit: 500000,
+          rateLimitWindow: 60,
+          rateLimitRequests: 500,
+          concurrencyLimit: 5,
+          dailyCostLimit: 50,
+          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          permissions: 'claude',
+          claudeAccountId: undefined,
+          claudeConsoleAccountId: undefined,
+          enableModelRestriction: false,
+          restrictedModels: [],
+          enableClientRestriction: false,
+          allowedClients: [],
           isEnabled: false,
+          lastUsedAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+          totalUsageCount: 25,
+          totalCost: 1.25,
+          model: 'claude-3-haiku-20240307',
+          service: 'claude',
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         }
@@ -174,17 +345,35 @@ class ApiService {
     }
   }
 
-  async createApiKey(data: { name: string; key: string }): Promise<ApiKey> {
+  async createApiKey(data: any): Promise<ApiKey> {
     return this.request<ApiKey>('/apikeys', {
       method: 'POST',
       body: JSON.stringify(data),
     });
   }
 
-  async updateApiKey(id: string, data: { name?: string; key?: string; isActive?: boolean }): Promise<ApiKey> {
+  async updateApiKey(id: string, data: any): Promise<ApiKey> {
     return this.request<ApiKey>(`/apikeys/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
+    });
+  }
+
+  async enableApiKey(id: string): Promise<void> {
+    return this.request<void>(`/apikeys/${id}/enable`, {
+      method: 'PATCH',
+    });
+  }
+
+  async disableApiKey(id: string): Promise<void> {
+    return this.request<void>(`/apikeys/${id}/disable`, {
+      method: 'PATCH',
+    });
+  }
+
+  async toggleApiKeyEnabled(id: string): Promise<void> {
+    return this.request<void>(`/apikeys/${id}/toggle`, {
+      method: 'PATCH',
     });
   }
 
@@ -207,7 +396,7 @@ class ApiService {
           platform: 'claude',
           sessionKey: 'sk_live_1234567890abcdef1234567890abcdef',
           isEnabled: true,
-          lastUsed: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
+          lastUsedAt: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },
@@ -217,7 +406,7 @@ class ApiService {
           platform: 'gemini',
           sessionKey: 'AIzaSyA1234567890abcdef1234567890abcdef',
           isEnabled: true,
-          lastUsed: new Date(Date.now() - 7200000).toISOString(), // 2 hours ago
+          lastUsedAt: new Date(Date.now() - 7200000).toISOString(), // 2 hours ago
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         }
@@ -302,9 +491,61 @@ class ApiService {
     });
   }
 
+  async enableAccount(id: string): Promise<void> {
+    return this.request<void>(`/accounts/${id}/enable`, {
+      method: 'PATCH',
+    });
+  }
+
+  async disableAccount(id: string): Promise<void> {
+    return this.request<void>(`/accounts/${id}/disable`, {
+      method: 'PATCH',
+    });
+  }
+
+  async toggleAccountEnabled(id: string): Promise<void> {
+    return this.request<void>(`/accounts/${id}/toggle`, {
+      method: 'PATCH',
+    });
+  }
+
   async deleteAccount(id: string): Promise<void> {
     return this.request<void>(`/accounts/${id}`, {
       method: 'DELETE',
+    });
+  }
+
+  // Dashboard APIs
+  async getDashboardData(): Promise<DashboardResponse> {
+    return this.request<DashboardResponse>('/dashboard');
+  }
+
+  async getCostData(): Promise<CostDataResponse> {
+    return this.request<CostDataResponse>('/dashboard/costs');
+  }
+
+  async getSystemUptime(): Promise<UptimeResponse> {
+    return this.request<UptimeResponse>('/dashboard/uptime');
+  }
+
+  async getModelStatistics(dateFilter?: DateFilterRequest): Promise<ModelStatistics[]> {
+    return this.request<ModelStatistics[]>('/dashboard/model-statistics', {
+      method: 'POST',
+      body: JSON.stringify(dateFilter || {}),
+    });
+  }
+
+  async getTrendData(request: TrendDataRequest): Promise<TrendDataPoint[]> {
+    return this.request<TrendDataPoint[]>('/dashboard/trend-data', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  }
+
+  async getApiKeysTrend(request: ApiKeysTrendRequest): Promise<ApiKeysTrendResponse> {
+    return this.request<ApiKeysTrendResponse>('/dashboard/apikeys-trend', {
+      method: 'POST',
+      body: JSON.stringify(request),
     });
   }
 
@@ -349,6 +590,252 @@ class ApiService {
       body: JSON.stringify(data),
     });
   }
+
+  // Request Logs APIs
+  async getRequestLogs(request: RequestLogsRequest): Promise<RequestLogsResponse> {
+    return this.request<RequestLogsResponse>('/dashboard/request-logs', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  }
+
+  async getRequestLogDetail(id: string): Promise<RequestLogDetail> {
+    return this.request<RequestLogDetail>(`/dashboard/request-logs/${id}`);
+  }
+
+  async getRequestStatusStats(dateFilter?: DateFilterRequest): Promise<RequestStatusStat[]> {
+    return this.request<RequestStatusStat[]>('/dashboard/request-status-stats', {
+      method: 'POST',
+      body: JSON.stringify(dateFilter || {}),
+    });
+  }
+
+  async getRealtimeRequests(minutes: number = 10): Promise<RealtimeRequestsResponse> {
+    return this.request<RealtimeRequestsResponse>(`/dashboard/realtime-requests?minutes=${minutes}`);
+  }
+
+  async getApiKeyModelFlowData(dateFilter?: DateFilterRequest): Promise<ApiKeyModelFlowData[]> {
+    return this.request<ApiKeyModelFlowData[]>('/dashboard/apikey-model-flow', {
+      method: 'POST',
+      body: JSON.stringify(dateFilter || {}),
+    });
+  }
+}
+
+// Dashboard Response Types
+export interface DashboardResponse {
+  totalApiKeys: number;
+  activeApiKeys: number;
+  totalAccounts: number;
+  activeAccounts: number;
+  rateLimitedAccounts: number;
+  todayRequests: number;
+  totalRequests: number;
+  todayInputTokens: number;
+  todayOutputTokens: number;
+  todayCacheCreateTokens: number;
+  todayCacheReadTokens: number;
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  totalCacheCreateTokens: number;
+  totalCacheReadTokens: number;
+  realtimeRPM: number;
+  realtimeTPM: number;
+  metricsWindow: number;
+  isHistoricalMetrics: boolean;
+  systemStatus: string;
+  uptimeSeconds: number;
+}
+
+export interface CostDataResponse {
+  todayCosts: CostInfo;
+  totalCosts: CostInfo;
+}
+
+export interface CostInfo {
+  totalCost: number;
+  formatted: FormattedCost;
+}
+
+export interface FormattedCost {
+  totalCost: string;
+}
+
+export interface UptimeResponse {
+  uptimeSeconds: number;
+  uptimeText: string;
+  startTime: string;
+}
+
+export interface ModelStatistics {
+  model: string;
+  requests: number;
+  allTokens: number;
+  cost: number;
+  formatted?: FormattedModelCost;
+}
+
+export interface FormattedModelCost {
+  total: string;
+}
+
+export interface TrendDataRequest {
+  granularity: 'day' | 'hour';
+  dateFilter?: DateFilterRequest;
+}
+
+export interface TrendDataPoint {
+  date?: string;
+  hour?: string;
+  label?: string;
+  inputTokens: number;
+  outputTokens: number;
+  cacheCreateTokens: number;
+  cacheReadTokens: number;
+  requests: number;
+  cost: number;
+}
+
+export interface DateFilterRequest {
+  type: 'preset' | 'custom';
+  preset?: string;
+  customRange?: string[];
+  startTime?: string;
+  endTime?: string;
+}
+
+export interface ApiKeysTrendRequest {
+  metric: 'requests' | 'tokens';
+  granularity: 'day' | 'hour';
+  dateFilter?: DateFilterRequest;
+}
+
+
+export interface ApiKeyMetric {
+  name: string;
+  requests: number;
+  tokens: number;
+  cost: number;
+  formattedCost: string;
+}
+
+// Request Log Types
+export interface RequestLogSummary {
+  id: string;
+  apiKeyId: string;
+  apiKeyName: string;
+  accountId?: string;
+  accountName?: string;
+  model: string;
+  platform: string;
+  requestStartTime: string;
+  requestEndTime?: string;
+  durationMs?: number;
+  status: string;
+  errorMessage?: string;
+  httpStatusCode?: number;
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+  cost: number;
+  isStreaming: boolean;
+  clientIp?: string;
+  requestId?: string;
+}
+
+export interface RequestLogsRequest {
+  page: number;
+  pageSize: number;
+  dateFilter?: DateFilterRequest;
+  apiKeyId?: string;
+  status?: string;
+  model?: string;
+  platform?: string;
+  searchTerm?: string;
+  sortBy: string;
+  sortDirection: string;
+}
+
+export interface RequestLogsResponse {
+  data: RequestLogSummary[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export interface RequestLogDetail {
+  id: string;
+  apiKeyId: string;
+  apiKeyName: string;
+  accountId?: string;
+  accountName?: string;
+  model: string;
+  platform: string;
+  requestStartTime: string;
+  requestEndTime?: string;
+  durationMs?: number;
+  status: string;
+  errorMessage?: string;
+  httpStatusCode?: number;
+  inputTokens: number;
+  outputTokens: number;
+  cacheCreateTokens: number;
+  cacheReadTokens: number;
+  totalTokens: number;
+  cost: number;
+  isStreaming: boolean;
+  clientIp?: string;
+  userAgent?: string;
+  requestId?: string;
+  metadata?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface RequestStatusStat {
+  status: string;
+  count: number;
+  totalTokens: number;
+  totalCost: number;
+  averageDurationMs: number;
+}
+
+export interface RealtimeRequestSummary {
+  id: string;
+  apiKeyName: string;
+  model: string;
+  platform: string;
+  requestStartTime: string;
+  status: string;
+  durationMs?: number;
+  totalTokens: number;
+  cost: number;
+  errorMessage?: string;
+}
+
+export interface RealtimeStats {
+  totalRequests: number;
+  successRequests: number;
+  successRate: number;
+  totalTokens: number;
+  averageResponseTimeMs: number;
+  requestsPerMinute: number;
+}
+
+export interface RealtimeRequestsResponse {
+  recentRequests: RealtimeRequestSummary[];
+  windowMinutes: number;
+  stats: RealtimeStats;
+}
+
+export interface ApiKeyModelFlowData {
+  apiKeyId: string;
+  apiKeyName: string;
+  model: string;
+  requests: number;
+  tokens: number;
+  cost: number;
 }
 
 export const apiService = new ApiService();

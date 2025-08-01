@@ -16,6 +16,13 @@ public class ApiKeyService(IContext context)
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.KeyValue == key, cancellationToken);
 
+        if (apiKey != null)
+        {
+            await context.ApiKeys
+                .Where(x => x.Id == apiKey.Id)
+                .ExecuteUpdateAsync(x => x.SetProperty(y => y.LastUsedAt, DateTime.UtcNow), cancellationToken);
+        }
+
         return apiKey;
     }
 
@@ -43,10 +50,11 @@ public class ApiKeyService(IContext context)
     /// <summary>
     /// 创建新的API Key
     /// </summary>
-    public async Task<ApiKey> CreateApiKeyAsync(CreateApiKeyRequest request, CancellationToken cancellationToken = default)
+    public async Task<ApiKey> CreateApiKeyAsync(CreateApiKeyRequest request,
+        CancellationToken cancellationToken = default)
     {
         var keyValue = GenerateApiKey();
-        
+
         var apiKey = new ApiKey
         {
             Id = Guid.NewGuid(),
@@ -83,7 +91,8 @@ public class ApiKeyService(IContext context)
     /// <summary>
     /// 更新API Key
     /// </summary>
-    public async Task<ApiKey?> UpdateApiKeyAsync(Guid id, UpdateApiKeyRequest request, CancellationToken cancellationToken = default)
+    public async Task<ApiKey?> UpdateApiKeyAsync(Guid id, UpdateApiKeyRequest request,
+        CancellationToken cancellationToken = default)
     {
         var apiKey = await context.ApiKeys.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (apiKey == null)
@@ -93,13 +102,13 @@ public class ApiKeyService(IContext context)
 
         if (!string.IsNullOrEmpty(request.Name))
             apiKey.Name = request.Name;
-        
+
         if (request.Description != null)
             apiKey.Description = request.Description;
-        
+
         if (request.ExpiresAt.HasValue)
             apiKey.ExpiresAt = request.ExpiresAt.Value;
-        
+
         if (request.IsEnabled.HasValue)
             apiKey.IsEnabled = request.IsEnabled.Value;
 
@@ -126,12 +135,62 @@ public class ApiKeyService(IContext context)
     }
 
     /// <summary>
+    /// 启用API Key
+    /// </summary>
+    public async Task<bool> EnableApiKeyAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        await context.ApiKeys.Where(x => x.Id == id)
+            .ExecuteUpdateAsync(x => x.SetProperty(a => a.IsEnabled, true)
+                .SetProperty(a => a.ModifiedAt, DateTime.UtcNow), cancellationToken);
+        
+        // 检查是否有记录被更新
+        var apiKey = await context.ApiKeys.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+        
+        return apiKey != null;
+    }
+
+    /// <summary>
+    /// 禁用API Key
+    /// </summary>
+    public async Task<bool> DisableApiKeyAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        await context.ApiKeys.Where(x => x.Id == id)
+            .ExecuteUpdateAsync(x => x.SetProperty(a => a.IsEnabled, false)
+                .SetProperty(a => a.ModifiedAt, DateTime.UtcNow), cancellationToken);
+        
+        // 检查是否有记录被更新
+        var apiKey = await context.ApiKeys.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+        
+        return apiKey != null;
+    }
+
+    /// <summary>
+    /// 切换API Key启用状态
+    /// </summary>
+    public async Task<bool> ToggleApiKeyEnabledAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var apiKey = await context.ApiKeys.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+        if (apiKey == null)
+        {
+            return false;
+        }
+
+        apiKey.IsEnabled = !apiKey.IsEnabled;
+        apiKey.ModifiedAt = DateTime.UtcNow;
+
+        await context.SaveAsync(cancellationToken);
+        return true;
+    }
+
+    /// <summary>
     /// 验证API Key
     /// </summary>
     public async Task<bool> ValidateApiKeyAsync(string key, CancellationToken cancellationToken = default)
     {
         var apiKey = await GetApiKeyAsync(key, cancellationToken);
-        
+
         if (apiKey == null || !apiKey.IsEnabled)
             return false;
 
@@ -149,6 +208,6 @@ public class ApiKeyService(IContext context)
         using var rng = RandomNumberGenerator.Create();
         var bytes = new byte[64];
         rng.GetBytes(bytes);
-        return "sk-ant-"+Convert.ToBase64String(bytes).Replace("+", "-").Replace("/", "_").TrimEnd('=');
+        return "sk-ant-" + Convert.ToBase64String(bytes).Replace("+", "-").Replace("/", "_").TrimEnd('=');
     }
 }

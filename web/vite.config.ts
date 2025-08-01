@@ -19,5 +19,14 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    outDir: '../src/ClaudeCodeProxy.Host/wwwroot',
+    emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks: undefined,
+      },
+    },
+  },
 })
 

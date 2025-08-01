@@ -207,6 +207,13 @@ export default function OAuthFlow({ platform, proxy, onSuccess, onBack }: OAuthF
                             >
                               {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
                             </Button>
+                            <Button 
+                              size="sm"
+                              onClick={() => window.open(authUrl, '_blank')}
+                              className="bg-blue-600 hover:bg-blue-700 text-white"
+                            >
+                              <ExternalLink className="w-4 h-4" />
+                            </Button>
                           </div>
                           <Button 
                             variant="ghost"
@@ -347,6 +354,13 @@ export default function OAuthFlow({ platform, proxy, onSuccess, onBack }: OAuthF
                               onClick={copyAuthUrl}
                             >
                               {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                            </Button>
+                            <Button 
+                              size="sm"
+                              onClick={() => window.open(authUrl, '_blank')}
+                              className="bg-blue-600 hover:bg-blue-700 text-white"
+                            >
+                              <ExternalLink className="w-4 h-4" />
                             </Button>
                           </div>
                           <Button 

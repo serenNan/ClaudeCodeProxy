@@ -7,6 +7,8 @@ import { apiService } from '@/services/api';
 import type { Account } from '@/services/api';
 import { showToast } from '@/utils/toast';
 import AccountModal from '@/components/accounts/AccountModal';
+import ConfirmModal from '@/components/common/ConfirmModal';
+import { useConfirm } from '@/hooks/useConfirm';
 
 const PLATFORMS = [
   { value: 'claude', label: 'Claude', icon: Users, color: 'bg-blue-500' },
@@ -19,6 +21,8 @@ export default function AccountsPage() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const { showConfirmModal, confirmOptions, showConfirm, handleConfirm, handleCancel } = useConfirm();
 
   useEffect(() => {
     fetchAccounts();
@@ -36,13 +40,26 @@ export default function AccountsPage() {
   };
 
   const handleDelete = async (account: Account) => {
-    if (confirm(`确定要删除账户 "${account.name}" 吗？`)) {
+    const confirmed = await showConfirm(
+      '删除账户',
+      `确定要删除账户 "${account.name}" 吗？\n\n此操作不可撤销，请谨慎操作。`,
+      '删除',
+      '取消'
+    );
+    
+    if (confirmed) {
+      setDeletingId(account.id);
       try {
         await apiService.deleteAccount(account.id);
-        await fetchAccounts();
+        // 删除成功后，立即从本地状态中移除已删除的项目
+        setAccounts(prevAccounts => prevAccounts.filter(acc => acc.id !== account.id));
         showToast('账户删除成功', 'success');
       } catch (error: any) {
         showToast(error.message || '删除账户失败', 'error');
+        // 如果删除失败，重新获取数据以恢复正确状态
+        await fetchAccounts();
+      } finally {
+        setDeletingId(null);
       }
     }
   };
@@ -59,9 +76,7 @@ export default function AccountsPage() {
 
   const toggleAccountStatus = async (account: Account) => {
     try {
-      await apiService.updateAccount(account.id, {
-        isEnabled: !account.isEnabled,
-      });
+      await apiService.toggleAccountEnabled(account.id);
       await fetchAccounts();
       showToast(`账户已${!account.isEnabled ? '启用' : '禁用'}`, 'success');
     } catch (error: any) {
@@ -115,7 +130,7 @@ export default function AccountsPage() {
                       <PlatformIcon className="w-6 h-6 text-white" />
                     </div>
                     <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                      <h3 className="text-lg font-semibold text-foreground mb-1">
                         {account.name}
                       </h3>
                       <div className="flex items-center space-x-2 mb-2">
@@ -139,7 +154,7 @@ export default function AccountsPage() {
                         )}
                       </div>
                       {account.description && (
-                        <p className="text-sm text-gray-600 mb-2">{account.description}</p>
+                        <p className="text-sm text-muted-foreground mb-2">{account.description}</p>
                       )}
                     </div>
                   </div>
@@ -154,9 +169,14 @@ export default function AccountsPage() {
                     <Button
                       variant="ghost"
                       size="sm"
+                      disabled={deletingId === account.id}
                       onClick={() => handleDelete(account)}
                     >
-                      <Trash2 className="h-4 w-4" />
+                      {deletingId === account.id ? (
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
                     </Button>
                   </div>
                 </div>
@@ -166,11 +186,11 @@ export default function AccountsPage() {
                   {/* 认证信息 */}
                   {account.sessionKey && (
                     <div>
-                      <p className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+                      <p className="text-sm font-medium text-foreground mb-1 flex items-center gap-1">
                         <Key className="w-4 h-4" />
                         Session Key
                       </p>
-                      <p className="font-mono text-sm bg-gray-50 p-2 rounded break-all">
+                      <p className="font-mono text-sm bg-muted p-2 rounded break-all">
                         {account.sessionKey.length > 50 
                           ? `${account.sessionKey.substring(0, 20)}...${account.sessionKey.substring(account.sessionKey.length - 20)}`
                           : account.sessionKey
@@ -182,11 +202,11 @@ export default function AccountsPage() {
                   {/* Claude Console 特定信息 */}
                   {account.platform === 'claude-console' && account.apiUrl && (
                     <div>
-                      <p className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+                      <p className="text-sm font-medium text-foreground mb-1 flex items-center gap-1">
                         <Server className="w-4 h-4" />
                         API URL
                       </p>
-                      <p className="text-sm bg-gray-50 p-2 rounded break-all">
+                      <p className="text-sm bg-muted p-2 rounded break-all">
                         {account.apiUrl}
                       </p>
                     </div>
@@ -195,11 +215,11 @@ export default function AccountsPage() {
                   {/* Gemini 项目信息 */}
                   {account.platform === 'gemini' && account.projectId && (
                     <div>
-                      <p className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+                      <p className="text-sm font-medium text-foreground mb-1 flex items-center gap-1">
                         <Settings className="w-4 h-4" />
                         项目编号
                       </p>
-                      <p className="text-sm bg-gray-50 p-2 rounded">
+                      <p className="text-sm bg-muted p-2 rounded">
                         {account.projectId}
                       </p>
                     </div>
@@ -208,11 +228,11 @@ export default function AccountsPage() {
                   {/* 代理信息 */}
                   {account.proxy && (
                     <div>
-                      <p className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+                      <p className="text-sm font-medium text-foreground mb-1 flex items-center gap-1">
                         <Server className="w-4 h-4" />
                         代理设置
                       </p>
-                      <p className="text-sm bg-gray-50 p-2 rounded">
+                      <p className="text-sm bg-muted p-2 rounded">
                         {account.proxy.type?.toUpperCase() || 'HTTP'}://{account.proxy.host}:{account.proxy.port}
                         {account.proxy.username && ' (需要认证)'}
                       </p>
@@ -220,27 +240,27 @@ export default function AccountsPage() {
                   )}
 
                   {/* 统计信息 */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-3 border-t border-gray-100">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-3 border-t border-border">
                     <div className="flex items-center space-x-2">
-                      <Calendar className="h-4 w-4 text-gray-400" />
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
                       <div>
-                        <p className="text-xs text-gray-500">创建时间</p>
+                        <p className="text-xs text-muted-foreground">创建时间</p>
                         <p className="text-sm">{new Date(account.createdAt).toLocaleDateString()}</p>
                       </div>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <Activity className="h-4 w-4 text-gray-400" />
+                      <Activity className="h-4 w-4 text-muted-foreground" />
                       <div>
-                        <p className="text-xs text-gray-500">最后使用</p>
+                        <p className="text-xs text-muted-foreground">最后使用</p>
                         <p className="text-sm">
-                          {account.lastUsed ? new Date(account.lastUsed).toLocaleDateString() : '从未使用'}
+                          {account.lastUsedAt ? new Date(account.lastUsedAt).toLocaleString() : '从未使用'}
                         </p>
                       </div>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <Users className="h-4 w-4 text-gray-400" />
+                      <Users className="h-4 w-4 text-muted-foreground" />
                       <div>
-                        <p className="text-xs text-gray-500">状态</p>
+                        <p className="text-xs text-muted-foreground">状态</p>
                         <p className={`text-sm ${account.isEnabled ? 'text-green-600' : 'text-red-600'}`}>
                           {account.isEnabled ? '正常工作' : '已停用'}
                         </p>
@@ -257,9 +277,9 @@ export default function AccountsPage() {
       {accounts.length === 0 && (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
-            <Users className="h-12 w-12 text-gray-400 mb-4" />
+            <Users className="h-12 w-12 text-muted-foreground mb-4" />
             <h3 className="text-lg font-medium mb-2">暂无账户</h3>
-            <p className="text-gray-600 text-center mb-4">
+            <p className="text-muted-foreground text-center mb-4">
               还没有添加任何AI平台账户。点击上方按钮添加您的第一个账户。
             </p>
             <Button onClick={handleAdd}>
@@ -279,6 +299,17 @@ export default function AccountsPage() {
           setEditingAccount(null);
         }}
         onSuccess={handleModalSuccess}
+      />
+
+      {/* 删除确认模态框 */}
+      <ConfirmModal
+        show={showConfirmModal}
+        title={confirmOptions.title}
+        message={confirmOptions.message}
+        confirmText={confirmOptions.confirmText}
+        cancelText={confirmOptions.cancelText}
+        onConfirm={handleConfirm}
+        onCancel={handleCancel}
       />
     </div>
   );

@@ -1,5 +1,9 @@
 ﻿using ClaudeCodeProxy.Abstraction.Chats;
+using ClaudeCodeProxy.Host.Env;
+using ClaudeCodeProxy.Host.Extensions;
+using ClaudeCodeProxy.Host.Helper;
 using Making.AspNetCore;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Thor.Abstractions;
 using Thor.Abstractions.Anthropic;
@@ -7,24 +11,27 @@ using Thor.Abstractions.Anthropic;
 namespace ClaudeCodeProxy.Host.Services;
 
 [MiniApi(Route = "/v1/messages", Tags = "Messages")]
-public class MessageService
+public partial class MessageService(
+    AccountsService accountsService,
+    SessionHelper sessionHelper,
+    IAuthorizationService authorizationService)
 {
     public async Task HandleAsync(
         HttpContext httpContext,
         [FromServices] ApiKeyService keyService,
         [FromBody] AnthropicInput request,
-        [FromServices] IAnthropicChatCompletionsService chatCompletionsService,
-        CancellationToken cancellationToken = default)
+        [FromServices] IAnthropicChatCompletionsService chatCompletionsService)
     {
         var apiKey = httpContext.Request.Headers["x-api-key"].FirstOrDefault() ??
                      httpContext.Request.Headers["Authorization"].FirstOrDefault()?.Replace("Bearer ", string.Empty);
 
-        var apiKeyValue = await keyService.GetApiKeyAsync(apiKey, cancellationToken);
+        var apiKeyValue = await keyService.GetApiKeyAsync(apiKey, httpContext.RequestAborted);
 
         if (string.IsNullOrEmpty(apiKey))
         {
             httpContext.Response.StatusCode = 401; // Unauthorized
-            await httpContext.Response.WriteAsync("Unauthorized API Key");
+            await httpContext.Response.WriteAsync("Unauthorized API Key",
+                cancellationToken: httpContext.RequestAborted);
             return;
         }
 
@@ -35,7 +42,7 @@ public class MessageService
             {
                 message = "Unauthorized",
                 code = "403"
-            }, cancellationToken: cancellationToken);
+            }, cancellationToken: httpContext.RequestAborted);
             return;
         }
 
@@ -46,7 +53,7 @@ public class MessageService
             {
                 message = "当前API Key没有访问Claude服务的权限",
                 code = "403"
-            }, cancellationToken: cancellationToken);
+            }, cancellationToken: httpContext.RequestAborted);
             return;
         }
 
@@ -57,7 +64,7 @@ public class MessageService
             {
                 message = "当前API Key没有使用该模型的权限",
                 code = "403"
-            }, cancellationToken: cancellationToken);
+            }, cancellationToken: httpContext.RequestAborted);
             return;
         }
 
@@ -65,8 +72,221 @@ public class MessageService
         {
             request.Model = apiKeyValue.Model;
         }
-        
+
+        var sessionHash = sessionHelper.GenerateSessionHash(request);
+
+        var account =
+            await accountsService.SelectAccountForApiKey(apiKeyValue, sessionHash, request.Model,
+                httpContext.RequestAborted);
+
+        // 获取
+
         // 寻找对应的账号
-        
+        if (apiKeyValue.IsClaude())
+        {
+            await HandleClaudeAsync(httpContext, request, chatCompletionsService, apiKeyValue,
+                account,
+                httpContext.RequestAborted);
+        }
+    }
+
+    /// <summary>
+    /// 处理Claude请求
+    /// </summary>
+    private async Task HandleClaudeAsync(
+        HttpContext httpContext,
+        AnthropicInput request,
+        IAnthropicChatCompletionsService chatCompletionsService,
+        Domain.ApiKey apiKeyValue,
+        Domain.Accounts? account,
+        CancellationToken cancellationToken = default)
+    {
+        // 获取统计服务
+        var statisticsService = httpContext.RequestServices.GetRequiredService<StatisticsService>();
+
+        // 开始记录请求统计
+        var requestLog = await statisticsService.LogRequestAsync(
+            apiKeyValue.Id,
+            apiKeyValue.Name,
+            account?.Id,
+            account?.Name,
+            request.Model,
+            "claude",
+            request.Stream,
+            Guid.NewGuid().ToString(),
+            httpContext.Connection.RemoteIpAddress?.ToString(),
+            httpContext.Request.Headers["User-Agent"].FirstOrDefault(),
+            cancellationToken);
+
+        var accessToken = await accountsService.GetValidAccessTokenAsync(account, cancellationToken);
+
+        try
+        {
+            // 准备请求头和代理配置
+            var headers = new Dictionary<string, string>()
+            {
+                { "Authorization", "Bearer " + accessToken },
+                { "anthropic-version", EnvHelper.ApiVersion }
+            };
+
+            // 复制context的请求头
+            foreach (var header in httpContext.Request.Headers)
+            {
+                // 不要覆盖已有的Authorization和Content-Type头
+                if (header.Key.Equals("Authorization", StringComparison.OrdinalIgnoreCase) ||
+                    header.Key.Equals("Content-Type", StringComparison.OrdinalIgnoreCase) ||
+                    header.Key.Equals("Content-Length", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                headers[header.Key] = header.Value.ToString();
+            }
+
+            headers["anthropic-beta"] = EnvHelper.BetaHeader;
+
+            var proxyConfig = account?.Proxy;
+
+            // 调用真实的聊天完成服务
+            ClaudeChatCompletionDto response;
+            // 从response中提取实际的token usage信息
+            var inputTokens = 0;
+            var outputTokens = 0;
+            var cacheCreateTokens = 0;
+            var cacheReadTokens = 0;
+
+            if (request.Stream)
+            {
+                // 是否第一次输出
+                bool isFirst = true;
+
+                await foreach (var (eventName, value, item) in chatCompletionsService.StreamChatCompletionsAsync(
+                                   request,
+                                   headers, proxyConfig, new ThorPlatformOptions()
+                                   {
+                                       Address = account?.ApiUrl ?? "https://api.anthropic.com/",
+                                   }, cancellationToken))
+                {
+                    if (isFirst)
+                    {
+                        httpContext.SetEventStreamHeaders();
+                        isFirst = false;
+                    }
+
+                    if (item?.Usage is { input_tokens: > 0 } ||
+                        item?.message?.Usage?.input_tokens > 0)
+                    {
+                        inputTokens = item.Usage?.input_tokens ?? item?.message?.Usage?.input_tokens ?? 0;
+                    }
+
+                    if (item?.Usage is { output_tokens: > 0 } || item?.message?.Usage?.output_tokens > 0)
+                    {
+                        outputTokens = (item.Usage?.output_tokens ?? item?.message?.Usage?.output_tokens) ?? 0;
+                    }
+
+                    if (item?.Usage is { cache_creation_input_tokens: > 0 } ||
+                        item?.message?.Usage?.cache_creation_input_tokens > 0)
+                    {
+                        cacheCreateTokens += item.Usage?.cache_creation_input_tokens ??
+                                             item?.message?.Usage?.cache_creation_input_tokens ?? 0;
+                    }
+
+                    if (item?.Usage is { cache_read_input_tokens: > 0 } ||
+                        item?.message?.Usage?.cache_read_input_tokens > 0)
+                    {
+                        cacheReadTokens += item.Usage?.cache_read_input_tokens ??
+                                           item.message?.Usage?.cache_read_input_tokens ?? 0;
+                    }
+
+
+                    await httpContext.WriteAsEventStreamDataAsync(eventName, value);
+                }
+            }
+
+            else
+            {
+                // 非流式响应
+                response = await chatCompletionsService.ChatCompletionsAsync(request, headers, proxyConfig,
+                    new ThorPlatformOptions()
+                    {
+                        Address = account.ApiUrl,
+                    },
+                    cancellationToken);
+                await httpContext.Response.WriteAsJsonAsync(response, cancellationToken: cancellationToken);
+            }
+
+            // 计算费用（这里需要根据实际的定价模型来计算）
+            var cost = CalculateTokenCost(request.Model, inputTokens, outputTokens, cacheCreateTokens,
+                cacheReadTokens);
+
+            // 注意：我们不能直接修改实体然后保存，需要通过服务方法来更新
+            // 这里只是增加使用计数，具体的更新逻辑应该在服务层处理
+            // 可以考虑创建专门的方法来更新使用统计
+
+            // 完成请求日志记录（成功）
+            await statisticsService.CompleteRequestLogAsync(
+                requestLog.Id,
+                inputTokens: inputTokens,
+                outputTokens: outputTokens,
+                cacheCreateTokens: cacheCreateTokens,
+                cacheReadTokens: cacheReadTokens,
+                cost: cost,
+                status: "success",
+                httpStatusCode: 200,
+                cancellationToken: cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            // 完成请求日志记录（失败）
+            await statisticsService.CompleteRequestLogAsync(
+                requestLog.Id,
+                status: "error",
+                errorMessage: ex.Message,
+                httpStatusCode: 500,
+                cancellationToken: cancellationToken);
+
+            httpContext.Response.StatusCode = 500;
+            await httpContext.Response.WriteAsJsonAsync(new
+            {
+                // 返回claude需要的异常
+                error = new
+                {
+                    message = ex.Message,
+                    type = "server_error",
+                    code = "500"
+                }
+            }, cancellationToken: cancellationToken);
+        }
+    }
+
+    /// <summary>
+    /// 计算Token费用
+    /// </summary>
+    private static decimal CalculateTokenCost(string model, int inputTokens, int outputTokens,
+        int cacheCreateTokens,
+        int cacheReadTokens)
+    {
+        // 根据不同模型的定价来计算费用
+        // 这里是示例定价，实际应该从配置中读取
+        var pricing = model switch
+        {
+            "claude-3-5-sonnet-20241022" => new
+                { Input = 0.000003m, Output = 0.000015m, CacheWrite = 0.00000375m, CacheRead = 0.0000003m },
+            "claude-3-5-haiku-20241022" => new
+                { Input = 0.000001m, Output = 0.000005m, CacheWrite = 0.00000125m, CacheRead = 0.0000001m },
+            "claude-3-opus-20240229" => new
+                { Input = 0.000015m, Output = 0.000075m, CacheWrite = 0.00001875m, CacheRead = 0.0000015m },
+            _ => new
+            {
+                Input = 0.000003m, Output = 0.000015m, CacheWrite = 0.00000375m, CacheRead = 0.0000003m
+            } // 默认使用sonnet定价
+        };
+
+        var inputCost = inputTokens * pricing.Input;
+        var outputCost = outputTokens * pricing.Output;
+        var cacheCreateCost = cacheCreateTokens * pricing.CacheWrite;
+        var cacheReadCost = cacheReadTokens * pricing.CacheRead;
+
+        return inputCost + outputCost + cacheCreateCost + cacheReadCost;
     }
 }

@@ -94,7 +94,7 @@ public static class HttpClientExtensions
             req.Headers.Add("Authorization", $"Bearer {token}");
         }
 
-        foreach (var header in headers)
+        foreach (var header in headers.Where(header => !req.Headers.Contains(header.Key)))
         {
             req.Headers.Add(header.Key, header.Value);
         }
@@ -181,7 +181,7 @@ public static class HttpClientExtensions
             req.Headers.Add("Authorization", $"Bearer {token}");
         }
 
-        foreach (var header in headers)
+        foreach (var header in headers.Where(header => !req.Headers.Contains(header.Key)))
         {
             req.Headers.Add(header.Key, header.Value);
         }

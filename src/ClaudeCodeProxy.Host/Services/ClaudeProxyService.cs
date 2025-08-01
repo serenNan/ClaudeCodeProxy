@@ -1,4 +1,5 @@
-﻿using ClaudeCodeProxy.Host.Helper;
+﻿using ClaudeCodeProxy.Domain;
+using ClaudeCodeProxy.Host.Helper;
 using ClaudeCodeProxy.Host.Models;
 using Microsoft.Extensions.Caching.Memory;
 

@@ -17,8 +17,24 @@ public class EnvHelper
     /// </summary>
     public static string Password => _password;
 
+    private static string _ApiVersion = "2023-06-01";
+
+    public static string ApiVersion => _ApiVersion;
+
+    private static string _betaHeader;
+    
+    public static string BetaHeader => _betaHeader;
+
     public static void Initialize(IConfiguration configuration)
     {
+        var apiVersion = configuration["API_VERSION"];
+        if (!string.IsNullOrEmpty(apiVersion))
+        {
+            _ApiVersion = apiVersion;
+        }
+        
+        _betaHeader = configuration["BETA_HEADER"] ?? "oauth-2025-04-20";
+
         var userName = configuration["USER_NAME"];
         var password = configuration["PASSWORD"];
         if (!string.IsNullOrEmpty(userName))

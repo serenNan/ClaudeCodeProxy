@@ -27,7 +27,7 @@ export default function ConfirmModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
       <div 
-        className="absolute inset-0 bg-black bg-opacity-50"
+        className="absolute inset-0 bg-black/50 dark:bg-black/70"
         onClick={onCancel}
       />
       
@@ -39,7 +39,7 @@ export default function ConfirmModal({
               <div className="w-10 h-10 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-xl flex items-center justify-center">
                 <AlertTriangle className="w-5 h-5 text-white" />
               </div>
-              <CardTitle className="text-lg font-bold text-gray-900">
+              <CardTitle className="text-lg font-bold text-foreground">
                 {title}
               </CardTitle>
             </div>
@@ -47,7 +47,7 @@ export default function ConfirmModal({
               variant="ghost"
               size="sm"
               onClick={onCancel}
-              className="text-gray-400 hover:text-gray-600"
+              className="text-muted-foreground hover:text-foreground"
             >
               <X className="w-4 h-4" />
             </Button>
@@ -55,7 +55,7 @@ export default function ConfirmModal({
         </CardHeader>
         
         <CardContent className="space-y-6">
-          <div className="text-gray-700 whitespace-pre-line">
+          <div className="text-foreground whitespace-pre-line">
             {message}
           </div>
           

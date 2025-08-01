@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { UserCircle, X, ChevronRight } from 'lucide-react';
+import { Modal } from '@/components/ui/modal';
+import { UserCircle, ChevronRight, Plus, Trash2, Settings } from 'lucide-react';
 import { apiService, type Account, type OAuthTokenInfo } from '@/services/api';
 import { showToast } from '@/utils/toast';
 import { useConfirm } from '@/hooks/useConfirm';
@@ -81,7 +82,7 @@ export default function AccountModal({ show, account, onClose, onSuccess }: Acco
     if (account) {
       setForm({
         platform: account.platform,
-        addType: 'oauth',
+        addType: account.platform === 'claude-console' ? 'manual' : 'oauth',
         name: account.name,
         description: account.description || '',
         accountType: account.accountType || 'shared',
@@ -89,7 +90,7 @@ export default function AccountModal({ show, account, onClose, onSuccess }: Acco
         accessToken: '',
         refreshToken: '',
         apiUrl: account.apiUrl || '',
-        apiKey: '',
+        apiKey: '', // 编辑时不显示现有的API Key
         priority: account.priority || 50,
         userAgent: account.userAgent || '',
         rateLimitDuration: account.rateLimitDuration || 60,
@@ -112,11 +113,27 @@ export default function AccountModal({ show, account, onClose, onSuccess }: Acco
 
       // 初始化模型映射表
       if (account.supportedModels) {
-        const mappings = Object.entries(account.supportedModels).map(([from, to]) => ({
-          from,
-          to
-        }));
-        setModelMappings(mappings);
+        if (Array.isArray(account.supportedModels)) {
+          // 后端存储格式：["from:to", "model1:target1"]
+          const mappings = account.supportedModels
+            .map(mapping => {
+              const parts = mapping.split(':', 2);
+              return parts.length === 2 ? { from: parts[0].trim(), to: parts[1].trim() } : null;
+            })
+            .filter(Boolean) as ModelMapping[];
+          setModelMappings(mappings);
+        } else if (typeof account.supportedModels === 'object') {
+          // 对象格式
+          const mappings = Object.entries(account.supportedModels).map(([from, to]) => ({
+            from,
+            to: String(to)
+          }));
+          setModelMappings(mappings);
+        } else {
+          setModelMappings([]);
+        }
+      } else {
+        setModelMappings([]);
       }
     } else {
       // 重置表单
@@ -447,20 +464,20 @@ export default function AccountModal({ show, account, onClose, onSuccess }: Acco
         <div className="flex items-center space-x-4">
           <div className="flex items-center">
             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
-              oauthStep >= 1 ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-500'
+              oauthStep >= 1 ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
             }`}>
               1
             </div>
-            <span className="ml-2 text-sm font-medium text-gray-700">基本信息</span>
+            <span className="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300">基本信息</span>
           </div>
-          <div className="w-8 h-0.5 bg-gray-300" />
+          <div className="w-8 h-0.5 bg-gray-300 dark:bg-gray-600" />
           <div className="flex items-center">
             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
-              oauthStep >= 2 ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-500'
+              oauthStep >= 2 ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
             }`}>
               2
             </div>
-            <span className="ml-2 text-sm font-medium text-gray-700">授权认证</span>
+            <span className="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300">授权认证</span>
           </div>
         </div>
       </div>
@@ -471,15 +488,19 @@ export default function AccountModal({ show, account, onClose, onSuccess }: Acco
     const isOAuthNextStep = form.addType === 'oauth' && form.platform !== 'claude-console' && !isEdit && oauthStep === 1;
     
     return (
-      <div className="flex gap-3 pt-4">
-        <Button variant="outline" className="flex-1" onClick={onClose}>
+      <div className="flex gap-4 pt-6 border-t border-gray-200 dark:border-gray-700">
+        <Button 
+          variant="outline" 
+          className="flex-1 py-3 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 dark:text-gray-200" 
+          onClick={onClose}
+        >
           取消
         </Button>
         
         {isOAuthNextStep ? (
           <Button 
             disabled={!canProceed} 
-            className="flex-1" 
+            className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-gray-600" 
             onClick={nextStep}
           >
             下一步
@@ -488,45 +509,34 @@ export default function AccountModal({ show, account, onClose, onSuccess }: Acco
         ) : (
           <Button 
             disabled={loading}
-            className="flex-1"
+            className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-gray-600"
             onClick={isEdit ? updateAccount : createAccount}
           >
-            {loading ? '处理中...' : (isEdit ? '更新' : '创建')}
+            {loading ? (
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                处理中...
+              </div>
+            ) : (
+              <span>{isEdit ? '保存更改' : '创建账户'}</span>
+            )}
           </Button>
         )}
       </div>
     );
   };
 
-  if (!show) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black bg-opacity-50" onClick={onClose} />
-      
-      {/* Modal */}
-      <Card 
-        key={`account-modal-${isEdit ? account?.id : 'new'}-${oauthStep}`}
-        className="relative w-full max-w-4xl mx-auto max-h-[90vh] overflow-y-auto"
-      >
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center">
-                <UserCircle className="w-5 h-5 text-white" />
-              </div>
-              <CardTitle className="text-xl font-bold text-gray-900">
-                {isEdit ? '编辑账户' : '添加账户'}
-              </CardTitle>
-            </div>
-            <Button variant="ghost" size="sm" onClick={onClose}>
-              <X className="w-4 h-4" />
-            </Button>
-          </div>
-        </CardHeader>
-
-        <CardContent className="space-y-6">
+    <Modal
+      isOpen={show}
+      onClose={onClose}
+      title={isEdit ? '编辑账户' : '添加账户'}
+      subtitle={isEdit ? '修改账户信息和配置' : '配置新的AI平台账户'}
+      icon={<UserCircle className="w-6 h-6 text-white" />}
+      size="5xl"
+      key={`account-modal-${isEdit ? account?.id : 'new'}-${oauthStep}`}
+    >
+      <div className="space-y-6">
           {/* 步骤指示器 */}
           {renderStepIndicator()}
 
@@ -547,7 +557,7 @@ export default function AccountModal({ show, account, onClose, onSuccess }: Acco
                         onChange={(e) => updateForm('platform', e.target.value)}
                         className="mr-2"
                       />
-                      <span className="text-sm">Claude</span>
+                      <span className="text-sm dark:text-gray-300">Claude</span>
                     </label>
                     <label className="flex items-center cursor-pointer">
                       <input 
@@ -558,7 +568,7 @@ export default function AccountModal({ show, account, onClose, onSuccess }: Acco
                         onChange={(e) => updateForm('platform', e.target.value)}
                         className="mr-2"
                       />
-                      <span className="text-sm">Claude Console</span>
+                      <span className="text-sm dark:text-gray-300">Claude Console</span>
                     </label>
                     <label className="flex items-center cursor-pointer">
                       <input 
@@ -569,7 +579,7 @@ export default function AccountModal({ show, account, onClose, onSuccess }: Acco
                         onChange={(e) => updateForm('platform', e.target.value)}
                         className="mr-2"
                       />
-                      <span className="text-sm">Gemini</span>
+                      <span className="text-sm dark:text-gray-300">Gemini</span>
                     </label>
                   </div>
                 </div>
@@ -589,7 +599,7 @@ export default function AccountModal({ show, account, onClose, onSuccess }: Acco
                         onChange={(e) => updateForm('addType', e.target.value)}
                         className="mr-2"
                       />
-                      <span className="text-sm">OAuth 授权 (推荐)</span>
+                      <span className="text-sm dark:text-gray-300">OAuth 授权 (推荐)</span>
                     </label>
                     <label className="flex items-center cursor-pointer">
                       <input 
@@ -600,7 +610,7 @@ export default function AccountModal({ show, account, onClose, onSuccess }: Acco
                         onChange={(e) => updateForm('addType', e.target.value)}
                         className="mr-2"
                       />
-                      <span className="text-sm">手动输入 Access Token</span>
+                      <span className="text-sm dark:text-gray-300">手动输入 Access Token</span>
                     </label>
                   </div>
                 </div>
@@ -624,7 +634,7 @@ export default function AccountModal({ show, account, onClose, onSuccess }: Acco
                   value={form.description}
                   onChange={(e) => updateForm('description', e.target.value)}
                   rows={3}
-                  className="w-full p-2 border border-gray-300 rounded-md resize-none"
+                  className="w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 rounded-md resize-none"
                   placeholder="账户用途说明..."
                 />
               </div>
@@ -641,7 +651,7 @@ export default function AccountModal({ show, account, onClose, onSuccess }: Acco
                       onChange={(e) => updateForm('accountType', e.target.value)}
                       className="mr-2"
                     />
-                    <span className="text-sm">共享账户</span>
+                    <span className="text-sm dark:text-gray-300">共享账户</span>
                   </label>
                   <label className="flex items-center cursor-pointer">
                     <input 
@@ -652,10 +662,10 @@ export default function AccountModal({ show, account, onClose, onSuccess }: Acco
                       onChange={(e) => updateForm('accountType', e.target.value)}
                       className="mr-2"
                     />
-                    <span className="text-sm">专属账户</span>
+                    <span className="text-sm dark:text-gray-300">专属账户</span>
                   </label>
                 </div>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-gray-500 dark:text-gray-400">
                   共享账户：供所有API Key使用；专属账户：仅供特定API Key使用
                 </p>
               </div>
@@ -669,8 +679,8 @@ export default function AccountModal({ show, account, onClose, onSuccess }: Acco
                     onChange={(e) => updateForm('projectId', e.target.value)}
                     placeholder="例如：123456789012（纯数字）"
                   />
-                  <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                    <p className="text-xs text-yellow-700">
+                  <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg">
+                    <p className="text-xs text-yellow-700 dark:text-yellow-300">
                       <strong>Google Cloud/Workspace 账号需要提供项目编号</strong><br/>
                       某些 Google 账号（特别是绑定了 Google Cloud 的账号）会被识别为 Workspace 账号，需要提供额外的项目编号。
                     </p>
@@ -726,7 +736,7 @@ export default function AccountModal({ show, account, onClose, onSuccess }: Acco
 
               {/* 手动输入 Token 字段 */}
               {form.addType === 'manual' && form.platform !== 'claude-console' && (
-                <Card className="border-blue-200 bg-blue-50">
+                <Card className="border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20">
                   <CardContent className="p-4 space-y-4">
                     <div className="space-y-2">
                       <Label>Access Token *</Label>
@@ -748,7 +758,7 @@ export default function AccountModal({ show, account, onClose, onSuccess }: Acco
                         value={form.refreshToken}
                         onChange={(e) => updateForm('refreshToken', e.target.value)}
                         rows={4}
-                        className="w-full p-2 border border-gray-300 rounded-md resize-none font-mono text-xs"
+                        className="w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 rounded-md resize-none font-mono text-xs"
                         placeholder="请输入 Refresh Token..."
                       />
                     </div>
@@ -776,127 +786,338 @@ export default function AccountModal({ show, account, onClose, onSuccess }: Acco
 
           {/* 编辑模式 */}
           {isEdit && (
-            <div className="space-y-6">
-              {/* 基本信息编辑字段 */}
-              <div className="space-y-2">
-                <Label>账户名称</Label>
-                <Input
-                  value={form.name}
-                  onChange={(e) => updateForm('name', e.target.value)}
-                  placeholder="为账户设置一个易识别的名称"
-                />
-              </div>
+            <div className="space-y-8">
+              {/* 平台信息卡片 */}
+              <Card className="border border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-900/20">
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                      form.platform === 'claude' ? 'bg-orange-500' :
+                      form.platform === 'claude-console' ? 'bg-purple-500' : 'bg-green-500'
+                    }`}>
+                      <UserCircle className="w-4 h-4 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900 dark:text-gray-100">平台信息</h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        {form.platform === 'claude' ? 'Claude AI官方账户' :
+                         form.platform === 'claude-console' ? 'Claude Console API' : 'Google Gemini'}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-              <div className="space-y-2">
-                <Label>描述 (可选)</Label>
-                <textarea
-                  value={form.description}
-                  onChange={(e) => updateForm('description', e.target.value)}
-                  rows={3}
-                  className="w-full p-2 border border-gray-300 rounded-md resize-none"
-                  placeholder="账户用途说明..."
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>账户类型</Label>
-                <div className="flex gap-4">
-                  <label className="flex items-center cursor-pointer">
-                    <input 
-                      type="radio" 
-                      name="accountType"
-                      value="shared"
-                      checked={form.accountType === 'shared'}
-                      onChange={(e) => updateForm('accountType', e.target.value)}
-                      className="mr-2"
-                    />
-                    <span className="text-sm">共享账户</span>
-                  </label>
-                  <label className="flex items-center cursor-pointer">
-                    <input 
-                      type="radio" 
-                      name="accountType"
-                      value="dedicated"
-                      checked={form.accountType === 'dedicated'}
-                      onChange={(e) => updateForm('accountType', e.target.value)}
-                      className="mr-2"
-                    />
-                    <span className="text-sm">专属账户</span>
-                  </label>
-                </div>
-              </div>
-
-              {/* 编辑模式的其他字段 */}
-              {form.platform === 'gemini' && (
-                <div className="space-y-2">
-                  <Label>项目编号 (可选)</Label>
-                  <Input
-                    value={form.projectId}
-                    onChange={(e) => updateForm('projectId', e.target.value)}
-                    placeholder="例如：123456789012（纯数字）"
-                  />
-                </div>
-              )}
-
-              {(form.platform === 'claude' || form.platform === 'claude-console') && (
-                <div className="space-y-2">
-                  <Label>调度优先级 (1-100)</Label>
-                  <Input
-                    type="number"
-                    min="1"
-                    max="100"
-                    value={form.priority}
-                    onChange={(e) => updateForm('priority', parseInt(e.target.value) || 50)}
-                  />
-                </div>
-              )}
-
-              {/* Token 更新 */}
-              {form.platform !== 'claude-console' && (
-                <Card className="border-amber-200 bg-amber-50">
-                  <CardContent className="p-4 space-y-4">
-                    <h5 className="font-semibold text-amber-900">更新 Token</h5>
-                    <p className="text-sm text-amber-800">
-                      可以更新 Access Token 和 Refresh Token。留空表示不更新该字段。
-                    </p>
+              {/* 基本信息卡片 */}
+              <Card className="border border-gray-200 dark:border-gray-700 dark:bg-gray-800/50">
+                <CardContent className="p-6">
+                  <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                    基本信息
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">账户名称 *</Label>
+                      <Input
+                        value={form.name}
+                        onChange={(e) => updateForm('name', e.target.value)}
+                        placeholder="为账户设置一个易识别的名称"
+                        className="border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 focus:border-blue-500 focus:ring-blue-500"
+                      />
+                      {errors.name && <p className="text-red-500 text-xs">{errors.name}</p>}
+                    </div>
                     
                     <div className="space-y-2">
-                      <Label>新的 Access Token</Label>
-                      <textarea
-                        value={form.accessToken}
-                        onChange={(e) => updateForm('accessToken', e.target.value)}
-                        rows={4}
-                        className="w-full p-2 border border-gray-300 rounded-md resize-none font-mono text-xs"
-                        placeholder="留空表示不更新..."
-                      />
+                      <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">账户类型</Label>
+                      <div className="flex gap-6">
+                        <label className="flex items-center cursor-pointer group">
+                          <input 
+                            type="radio" 
+                            name="accountType"
+                            value="shared"
+                            checked={form.accountType === 'shared'}
+                            onChange={(e) => updateForm('accountType', e.target.value)}
+                            className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                          />
+                          <span className="ml-2 text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100">共享账户</span>
+                        </label>
+                        <label className="flex items-center cursor-pointer group">
+                          <input 
+                            type="radio" 
+                            name="accountType"
+                            value="dedicated"
+                            checked={form.accountType === 'dedicated'}
+                            onChange={(e) => updateForm('accountType', e.target.value)}
+                            className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                          />
+                          <span className="ml-2 text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100">专属账户</span>
+                        </label>
+                      </div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        共享账户：供所有API Key使用；专属账户：仅供特定API Key使用
+                      </p>
                     </div>
+                  </div>
+                  
+                  <div className="mt-6 space-y-2">
+                    <Label className="text-sm font-medium text-gray-700">描述 (可选)</Label>
+                    <textarea
+                      value={form.description}
+                      onChange={(e) => updateForm('description', e.target.value)}
+                      rows={3}
+                      className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:border-blue-500 focus:ring-blue-500 focus:ring-1"
+                      placeholder="账户用途说明..."
+                    />
+                  </div>
+                </CardContent>
+              </Card>
 
+              {/* Gemini 特定配置 */}
+              {form.platform === 'gemini' && (
+                <Card className="border border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-900/20">
+                  <CardContent className="p-6">
+                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      Gemini 配置
+                    </h3>
                     <div className="space-y-2">
-                      <Label>新的 Refresh Token</Label>
-                      <textarea
-                        value={form.refreshToken}
-                        onChange={(e) => updateForm('refreshToken', e.target.value)}
-                        rows={4}
-                        className="w-full p-2 border border-gray-300 rounded-md resize-none font-mono text-xs"
-                        placeholder="留空表示不更新..."
+                      <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">项目编号 (可选)</Label>
+                      <Input
+                        value={form.projectId}
+                        onChange={(e) => updateForm('projectId', e.target.value)}
+                        placeholder="例如：123456789012（纯数字）"
+                        className="border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 focus:border-green-500 focus:ring-green-500"
                       />
+                      <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg">
+                        <p className="text-xs text-yellow-700 dark:text-yellow-300">
+                          <strong>提示：</strong>某些 Google 账号（特别是绑定了 Google Cloud 的账号）会被识别为 Workspace 账号，需要提供项目编号。
+                        </p>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
               )}
 
-              {/* 代理设置 */}
-              <ProxyConfigComponent
-                value={form.proxy}
-                onChange={(proxy: ProxyConfig) => updateForm('proxy', proxy)}
-              />
+              {/* Claude Console 特定配置 */}
+              {form.platform === 'claude-console' && (
+                <Card className="border border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-900/20">
+                  <CardContent className="p-6">
+                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+                      <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                      Claude Console 配置
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">API URL *</Label>
+                        <Input
+                          value={form.apiUrl}
+                          onChange={(e) => updateForm('apiUrl', e.target.value)}
+                          placeholder="例如：https://api.example.com"
+                          className="border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 focus:border-purple-500 focus:ring-purple-500"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">API Key</Label>
+                        <Input
+                          type="password"
+                          value={form.apiKey}
+                          onChange={(e) => updateForm('apiKey', e.target.value)}
+                          placeholder="留空表示不更新..."
+                          className="border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 focus:border-purple-500 focus:ring-purple-500"
+                        />
+                        <p className="text-xs text-gray-500 dark:text-gray-400">留空表示保持当前API Key不变</p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">User Agent (可选)</Label>
+                        <Input
+                          value={form.userAgent}
+                          onChange={(e) => updateForm('userAgent', e.target.value)}
+                          placeholder="自定义User Agent"
+                          className="border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 focus:border-purple-500 focus:ring-purple-500"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">请求间隔 (秒)</Label>
+                        <Input
+                          type="number"
+                          min="1"
+                          value={form.rateLimitDuration}
+                          onChange={(e) => updateForm('rateLimitDuration', parseInt(e.target.value) || 60)}
+                          placeholder="默认60秒"
+                          className="border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 focus:border-purple-500 focus:ring-purple-500"
+                        />
+                      </div>
+                    </div>
+
+                    
+                    {/* 模型映射表 */}
+                    <div className="mt-6 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">模型映射 (可选)</Label>
+                          <p className="text-xs text-gray-500 mt-1">
+                            将请求中的模型名映射为实际调用的模型名
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setModelMappings([...modelMappings, { from: '', to: '' }])}
+                          className="border-purple-300 dark:border-purple-700 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/30"
+                        >
+                          <Plus className="w-4 h-4 mr-1" />
+                          添加映射
+                        </Button>
+                      </div>
+                      
+                      {modelMappings.length === 0 && (
+                        <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                          <div className="w-12 h-12 mx-auto mb-3 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center">
+                            <Settings className="w-6 h-6" />
+                          </div>
+                          <p className="text-sm">暂无模型映射配置</p>
+                          <p className="text-xs">点击上方按钮添加模型映射规则</p>
+                        </div>
+                      )}
+                      
+                      {modelMappings.map((mapping, index) => (
+                        <div key={index} className="flex gap-3 items-center p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                          <div className="flex-1">
+                            <Input
+                              placeholder="原模型名 (如: gpt-4)"
+                              value={mapping.from}
+                              onChange={(e) => {
+                                const newMappings = [...modelMappings];
+                                newMappings[index] = { ...mapping, from: e.target.value };
+                                setModelMappings(newMappings);
+                              }}
+                              className="border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 focus:border-purple-500 focus:ring-purple-500"
+                            />
+                          </div>
+                          <div className="flex items-center justify-center w-8">
+                            <ChevronRight className="w-4 h-4 text-gray-400" />
+                          </div>
+                          <div className="flex-1">
+                            <Input
+                              placeholder="目标模型名 (如: claude-3-sonnet)"
+                              value={mapping.to}
+                              onChange={(e) => {
+                                const newMappings = [...modelMappings];
+                                newMappings[index] = { ...mapping, to: e.target.value };
+                                setModelMappings(newMappings);
+                              }}
+                              className="border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 focus:border-purple-500 focus:ring-purple-500"
+                            />
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              const newMappings = modelMappings.filter((_, i) => i !== index);
+                              setModelMappings(newMappings);
+                            }}
+                            className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-full"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* 平台特定配置卡片 */}
+              {(form.platform === 'claude' || form.platform === 'claude-console') && (
+                <Card className="border border-gray-200 dark:border-gray-700 dark:bg-gray-800/50">
+                  <CardContent className="p-6">
+                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+                      <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                      调度配置
+                    </h3>
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">调度优先级 (1-100)</Label>
+                      <Input
+                        type="number"
+                        min="1"
+                        max="100"
+                        value={form.priority}
+                        onChange={(e) => updateForm('priority', parseInt(e.target.value) || 50)}
+                        className="w-32 border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 focus:border-blue-500 focus:ring-blue-500"
+                      />
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        数字越小优先级越高。建议范围：1-100，默认值：50
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Token 更新 */}
+              {form.platform !== 'claude-console' && (
+                <Card className="border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-900/20">
+                  <CardContent className="p-6">
+                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+                      <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
+                      Token 更新
+                    </h3>
+                    <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg mb-4">
+                      <p className="text-sm text-amber-800 dark:text-amber-300">
+                        <strong>注意：</strong>可以更新 Access Token 和 Refresh Token。留空表示保持当前Token不变。
+                      </p>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">新的 Access Token</Label>
+                        <textarea
+                          value={form.accessToken}
+                          onChange={(e) => updateForm('accessToken', e.target.value)}
+                          rows={4}
+                          className="w-full p-3 border border-gray-300 rounded-lg resize-none font-mono text-xs focus:border-amber-500 focus:ring-amber-500 focus:ring-1"
+                          placeholder="留空表示不更新..."
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">新的 Refresh Token</Label>
+                        <textarea
+                          value={form.refreshToken}
+                          onChange={(e) => updateForm('refreshToken', e.target.value)}
+                          rows={4}
+                          className="w-full p-3 border border-gray-300 rounded-lg resize-none font-mono text-xs focus:border-amber-500 focus:ring-amber-500 focus:ring-1"
+                          placeholder="留空表示不更新..."
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* 代理设置卡片 */}
+              <Card className="border border-gray-200 dark:border-gray-700 dark:bg-gray-800/50">
+                <CardContent className="p-6">
+                  <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <div className="w-2 h-2 bg-indigo-500 rounded-full"></div>
+                    代理设置
+                  </h3>
+                  <ProxyConfigComponent
+                    value={form.proxy}
+                    onChange={(proxy: ProxyConfig) => updateForm('proxy', proxy)}
+                  />
+                </CardContent>
+              </Card>
             </div>
           )}
 
-          {/* 按钮区域 */}
-          {renderActionButtons()}
-        </CardContent>
-      </Card>
+        {/* 按钮区域 */}
+        {renderActionButtons()}
+      </div>
 
       {/* 确认弹窗 */}
       <ConfirmModal
@@ -908,6 +1129,6 @@ export default function AccountModal({ show, account, onClose, onSuccess }: Acco
         onConfirm={handleConfirm}
         onCancel={handleCancel}
       />
-    </div>
+    </Modal>
   );
 }

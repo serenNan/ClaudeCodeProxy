@@ -10,6 +10,7 @@ import { X, Plus } from 'lucide-react';
 import { apiService } from '@/services/api';
 
 interface CreateApiKeyFormProps {
+  editingKey?: any;
   onSuccess: (apiKey: any) => void;
   onCancel: () => void;
 }
@@ -62,34 +63,60 @@ const AVAILABLE_CLIENTS = [
   { id: 'mobile', name: '移动客户端', description: '移动应用' }
 ];
 
-export default function CreateApiKeyForm({ onSuccess, onCancel }: CreateApiKeyFormProps) {
+export default function CreateApiKeyForm({ editingKey, onSuccess, onCancel }: CreateApiKeyFormProps) {
   const [loading, setLoading] = useState(false);
   const [newTag, setNewTag] = useState('');
   const [newModel, setNewModel] = useState('');
-  const [newClient, setNewClient] = useState('');
+
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const [formData, setFormData] = useState<FormData>({
-    name: '',
-    description: '',
-    tags: [],
-    tokenLimit: '',
-    rateLimitWindow: '',
-    rateLimitRequests: '',
-    concurrencyLimit: '0',
-    dailyCostLimit: '0',
-    expiresAt: '',
-    permissions: 'all',
-    claudeAccountId: '',
-    claudeConsoleAccountId: '',
-    geminiAccountId: '',
-    enableModelRestriction: false,
-    restrictedModels: [],
-    enableClientRestriction: false,
-    allowedClients: [],
-    isEnabled: true,
-    model: '',
-    service: 'claude'
+  const [formData, setFormData] = useState<FormData>(() => {
+    if (editingKey) {
+      return {
+        name: editingKey.name || '',
+        description: editingKey.description || '',
+        tags: editingKey.tags || [],
+        tokenLimit: editingKey.tokenLimit?.toString() || '',
+        rateLimitWindow: editingKey.rateLimitWindow?.toString() || '',
+        rateLimitRequests: editingKey.rateLimitRequests?.toString() || '',
+        concurrencyLimit: editingKey.concurrencyLimit?.toString() || '0',
+        dailyCostLimit: editingKey.dailyCostLimit?.toString() || '0',
+        expiresAt: editingKey.expiresAt ? new Date(editingKey.expiresAt).toISOString().slice(0, 16) : '',
+        permissions: editingKey.permissions || 'all',
+        claudeAccountId: editingKey.claudeAccountId || '',
+        claudeConsoleAccountId: editingKey.claudeConsoleAccountId || '',
+        geminiAccountId: editingKey.geminiAccountId || '',
+        enableModelRestriction: editingKey.enableModelRestriction || false,
+        restrictedModels: editingKey.restrictedModels || [],
+        enableClientRestriction: editingKey.enableClientRestriction || false,
+        allowedClients: editingKey.allowedClients || [],
+        isEnabled: editingKey.isEnabled !== undefined ? editingKey.isEnabled : true,
+        model: editingKey.model || '',
+        service: editingKey.service || 'claude'
+      };
+    }
+    return {
+      name: '',
+      description: '',
+      tags: [],
+      tokenLimit: '',
+      rateLimitWindow: '',
+      rateLimitRequests: '',
+      concurrencyLimit: '0',
+      dailyCostLimit: '0',
+      expiresAt: '',
+      permissions: 'all',
+      claudeAccountId: '',
+      claudeConsoleAccountId: '',
+      geminiAccountId: '',
+      enableModelRestriction: false,
+      restrictedModels: [],
+      enableClientRestriction: false,
+      allowedClients: [],
+      isEnabled: true,
+      model: '',
+      service: 'claude'
+    };
   });
 
   const updateFormData = (field: keyof FormData, value: any) => {
@@ -193,7 +220,9 @@ export default function CreateApiKeyForm({ onSuccess, onCancel }: CreateApiKeyFo
         service: formData.service
       };
 
-      const result = await apiService.createApiKey(requestData);
+      const result = editingKey 
+        ? await apiService.updateApiKey(editingKey.id, requestData)
+        : await apiService.createApiKey(requestData);
       onSuccess(result);
     } catch (error) {
       console.error('Failed to create API key:', error);
@@ -205,9 +234,9 @@ export default function CreateApiKeyForm({ onSuccess, onCancel }: CreateApiKeyFo
   return (
     <Card>
       <CardHeader>
-        <CardTitle>创建新的 API Key</CardTitle>
+        <CardTitle>{editingKey ? '编辑 API Key' : '创建新的 API Key'}</CardTitle>
         <CardDescription>
-          配置您的 API Key 设置和限制
+          {editingKey ? '修改您的 API Key 设置和限制' : '配置您的 API Key 设置和限制'}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -216,22 +245,19 @@ export default function CreateApiKeyForm({ onSuccess, onCancel }: CreateApiKeyFo
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">基本信息</h3>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="grid grid-cols-1 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">名称 *</Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => updateFormData('name', e.target.value)}
-                  placeholder="为您的 API Key 取一个名称"
-                  className={errors.name ? 'border-red-500' : ''}
-                />
-                {errors.name && <p className="text-red-500 text-xs">{errors.name}</p>}
-                <p className="text-xs text-gray-500">
-                  API Key 值将在创建时自动生成
-                </p>
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="name">名称 *</Label>
+              <Input
+                id="name"
+                value={formData.name}
+                onChange={(e) => updateFormData('name', e.target.value)}
+                placeholder="为您的 API Key 取一个名称"
+                className={errors.name ? 'border-red-500' : ''}
+              />
+              {errors.name && <p className="text-red-500 text-xs">{errors.name}</p>}
+              <p className="text-xs text-gray-500">
+                API Key 值将在创建时自动生成
+              </p>
             </div>
 
             <div className="space-y-2">
@@ -555,7 +581,10 @@ export default function CreateApiKeyForm({ onSuccess, onCancel }: CreateApiKeyFo
           {/* 操作按钮 */}
           <div className="flex space-x-2 pt-4">
             <Button type="submit" disabled={loading}>
-              {loading ? '创建中...' : '创建 API Key'}
+              {loading 
+                ? (editingKey ? '更新中...' : '创建中...') 
+                : (editingKey ? '更新 API Key' : '创建 API Key')
+              }
             </Button>
             <Button type="button" variant="outline" onClick={onCancel}>
               取消

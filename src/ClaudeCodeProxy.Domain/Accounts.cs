@@ -59,13 +59,13 @@ public sealed class Accounts : Entity<string>
     /// 支持的模型映射表（Claude Console平台使用）
     /// JSON格式存储模型映射关系
     /// </summary>
-    public string? SupportedModels { get; set; }
+    public List<string>? SupportedModels { get; set; }
 
     /// <summary>
     /// Claude AI OAuth信息（Claude平台使用）
     /// JSON格式存储OAuth令牌信息
     /// </summary>
-    public string? ClaudeAiOauth { get; set; }
+    public ClaudeAiOauth? ClaudeAiOauth { get; set; }
 
     /// <summary>
     /// Gemini OAuth信息（Gemini平台使用）
@@ -77,7 +77,7 @@ public sealed class Accounts : Entity<string>
     /// 代理配置信息
     /// JSON格式存储代理设置
     /// </summary>
-    public string? Proxy { get; set; }
+    public ProxyConfig? Proxy { get; set; }
 
     /// <summary>
     /// 账户是否启用

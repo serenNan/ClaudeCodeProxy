@@ -73,12 +73,58 @@ public static class AccountEndpoints
             .Produces(200)
             .Produces(404);
 
+        // 启用账户
+        group.MapPatch("/{id}/enable", EnableAccount)
+            .WithName("EnableAccount")
+            .WithSummary("启用账户")
+            .Produces(200)
+            .Produces(404);
+
+        // 禁用账户
+        group.MapPatch("/{id}/disable", DisableAccount)
+            .WithName("DisableAccount")
+            .WithSummary("禁用账户")
+            .Produces(200)
+            .Produces(404);
+
+        // 切换账户启用状态
+        group.MapPatch("/{id}/toggle", ToggleAccountEnabled)
+            .WithName("ToggleAccountEnabled")
+            .WithSummary("切换账户启用状态")
+            .Produces(200)
+            .Produces(404);
+
         // 更新账户使用时间
         group.MapPatch("/{id}/usage", UpdateAccountUsage)
             .WithName("UpdateAccountUsage")
             .WithSummary("更新账户使用时间")
             .Produces(200)
             .Produces(404);
+
+        // 平台特定的更新端点
+        // 更新Claude账户
+        group.MapPut("/claude/{id}", UpdateClaudeAccount)
+            .WithName("UpdateClaudeAccount")
+            .WithSummary("更新Claude账户")
+            .Produces<Accounts>()
+            .Produces(404)
+            .Produces(400);
+
+        // 更新Claude Console账户
+        group.MapPut("/claude-console/{id}", UpdateClaudeConsoleAccount)
+            .WithName("UpdateClaudeConsoleAccount")
+            .WithSummary("更新Claude Console账户")
+            .Produces<Accounts>()
+            .Produces(404)
+            .Produces(400);
+
+        // 更新Gemini账户
+        group.MapPut("/gemini/{id}", UpdateGeminiAccount)
+            .WithName("UpdateGeminiAccount")
+            .WithSummary("更新Gemini账户")
+            .Produces<Accounts>()
+            .Produces(404)
+            .Produces(400);
     }
 
     /// <summary>
@@ -268,6 +314,147 @@ public static class AccountEndpoints
         catch (Exception ex)
         {
             return TypedResults.NotFound($"更新账户使用时间失败: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 启用账户
+    /// </summary>
+    private static async Task<Results<Ok, NotFound<string>>> EnableAccount(
+        string id,
+        AccountsService accountsService)
+    {
+        try
+        {
+            var success = await accountsService.EnableAccountAsync(id);
+            if (!success)
+            {
+                return TypedResults.NotFound($"未找到ID为 {id} 的账户");
+            }
+
+            return TypedResults.Ok();
+        }
+        catch (Exception ex)
+        {
+            return TypedResults.NotFound($"启用账户失败: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 禁用账户
+    /// </summary>
+    private static async Task<Results<Ok, NotFound<string>>> DisableAccount(
+        string id,
+        AccountsService accountsService)
+    {
+        try
+        {
+            var success = await accountsService.DisableAccountAsync(id);
+            if (!success)
+            {
+                return TypedResults.NotFound($"未找到ID为 {id} 的账户");
+            }
+
+            return TypedResults.Ok();
+        }
+        catch (Exception ex)
+        {
+            return TypedResults.NotFound($"禁用账户失败: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 切换账户启用状态
+    /// </summary>
+    private static async Task<Results<Ok, NotFound<string>>> ToggleAccountEnabled(
+        string id,
+        AccountsService accountsService)
+    {
+        try
+        {
+            var success = await accountsService.ToggleAccountEnabledAsync(id);
+            if (!success)
+            {
+                return TypedResults.NotFound($"未找到ID为 {id} 的账户");
+            }
+
+            return TypedResults.Ok();
+        }
+        catch (Exception ex)
+        {
+            return TypedResults.NotFound($"切换账户状态失败: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 更新Claude账户
+    /// </summary>
+    private static async Task<Results<Ok<Accounts>, NotFound<string>, BadRequest<string>>> UpdateClaudeAccount(
+        string id,
+        UpdateAccountRequest request,
+        AccountsService accountsService)
+    {
+        try
+        {
+            var account = await accountsService.UpdateAccountAsync(id, request);
+            if (account == null)
+            {
+                return TypedResults.NotFound($"未找到ID为 {id} 的Claude账户");
+            }
+
+            return TypedResults.Ok(account);
+        }
+        catch (Exception ex)
+        {
+            return TypedResults.BadRequest($"更新Claude账户失败: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 更新Claude Console账户
+    /// </summary>
+    private static async Task<Results<Ok<Accounts>, NotFound<string>, BadRequest<string>>> UpdateClaudeConsoleAccount(
+        string id,
+        UpdateAccountRequest request,
+        AccountsService accountsService)
+    {
+        try
+        {
+            var account = await accountsService.UpdateAccountAsync(id, request);
+            if (account == null)
+            {
+                return TypedResults.NotFound($"未找到ID为 {id} 的Claude Console账户");
+            }
+
+            return TypedResults.Ok(account);
+        }
+        catch (Exception ex)
+        {
+            return TypedResults.BadRequest($"更新Claude Console账户失败: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 更新Gemini账户
+    /// </summary>
+    private static async Task<Results<Ok<Accounts>, NotFound<string>, BadRequest<string>>> UpdateGeminiAccount(
+        string id,
+        UpdateAccountRequest request,
+        AccountsService accountsService)
+    {
+        try
+        {
+            var account = await accountsService.UpdateAccountAsync(id, request);
+            if (account == null)
+            {
+                return TypedResults.NotFound($"未找到ID为 {id} 的Gemini账户");
+            }
+
+            return TypedResults.Ok(account);
+        }
+        catch (Exception ex)
+        {
+            return TypedResults.BadRequest($"更新Gemini账户失败: {ex.Message}");
         }
     }
 }

@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Web;
+using ClaudeCodeProxy.Domain;
 using Microsoft.Extensions.Logging;
 
 namespace ClaudeCodeProxy.Host.Helper;
@@ -14,15 +15,6 @@ public static class OAuthConfig
     public const string ClientId = "9d1c250a-e61b-44d9-88ed-5944d1962f5e";
     public const string RedirectUri = "https://console.anthropic.com/oauth/code/callback";
     public const string Scopes = "org:create_api_key user:profile user:inference";
-}
-
-public class ProxyConfig
-{
-    public string Type { get; set; } = string.Empty;
-    public string Host { get; set; } = string.Empty;
-    public int Port { get; set; }
-    public string? Username { get; set; }
-    public string? Password { get; set; }
 }
 
 public class OAuthParams
@@ -128,7 +120,8 @@ public class OAuthHelper
         };
     }
 
-    public async Task<TokenResponse> ExchangeCodeForTokensAsync(string authorizationCode, string codeVerifier, string state, ProxyConfig? proxyConfig = null)
+    public async Task<TokenResponse> ExchangeCodeForTokensAsync(string authorizationCode, string codeVerifier,
+        string state, ProxyConfig? proxyConfig = null)
     {
         var cleanedCode = authorizationCode.Split('#')[0]?.Split('&')[0] ?? authorizationCode;
 
@@ -223,14 +216,16 @@ public class OAuthHelper
 
             var accessToken = root.GetProperty("access_token").GetString() ?? "";
             var refreshToken = root.GetProperty("refresh_token").GetString() ?? "";
-            var expiresIn = root.TryGetProperty("expires_in", out var expiresElement) ? expiresElement.GetInt32() : 3600;
+            var expiresIn = root.TryGetProperty("expires_in", out var expiresElement)
+                ? expiresElement.GetInt64()
+                : 3600;
             var scopeString = root.TryGetProperty("scope", out var scope) ? scope.GetString() : OAuthConfig.Scopes;
 
             return new TokenResponse
             {
                 AccessToken = accessToken,
                 RefreshToken = refreshToken,
-                ExpiresAt = (DateTimeOffset.UtcNow.ToUnixTimeSeconds() + expiresIn) * 1000,
+                ExpiresAt = DateTimeOffset.Now.ToUnixTimeSeconds() + expiresIn,
                 Scopes = scopeString?.Split(' ') ?? new[] { "user:inference", "user:profile" },
                 IsMax = true
             };
@@ -332,10 +327,11 @@ public class OAuthHelper
         {
             var handler = new HttpClientHandler();
             var proxyUri = $"{proxyConfig.Type}://{proxyConfig.Host}:{proxyConfig.Port}";
-            
+
             if (!string.IsNullOrEmpty(proxyConfig.Username) && !string.IsNullOrEmpty(proxyConfig.Password))
             {
-                proxyUri = $"{proxyConfig.Type}://{proxyConfig.Username}:{proxyConfig.Password}@{proxyConfig.Host}:{proxyConfig.Port}";
+                proxyUri =
+                    $"{proxyConfig.Type}://{proxyConfig.Username}:{proxyConfig.Password}@{proxyConfig.Host}:{proxyConfig.Port}";
             }
 
             handler.Proxy = new System.Net.WebProxy(proxyUri);

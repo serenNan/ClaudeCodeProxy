@@ -7,6 +7,7 @@ import {
   Command,
   LifeBuoy,
   Send,
+  FileText,
 } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 
@@ -39,6 +40,11 @@ const navMain = [
     title: "账号管理",
     url: "/accounts",
     icon: Users,
+  },
+  {
+    title: "请求日志",
+    url: "/request-logs",
+    icon: FileText,
   },
   {
     title: "系统设置",

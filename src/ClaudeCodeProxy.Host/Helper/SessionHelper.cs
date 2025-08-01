@@ -2,6 +2,7 @@
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
+using Thor.Abstractions.Anthropic;
 
 namespace ClaudeCodeProxy.Host.Helper;
 
@@ -20,15 +21,10 @@ public class SessionHelper
     /// </summary>
     /// <param name="requestBody">请求体</param>
     /// <returns>32字符的会话哈希，如果无法生成则返回null</returns>
-    public string? GenerateSessionHash(object requestBody)
+    public string? GenerateSessionHash(AnthropicInput requestBody)
     {
-        if (requestBody == null)
-        {
-            return null;
-        }
-
         string cacheableContent = "";
-        
+
         try
         {
             // 将对象序列化为JSON以便处理
@@ -38,59 +34,41 @@ public class SessionHelper
 
             // 1. 优先提取带有cache_control: {"type": "ephemeral"}的内容
             // 检查system中的cacheable内容
-            if (root.TryGetProperty("system", out var systemElement))
+
+            if (requestBody.SystemCalculated is IList<AnthropicMessageContent> systems)
             {
-                if (systemElement.ValueKind == JsonValueKind.Array)
+                foreach (var content in systems)
                 {
-                    foreach (var part in systemElement.EnumerateArray())
+                    if (content.CacheControl?.Type == "ephemeral" &&
+                        content.Type == "text" &&
+                        !string.IsNullOrEmpty(content.Text))
                     {
-                        if (part.TryGetProperty("cache_control", out var cacheControl) &&
-                            cacheControl.TryGetProperty("type", out var type) &&
-                            type.GetString() == "ephemeral")
-                        {
-                            if (part.TryGetProperty("text", out var text))
-                            {
-                                cacheableContent += text.GetString() ?? "";
-                            }
-                        }
+                        cacheableContent += content.Text;
                     }
                 }
             }
 
-            // 检查messages中的cacheable内容
-            if (root.TryGetProperty("messages", out var messagesElement) && messagesElement.ValueKind == JsonValueKind.Array)
+            foreach (var message in requestBody.Messages)
             {
-                foreach (var msg in messagesElement.EnumerateArray())
+                if (message.ContentCalculated is IList<AnthropicMessageContent> contents)
                 {
-                    if (msg.TryGetProperty("content", out var contentElement))
+                    foreach (var content in contents)
                     {
-                        if (contentElement.ValueKind == JsonValueKind.Array)
+                        if (content.CacheControl?.Type == "ephemeral" &&
+                            content.Type == "text" &&
+                            !string.IsNullOrEmpty(content.Text))
                         {
-                            foreach (var part in contentElement.EnumerateArray())
-                            {
-                                if (part.TryGetProperty("cache_control", out var cacheControl) &&
-                                    cacheControl.TryGetProperty("type", out var type) &&
-                                    type.GetString() == "ephemeral")
-                                {
-                                    if (part.TryGetProperty("type", out var partType) &&
-                                        partType.GetString() == "text" &&
-                                        part.TryGetProperty("text", out var text))
-                                    {
-                                        cacheableContent += text.GetString() ?? "";
-                                    }
-                                }
-                            }
+                            cacheableContent += content.Text;
                         }
-                        else if (contentElement.ValueKind == JsonValueKind.String)
-                        {
-                            // 检查消息级别的cache_control
-                            if (msg.TryGetProperty("cache_control", out var msgCacheControl) &&
-                                msgCacheControl.TryGetProperty("type", out var msgType) &&
-                                msgType.GetString() == "ephemeral")
-                            {
-                                cacheableContent += contentElement.GetString() ?? "";
-                            }
-                        }
+                    }
+                }
+                else if (message.ContentCalculated is string textContent &&
+                         !string.IsNullOrEmpty(textContent))
+                {
+                    // 检查消息级别的cache_control
+                    if (message.CacheControl?.Type == "ephemeral")
+                    {
+                        cacheableContent += textContent;
                     }
                 }
             }
@@ -107,7 +85,7 @@ public class SessionHelper
             if (root.TryGetProperty("system", out var systemFallback))
             {
                 string systemText = "";
-                
+
                 if (systemFallback.ValueKind == JsonValueKind.String)
                 {
                     systemText = systemFallback.GetString() ?? "";
@@ -122,6 +100,7 @@ public class SessionHelper
                             parts.Add(text.GetString() ?? "");
                         }
                     }
+
                     systemText = string.Join("", parts);
                 }
 
@@ -133,44 +112,33 @@ public class SessionHelper
                 }
             }
 
-            // 4. 最后fallback: 使用第一条消息内容
-            if (root.TryGetProperty("messages", out var messagesFallback) && 
-                messagesFallback.ValueKind == JsonValueKind.Array)
+            foreach (var message in requestBody.Messages)
             {
-                var messagesArray = messagesFallback.EnumerateArray().ToArray();
-                if (messagesArray.Length > 0)
+                // 检查消息级别的cache_control
+                if (message.CacheControl?.Type == "ephemeral")
                 {
-                    var firstMessage = messagesArray[0];
-                    string firstMessageText = "";
+                    continue; // 已经处理过了
+                }
 
-                    if (firstMessage.TryGetProperty("content", out var firstContent))
+                // 处理消息内容
+                if (message.ContentCalculated is IList<AnthropicMessageContent> contents)
+                {
+                    foreach (var content in contents)
                     {
-                        if (firstContent.ValueKind == JsonValueKind.String)
+                        if (content.Type == "text" && !string.IsNullOrEmpty(content.Text))
                         {
-                            firstMessageText = firstContent.GetString() ?? "";
-                        }
-                        else if (firstContent.ValueKind == JsonValueKind.Array)
-                        {
-                            var parts = new List<string>();
-                            foreach (var part in firstContent.EnumerateArray())
-                            {
-                                if (part.TryGetProperty("type", out var partType) &&
-                                    partType.GetString() == "text" &&
-                                    part.TryGetProperty("text", out var text))
-                                {
-                                    parts.Add(text.GetString() ?? "");
-                                }
-                            }
-                            firstMessageText = string.Join("", parts);
+                            var hash = GenerateHash(content.Text);
+                            _logger.LogDebug("📋 Session hash generated from message content: {Hash}", hash);
+                            return hash;
                         }
                     }
-
-                    if (!string.IsNullOrEmpty(firstMessageText))
-                    {
-                        var hash = GenerateHash(firstMessageText);
-                        _logger.LogDebug("📋 Session hash generated from first message: {Hash}", hash);
-                        return hash;
-                    }
+                }
+                else if (message.ContentCalculated is string textContent &&
+                         !string.IsNullOrEmpty(textContent))
+                {
+                    var hash = GenerateHash(textContent);
+                    _logger.LogDebug("📋 Session hash generated from message content: {Hash}", hash);
+                    return hash;
                 }
             }
 
@@ -202,8 +170,8 @@ public class SessionHelper
     /// <returns>是否有效</returns>
     public bool IsValidSessionHash(string? sessionHash)
     {
-        return !string.IsNullOrEmpty(sessionHash) && 
-               sessionHash.Length == 32 && 
+        return !string.IsNullOrEmpty(sessionHash) &&
+               sessionHash.Length == 32 &&
                System.Text.RegularExpressions.Regex.IsMatch(sessionHash, "^[a-f0-9]{32}$");
     }
 
