@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DollarSign, ArrowRight } from 'lucide-react';
-import { apiService } from '@/services/api';
+import { apiService, type DateFilterRequest } from '@/services/api';
 
 interface FlowData {
   source: string;
@@ -21,163 +21,91 @@ export default function CostFlowChart({ className }: CostFlowChartProps) {
   const [timeRange, setTimeRange] = useState('7days');
   const [loading, setLoading] = useState(true);
 
-  // 获取真实成本流向数据
   useEffect(() => {
-    const fetchFlowData = async () => {
+    const fetchData = async () => {
+      setLoading(true);
       try {
-        setLoading(true);
-        
-        // 直接获取API Key到模型的真实流向数据
-        const flowDataRaw = await apiService.getApiKeyModelFlowData({
+        const dateFilter: DateFilterRequest = {
           type: 'preset',
           preset: timeRange
-        });
+        };
+        
+        const rawFlowData = await apiService.getApiKeyModelFlowData(dateFilter);
+        
+        if (rawFlowData && rawFlowData.length > 0) {
+          const flowData: FlowData[] = [];
+          const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
-        console.log('CostFlowChart真实流向数据:', {
-          dataLength: flowDataRaw?.length || 0,
-          sampleData: flowDataRaw?.slice(0, 5),
-          timeRange: timeRange
-        });
+          // 为每个API Key分配颜色
+          const apiKeyColors = new Map<string, string>();
+          let colorIndex = 0;
 
-        const flowData: FlowData[] = [];
-        const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
-
-        // 为每个API Key分配颜色
-        const apiKeyColors = new Map<string, string>();
-        let colorIndex = 0;
-
-        flowDataRaw.forEach(item => {
-          if (!apiKeyColors.has(item.apiKeyId)) {
-            apiKeyColors.set(item.apiKeyId, colors[colorIndex % colors.length]);
-            colorIndex++;
-          }
-          
-          // 只显示成本大于$0.01的流向
-          if (item.cost > 0.01) {
-            // 改进API Key名称显示逻辑
-            let displayName = item.apiKeyName;
+          rawFlowData.forEach(item => {
+            if (!apiKeyColors.has(item.apiKeyId)) {
+              apiKeyColors.set(item.apiKeyId, colors[colorIndex % colors.length]);
+              colorIndex++;
+            }
             
-            // 如果名称太长，智能截断
-            if (displayName.length > 15) {
-              // 优先保留前缀和后缀的重要信息
-              if (displayName.includes('-')) {
-                const parts = displayName.split('-');
-                if (parts.length >= 2) {
-                  displayName = `${parts[0]}-...${parts[parts.length - 1]}`;
+            // 只显示成本大于$0.01的流向
+            if (item.cost > 0.01) {
+              // 改进API Key名称显示逻辑
+              let displayName = item.apiKeyName;
+              
+              // 如果名称太长，智能截断
+              if (displayName.length > 15) {
+                // 优先保留前缀和后缀的重要信息
+                if (displayName.includes('-')) {
+                  const parts = displayName.split('-');
+                  if (parts.length >= 2) {
+                    displayName = `${parts[0]}-...${parts[parts.length - 1]}`;
+                  } else {
+                    displayName = displayName.substring(0, 12) + '...';
+                  }
                 } else {
                   displayName = displayName.substring(0, 12) + '...';
                 }
-              } else {
-                displayName = displayName.substring(0, 12) + '...';
               }
+              
+              // 改进模型名称显示
+              let modelName = item.model
+                .replace('claude-3-5-', '')
+                .replace('claude-3-', '')
+                .replace('claude-', '')
+                .replace('anthropic/', '')
+                .replace('gpt-4o-', 'gpt4o-')
+                .replace('gpt-4-', 'gpt4-')
+                .replace('gpt-3.5-', 'gpt3.5-');
+              
+              // 限制模型名称长度
+              if (modelName.length > 12) {
+                modelName = modelName.substring(0, 10) + '..';
+              }
+              
+              flowData.push({
+                source: displayName,
+                target: modelName,
+                value: item.cost,
+                formattedValue: `$${item.cost.toFixed(2)}`,
+                color: apiKeyColors.get(item.apiKeyId) || colors[0]
+              });
             }
-            
-            // 改进模型名称显示
-            let modelName = item.model
-              .replace('claude-3-5-', '')
-              .replace('claude-3-', '')
-              .replace('claude-', '')
-              .replace('anthropic/', '')
-              .replace('gpt-4o-', 'gpt4o-')
-              .replace('gpt-4-', 'gpt4-')
-              .replace('gpt-3.5-', 'gpt3.5-');
-            
-            // 限制模型名称长度
-            if (modelName.length > 12) {
-              modelName = modelName.substring(0, 10) + '..';
-            }
-            
-            flowData.push({
-              source: displayName,
-              target: modelName,
-              value: item.cost,
-              formattedValue: `$${item.cost.toFixed(2)}`,
-              color: apiKeyColors.get(item.apiKeyId) || colors[0]
-            });
-          }
-        });
-
-        console.log('CostFlowChart处理后数据:', {
-          processedCount: flowData.length,
-          totalCost: flowData.reduce((sum, f) => sum + f.value, 0).toFixed(2),
-          uniqueApiKeys: new Set(flowData.map(f => f.source)).size,
-          uniqueModels: new Set(flowData.map(f => f.target)).size
-        });
-
-        setData(flowData);
+          });
+          
+          setData(flowData);
+        } else {
+          // 如果没有数据，设置为空数组
+          setData([]);
+        }
       } catch (error) {
-        console.error('获取成本流向数据失败，使用模拟数据:', error);
-        
-        // Fallback to mock data
-        const mockFlowData = [
-          { apiKeyId: 'key-001', apiKeyName: 'Production-API-Key', model: 'claude-3-5-sonnet-20241022', cost: 45.20 },
-          { apiKeyId: 'key-001', apiKeyName: 'Production-API-Key', model: 'claude-3-haiku-20240307', cost: 12.30 },
-          { apiKeyId: 'key-002', apiKeyName: 'Development-Key', model: 'claude-3-5-sonnet-20241022', cost: 25.10 },
-          { apiKeyId: 'key-002', apiKeyName: 'Development-Key', model: 'claude-3-haiku-20240307', cost: 8.75 },
-          { apiKeyId: 'key-003', apiKeyName: 'Testing-Environment-Key', model: 'claude-3-haiku-20240307', cost: 5.20 },
-          { apiKeyId: 'key-004', apiKeyName: 'Staging-API-Key', model: 'claude-3-opus-20240229', cost: 15.60 },
-          { apiKeyId: 'key-005', apiKeyName: 'QA-Testing-Key', model: 'claude-3-5-sonnet-20241022', cost: 18.90 }
-        ];
-        
-        const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
-        const apiKeyColors = new Map<string, string>();
-        let colorIndex = 0;
-        
-        const flowData: FlowData[] = mockFlowData.map(item => {
-          if (!apiKeyColors.has(item.apiKeyId)) {
-            apiKeyColors.set(item.apiKeyId, colors[colorIndex % colors.length]);
-            colorIndex++;
-          }
-          
-          // 改进API Key名称显示逻辑
-          let displayName = item.apiKeyName;
-          
-          // 如果名称太长，智能截断
-          if (displayName.length > 15) {
-            // 优先保留前缀和后缀的重要信息
-            if (displayName.includes('-')) {
-              const parts = displayName.split('-');
-              if (parts.length >= 2) {
-                displayName = `${parts[0]}-...${parts[parts.length - 1]}`;
-              } else {
-                displayName = displayName.substring(0, 12) + '...';
-              }
-            } else {
-              displayName = displayName.substring(0, 12) + '...';
-            }
-          }
-          
-          // 改进模型名称显示
-          let modelName = item.model
-            .replace('claude-3-5-', '')
-            .replace('claude-3-', '')
-            .replace('claude-', '')
-            .replace('anthropic/', '')
-            .replace('gpt-4o-', 'gpt4o-')
-            .replace('gpt-4-', 'gpt4-')
-            .replace('gpt-3.5-', 'gpt3.5-');
-          
-          // 限制模型名称长度
-          if (modelName.length > 12) {
-            modelName = modelName.substring(0, 10) + '..';
-          }
-          
-          return {
-            source: displayName,
-            target: modelName,
-            value: item.cost,
-            formattedValue: `$${item.cost.toFixed(2)}`,
-            color: apiKeyColors.get(item.apiKeyId) || colors[0]
-          };
-        });
-        
-        setData(flowData);
+        console.error('获取流向数据失败:', error);
+        // 发生错误时也设置为空数组
+        setData([]);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchFlowData();
+    fetchData();
   }, [timeRange]);
 
   // 计算节点位置和大小

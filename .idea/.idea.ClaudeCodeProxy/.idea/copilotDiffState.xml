@@ -35,14 +35,6 @@
             </PendingDiffInfo>
           </value>
         </entry>
-        <entry key="$PROJECT_DIR$/src/ClaudeCodeProxy.Host/Models/LoginRequest.cs">
-          <value>
-            <PendingDiffInfo>
-              <option name="filePath" value="$PROJECT_DIR$/src/ClaudeCodeProxy.Host/Models/LoginRequest.cs" />
-              <option name="updatedContent" value="namespace ClaudeCodeProxy.Host.Models;&#10;&#10;/// &lt;summary&gt;&#10;/// 登录请求模型&#10;/// &lt;/summary&gt;&#10;public class LoginRequest&#10;{&#10;    /// &lt;summary&gt;&#10;    /// 用户名&#10;    /// &lt;/summary&gt;&#10;    public string Username { get; set; } = string.Empty;&#10;&#10;    /// &lt;summary&gt;&#10;    /// 密码&#10;    /// &lt;/summary&gt;&#10;    public string Password { get; set; } = string.Empty;&#10;}" />
-            </PendingDiffInfo>
-          </value>
-        </entry>
         <entry key="$PROJECT_DIR$/src/ClaudeCodeProxy.Host/Models/LoginResponse.cs">
           <value>
             <PendingDiffInfo>

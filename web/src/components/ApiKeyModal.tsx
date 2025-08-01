@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useState, useEffect } from 'react';
+import { Modal } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -71,7 +71,7 @@ export default function ApiKeyModal({ open, onClose, editingKey, onSuccess }: Ap
   const [newModel, setNewModel] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const [formData, setFormData] = useState<FormData>(() => {
+  const getInitialFormData = (editingKey?: ApiKey | null): FormData => {
     if (editingKey) {
       return {
         name: editingKey.name || '',
@@ -118,7 +118,17 @@ export default function ApiKeyModal({ open, onClose, editingKey, onSuccess }: Ap
       model: '',
       service: 'claude'
     };
-  });
+  };
+
+  const [formData, setFormData] = useState<FormData>(() => getInitialFormData(editingKey));
+
+  // 当 editingKey 改变时重新设置表单数据
+  useEffect(() => {
+    setFormData(getInitialFormData(editingKey));
+    setNewTag('');
+    setNewModel('');
+    setErrors({});
+  }, [editingKey, open]);
 
   const updateFormData = (field: keyof FormData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -235,13 +245,14 @@ export default function ApiKeyModal({ open, onClose, editingKey, onSuccess }: Ap
   };
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{editingKey ? '编辑 API Key' : '创建新的 API Key'}</DialogTitle>
-        </DialogHeader>
-        
-        <form onSubmit={handleSubmit} className="space-y-6">
+    <Modal 
+      isOpen={open} 
+      onClose={onClose}
+      title={editingKey ? '编辑 API Key' : '创建新的 API Key'}
+      subtitle={editingKey ? '修改您的 API Key 设置和限制' : '配置您的 API Key 设置和限制'}
+      size="5xl"
+    >
+      <form onSubmit={handleSubmit} className="space-y-6">
           {/* 基本信息 */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">基本信息</h3>
@@ -363,7 +374,6 @@ export default function ApiKeyModal({ open, onClose, editingKey, onSuccess }: Ap
             </Button>
           </div>
         </form>
-      </DialogContent>
-    </Dialog>
+    </Modal>
   );
 }
