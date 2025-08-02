@@ -4,7 +4,7 @@ WORKDIR /app
 EXPOSE 8080
 EXPOSE 8081
 
-FROM node:20.18-alpine3.21 AS lobe
+FROM node:20.18-alpine3.21 AS web
 WORKDIR /src
 
 # 设置npm镜像源以加速ARM64构建
