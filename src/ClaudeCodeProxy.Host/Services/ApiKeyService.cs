@@ -113,6 +113,7 @@ public class ApiKeyService(IContext context)
             apiKey.IsEnabled = request.IsEnabled.Value;
 
         apiKey.ModifiedAt = DateTime.UtcNow;
+        apiKey.Model = request.Model;
 
         await context.SaveAsync(cancellationToken);
         return apiKey;
@@ -142,11 +143,11 @@ public class ApiKeyService(IContext context)
         await context.ApiKeys.Where(x => x.Id == id)
             .ExecuteUpdateAsync(x => x.SetProperty(a => a.IsEnabled, true)
                 .SetProperty(a => a.ModifiedAt, DateTime.UtcNow), cancellationToken);
-        
+
         // 检查是否有记录被更新
         var apiKey = await context.ApiKeys.AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
-        
+
         return apiKey != null;
     }
 
@@ -158,11 +159,11 @@ public class ApiKeyService(IContext context)
         await context.ApiKeys.Where(x => x.Id == id)
             .ExecuteUpdateAsync(x => x.SetProperty(a => a.IsEnabled, false)
                 .SetProperty(a => a.ModifiedAt, DateTime.UtcNow), cancellationToken);
-        
+
         // 检查是否有记录被更新
         var apiKey = await context.ApiKeys.AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
-        
+
         return apiKey != null;
     }
 
