@@ -28,7 +28,11 @@ public static class Program
             return;
         }
 
-        var builder = WebApplication.CreateBuilder(args);
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions()
+        {
+            Args = args,
+            ContentRootPath = AppDomain.CurrentDomain.BaseDirectory,
+        });
 
         // 如果是Windows系统，配置为Windows服务
         if (WindowsServiceHelper.IsWindows())
@@ -259,11 +263,7 @@ public static class Program
                 .AllowAnyHeader();
         });
 
-        // 静态文件服务
-        app.UseDefaultFiles();
         app.UseStaticFiles();
-
-        app.MapFallbackToFile("index.html");
 
         // 认证和授权中间件
         app.UseJwtAuthentication();
