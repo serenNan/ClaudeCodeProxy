@@ -30,10 +30,15 @@ jobs:
         rm -rf package-lock.json node_modules
         npm i
         npm run build
+    - name: Verify build output
+      run: |
+        ls -la web/
+        ls -la web/dist/ || echo "dist directory not found"
     - uses: actions/upload-artifact@v4
       with:
         name: frontend-dist
         path: web/dist/
+        if-no-files-found: error
 
   build-backend:
     runs-on: ubuntu-latest
