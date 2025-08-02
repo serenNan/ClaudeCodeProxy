@@ -7,9 +7,10 @@ namespace Thor.Abstractions.Anthropic;
 
 public class AnthropicMessageInput
 {
-    [JsonPropertyName("role")] public string Role { get; set; }
-
     [JsonIgnore] public string? Content;
+
+    [JsonIgnore] public IList<AnthropicMessageContent>? Contents;
+    [JsonPropertyName("role")] public string Role { get; set; }
 
     [JsonPropertyName("content")]
     public object? ContentCalculated
@@ -17,14 +18,9 @@ public class AnthropicMessageInput
         get
         {
             if (Content is not null && Contents is not null)
-            {
                 throw new ValidationException("Messages 中 Content 和 Contents 字段不能同时有值");
-            }
 
-            if (Content is not null)
-            {
-                return Content;
-            }
+            if (Content is not null) return Content;
 
             return Contents!;
         }
@@ -33,14 +29,10 @@ public class AnthropicMessageInput
             if (value is JsonElement str)
             {
                 if (str.ValueKind == JsonValueKind.String)
-                {
                     Content = value?.ToString();
-                }
                 else if (str.ValueKind == JsonValueKind.Array)
-                {
                     Contents = JsonSerializer.Deserialize<IList<AnthropicMessageContent>>(value?.ToString(),
                         ThorJsonSerializer.DefaultOptions);
-                }
             }
             else
             {
@@ -49,7 +41,5 @@ public class AnthropicMessageInput
         }
     }
 
-    [JsonIgnore] public IList<AnthropicMessageContent>? Contents;
-    
     [JsonPropertyName("cache_control")] public AnthropicCacheControl? CacheControl { get; set; }
 }

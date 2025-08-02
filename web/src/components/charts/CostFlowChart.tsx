@@ -34,7 +34,7 @@ export default function CostFlowChart({ className }: CostFlowChartProps) {
         
         if (rawFlowData && rawFlowData.length > 0) {
           const flowData: FlowData[] = [];
-          const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
+          const colors = ['oklch(0.75 0.04 0)', 'oklch(0.65 0.06 0)', 'oklch(0.55 0.08 0)', 'oklch(0.45 0.10 0)', 'oklch(0.35 0.12 0)'];
 
           // 为每个API Key分配颜色
           const apiKeyColors = new Map<string, string>();
@@ -157,11 +157,11 @@ export default function CostFlowChart({ className }: CostFlowChartProps) {
       <CardContent>
         {loading ? (
           <div className="h-96 flex items-center justify-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-border"></div>
           </div>
         ) : (
           <div className="h-96 relative overflow-hidden">
-            <svg width="100%" height="100%" viewBox="0 0 900 400" className="bg-gradient-to-br from-gray-50 to-white">
+            <svg width="100%" height="100%" viewBox="0 0 900 400" className="bg-card">
               {/* 定义渐变 */}
               <defs>
                 {data.map((flow, index) => (
@@ -181,7 +181,7 @@ export default function CostFlowChart({ className }: CostFlowChartProps) {
                 <defs>
                   <marker id="arrowhead" markerWidth="10" markerHeight="7" 
                     refX="9" refY="3.5" orient="auto">
-                    <polygon points="0 0, 10 3.5, 0 7" fill="#6b7280" opacity="0.6" />
+                    <polygon points="0 0, 10 3.5, 0 7" fill="oklch(0.48 0.012 0)" opacity="0.6" />
                   </marker>
                 </defs>
               </defs>
@@ -189,7 +189,7 @@ export default function CostFlowChart({ className }: CostFlowChartProps) {
               {/* 背景网格 */}
               <defs>
                 <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
-                  <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#f3f4f6" strokeWidth="0.5" opacity="0.3"/>
+                  <path d="M 20 0 L 0 0 0 20" fill="none" stroke="oklch(0.22 0.006 0)" strokeWidth="0.5" opacity="0.3"/>
                 </pattern>
               </defs>
               <rect width="100%" height="100%" fill="url(#grid)" />
@@ -219,8 +219,8 @@ export default function CostFlowChart({ className }: CostFlowChartProps) {
                     {/* 渐变定义 */}
                     <defs>
                       <linearGradient id="gradient-source" x1="0%" y1="0%" x2="0%" y2="100%">
-                        <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.9} />
-                        <stop offset="100%" stopColor="#1d4ed8" stopOpacity={0.8} />
+                        <stop offset="0%" stopColor="oklch(0.75 0.04 0)" stopOpacity={0.9} />
+                        <stop offset="100%" stopColor="oklch(0.65 0.06 0)" stopOpacity={0.8} />
                       </linearGradient>
                     </defs>
                     
@@ -260,7 +260,7 @@ export default function CostFlowChart({ className }: CostFlowChartProps) {
                       cx={180}
                       cy={y + height / 2}
                       r={4}
-                      fill="#3b82f6"
+                      fill="oklch(0.75 0.04 0)"
                       stroke="white"
                       strokeWidth={2}
                     />
@@ -293,8 +293,8 @@ export default function CostFlowChart({ className }: CostFlowChartProps) {
                     {/* 渐变定义 */}
                     <defs>
                       <linearGradient id="gradient-target" x1="0%" y1="0%" x2="0%" y2="100%">
-                        <stop offset="0%" stopColor="#10b981" stopOpacity={0.9} />
-                        <stop offset="100%" stopColor="#047857" stopOpacity={0.8} />
+                        <stop offset="0%" stopColor="oklch(0.65 0.06 0)" stopOpacity={0.9} />
+                        <stop offset="100%" stopColor="oklch(0.55 0.08 0)" stopOpacity={0.8} />
                       </linearGradient>
                     </defs>
                     
@@ -334,7 +334,7 @@ export default function CostFlowChart({ className }: CostFlowChartProps) {
                       cx={720}
                       cy={y + height / 2}
                       r={4}
-                      fill="#10b981"
+                      fill="oklch(0.65 0.06 0)"
                       stroke="white"
                       strokeWidth={2}
                     />
@@ -395,7 +395,7 @@ export default function CostFlowChart({ className }: CostFlowChartProps) {
                           y={(sourceY + targetY) / 2}
                           textAnchor="middle"
                           dominantBaseline="middle"
-                          fill="#374151"
+                          fill="oklch(0.48 0.012 0)"
                           fontSize="9"
                           fontWeight="600"
                         >
@@ -411,41 +411,41 @@ export default function CostFlowChart({ className }: CostFlowChartProps) {
               <g>
                 {/* 左侧标题背景 */}
                 <rect x={70} y={15} width={80} height={25} fill="white" rx={12} opacity={0.9} filter="url(#shadow)" />
-                <text x={110} y={30} textAnchor="middle" fill="#374151" fontSize="13" fontWeight="700">
+                <text x={110} y={30} textAnchor="middle" fill="oklch(0.48 0.012 0)" fontSize="13" fontWeight="700">
                   API Keys
                 </text>
                 
                 {/* 右侧标题背景 */}
                 <rect x={750} y={15} width={80} height={25} fill="white" rx={12} opacity={0.9} filter="url(#shadow)" />
-                <text x={790} y={30} textAnchor="middle" fill="#374151" fontSize="13" fontWeight="700">
+                <text x={790} y={30} textAnchor="middle" fill="oklch(0.48 0.012 0)" fontSize="13" fontWeight="700">
                   模型
                 </text>
                 
                 {/* 中央箭头 */}
                 <g transform="translate(430, 25)">
                   <circle cx="20" cy="5" r="15" fill="white" opacity={0.9} filter="url(#shadow)" />
-                  <path d="M 12 5 L 20 1 L 20 3 L 26 3 L 26 7 L 20 7 L 20 9 Z" fill="#6b7280" />
+                  <path d="M 12 5 L 20 1 L 20 3 L 26 3 L 26 7 L 20 7 L 20 9 Z" fill="oklch(0.48 0.012 0)" />
                 </g>
               </g>
             </svg>
             
             {/* 统计信息面板 */}
-            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-r from-white via-gray-50 to-white border-t border-gray-200 p-4 rounded-b-lg backdrop-blur-sm">
+            <div className="absolute bottom-0 left-0 right-0 bg-card border-t border-border p-4 rounded-b-lg backdrop-blur-sm">
               <div className="grid grid-cols-3 gap-6 text-center">
-                <div className="group hover:bg-blue-50 p-2 rounded-lg transition-colors">
-                  <div className="text-xl font-bold text-blue-600 group-hover:text-blue-700 transition-colors">
+                <div className="group hover:bg-muted p-2 rounded-lg transition-colors">
+                  <div className="text-xl font-bold text-primary group-hover:text-primary/80 transition-colors">
                     {sources.length}
                   </div>
                   <div className="text-xs text-muted-foreground font-medium">活跃API Keys</div>
                 </div>
-                <div className="group hover:bg-green-50 p-2 rounded-lg transition-colors">
-                  <div className="text-xl font-bold text-green-600 group-hover:text-green-700 transition-colors">
+                <div className="group hover:bg-muted p-2 rounded-lg transition-colors">
+                  <div className="text-xl font-bold text-primary group-hover:text-primary/80 transition-colors">
                     {targets.length}
                   </div>
                   <div className="text-xs text-muted-foreground font-medium">使用的模型</div>
                 </div>
-                <div className="group hover:bg-purple-50 p-2 rounded-lg transition-colors">
-                  <div className="text-xl font-bold text-purple-600 group-hover:text-purple-700 transition-colors">
+                <div className="group hover:bg-muted p-2 rounded-lg transition-colors">
+                  <div className="text-xl font-bold text-primary group-hover:text-primary/80 transition-colors">
                     ${data.reduce((sum, d) => sum + d.value, 0).toFixed(2)}
                   </div>
                   <div className="text-xs text-muted-foreground font-medium">总费用</div>

@@ -1,0 +1,132 @@
+name: ✨ Feature Request
+description: Suggest an idea for ClaudeCodeProxy
+title: "[Feature]: "
+labels: ["enhancement", "triage"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a new feature! 
+        Please provide detailed information to help us understand and evaluate your request.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: 🎯 Problem Statement
+      description: Is your feature request related to a problem? Please describe.
+      placeholder: A clear and concise description of what the problem is. Ex. I'm always frustrated when [...]
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: 💡 Proposed Solution
+      description: Describe the solution you'd like
+      placeholder: A clear and concise description of what you want to happen.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 🔄 Alternatives Considered
+      description: Describe alternatives you've considered
+      placeholder: A clear and concise description of any alternative solutions or features you've considered.
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: 🏗️ Component
+      description: Which part of the system does this feature relate to?
+      options:
+        - Frontend (Web UI)
+        - Backend (API)
+        - Database
+        - Authentication
+        - API Key Management
+        - Account Management
+        - Monitoring & Analytics
+        - Docker/Deployment
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: ⚡ Priority
+      description: How important is this feature to you?
+      options:
+        - Low - Nice to have
+        - Medium - Would improve workflow
+        - High - Blocking current usage
+        - Critical - Cannot use without this
+    validations:
+      required: true
+
+  - type: textarea
+    id: use-cases
+    attributes:
+      label: 🎬 Use Cases
+      description: Describe specific use cases where this feature would be helpful
+      placeholder: |
+        1. As a [user type], I want to [goal] so that [benefit]
+        2. When [scenario], I need [feature] to [outcome]
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: ✅ Acceptance Criteria
+      description: What would need to be implemented for this feature to be considered complete?
+      placeholder: |
+        - [ ] Requirement 1
+        - [ ] Requirement 2
+        - [ ] Requirement 3
+
+  - type: textarea
+    id: mockups
+    attributes:
+      label: 🎨 Mockups/Examples
+      description: If applicable, add mockups, screenshots, or examples to help explain your feature
+      placeholder: Drag and drop images here or describe the UI/UX...
+
+  - type: dropdown
+    id: breaking-changes
+    attributes:
+      label: 💥 Breaking Changes
+      description: Would this feature require breaking changes to existing functionality?
+      options:
+        - "No - Fully backward compatible"
+        - "Minor - Small breaking changes"
+        - "Major - Significant breaking changes"
+        - "Unknown - Need to investigate"
+    validations:
+      required: true
+
+  - type: textarea
+    id: implementation
+    attributes:
+      label: 🔧 Implementation Ideas
+      description: If you have ideas about how this could be implemented, please share them
+      placeholder: Any technical ideas or approaches...
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: ✅ Checklist
+      description: Please confirm the following
+      options:
+        - label: I have searched existing issues to ensure this is not a duplicate
+          required: true
+        - label: I have provided a clear problem statement and solution
+          required: true
+        - label: I understand this is a request and not a guarantee of implementation
+          required: true
+        - label: I am willing to help with implementation or testing if needed
+          required: false

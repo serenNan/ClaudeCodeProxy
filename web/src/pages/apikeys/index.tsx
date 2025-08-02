@@ -131,26 +131,26 @@ export default function ApiKeysPage() {
 
   // 获取 API Key 状态
   const getApiKeyStatus = (apiKey: ApiKey) => {
-    if (!apiKey.isEnabled) return { status: 'disabled', text: '已禁用', color: 'bg-gray-500' };
+    if (!apiKey.isEnabled) return { status: 'disabled', text: '已禁用', color: 'bg-secondary' };
     if (apiKey.expiresAt && new Date(apiKey.expiresAt) < new Date()) {
-      return { status: 'expired', text: '已过期', color: 'bg-red-500' };
+      return { status: 'expired', text: '已过期', color: 'bg-destructive' };
     }
     if (apiKey.lastUsedAt) {
       const lastUsed = new Date(apiKey.lastUsedAt);
       const daysSinceLastUse = (Date.now() - lastUsed.getTime()) / (1000 * 60 * 60 * 24);
       if (daysSinceLastUse < 7) {
-        return { status: 'active', text: '活跃', color: 'bg-green-500' };
+        return { status: 'active', text: '活跃', color: 'bg-primary' };
       } else if (daysSinceLastUse < 30) {
-        return { status: 'idle', text: '闲置', color: 'bg-yellow-500' };
+        return { status: 'idle', text: '闲置', color: 'bg-muted' };
       }
     }
-    return { status: 'unused', text: '未使用', color: 'bg-blue-500' };
+    return { status: 'unused', text: '未使用', color: 'bg-accent' };
   };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-gray-100"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-border"></div>
       </div>
     );
   }
@@ -160,7 +160,7 @@ export default function ApiKeysPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-2">
           <Key className="h-6 w-6" />
-          <h1 className="text-2xl font-bold dark:text-gray-100">API Key 管理</h1>
+          <h1 className="text-2xl font-bold">API Key 管理</h1>
           <Badge variant="secondary">
             {filteredApiKeys.length} / {apiKeys.length}
           </Badge>
@@ -172,10 +172,10 @@ export default function ApiKeysPage() {
       </div>
 
       {/* 搜索和过滤栏 */}
-      <div className="flex flex-col sm:flex-row gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+      <div className="flex flex-col sm:flex-row gap-4 p-4 bg-muted rounded-lg">
         <div className="flex-1">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 h-4 w-4" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
             <Input
               placeholder="搜索 API Key 名称、描述或密钥..."
               value={searchTerm}
@@ -229,7 +229,7 @@ export default function ApiKeysPage() {
                 <div className="flex items-center space-x-2">
                   <div className="flex items-center space-x-2">
                     <div className={`w-2 h-2 rounded-full ${getApiKeyStatus(apiKey).color}`}></div>
-                    <CardTitle className="text-lg dark:text-gray-100">{apiKey.name}</CardTitle>
+                    <CardTitle className="text-lg">{apiKey.name}</CardTitle>
                   </div>
                   <Badge 
                     variant={apiKey.isEnabled ? 'default' : 'secondary'}
@@ -265,7 +265,7 @@ export default function ApiKeysPage() {
                     onClick={() => handleDelete(apiKey.id)}
                   >
                     {deletingId === apiKey.id ? (
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900 dark:border-gray-100" />
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-border" />
                     ) : (
                       <Trash2 className="h-4 w-4" />
                     )}
@@ -281,7 +281,7 @@ export default function ApiKeysPage() {
                     <Key className="h-3 w-3" />
                     API Key
                   </Label>
-                  <p className="font-mono text-sm bg-gray-50 dark:bg-gray-800 dark:text-gray-200 p-2 rounded border dark:border-gray-600">
+                  <p className="font-mono text-sm bg-muted p-2 rounded border">
                     {visibleKeys.has(apiKey.id) ? apiKey.keyValue : maskKey(apiKey.keyValue)}
                   </p>
                 </div>
@@ -312,7 +312,7 @@ export default function ApiKeysPage() {
                 {apiKey.description && (
                   <div>
                     <Label className="text-sm text-muted-foreground">描述</Label>
-                    <p className="text-sm text-gray-700 dark:text-gray-300 mt-1">{apiKey.description}</p>
+                    <p className="text-sm text-muted-foreground mt-1">{apiKey.description}</p>
                   </div>
                 )}
 
@@ -334,27 +334,27 @@ export default function ApiKeysPage() {
                 )}
 
                 {/* 使用统计 */}
-                <div className="grid grid-cols-3 gap-4 bg-gray-50 dark:bg-gray-800 p-3 rounded">
+                <div className="grid grid-cols-3 gap-4 bg-muted p-3 rounded">
                   <div className="text-center">
                     <Label className="text-sm text-muted-foreground flex items-center justify-center gap-1">
                       <Activity className="h-3 w-3" />
                       使用次数
                     </Label>
-                    <p className="text-lg font-semibold dark:text-gray-100">{apiKey.totalUsageCount || 0}</p>
+                    <p className="text-lg font-semibold">{apiKey.totalUsageCount || 0}</p>
                   </div>
                   <div className="text-center">
                     <Label className="text-sm text-muted-foreground flex items-center justify-center gap-1">
                       <DollarSign className="h-3 w-3" />
                       总费用
                     </Label>
-                    <p className="text-lg font-semibold dark:text-gray-100">${(apiKey.totalCost || 0).toFixed(4)}</p>
+                    <p className="text-lg font-semibold">${(apiKey.totalCost || 0).toFixed(4)}</p>
                   </div>
                   <div className="text-center">
                     <Label className="text-sm text-muted-foreground flex items-center justify-center gap-1">
                       <Clock className="h-3 w-3" />
                       最后使用
                     </Label>
-                    <p className="text-sm dark:text-gray-300">
+                    <p className="text-sm text-muted-foreground">
                       {apiKey.lastUsedAt 
                         ? new Date(apiKey.lastUsedAt).toLocaleString()
                         : '未使用'
@@ -370,22 +370,22 @@ export default function ApiKeysPage() {
                       <Label className="text-sm text-muted-foreground">限制设置</Label>
                       <div className="space-y-1 mt-1">
                         {apiKey.tokenLimit && (
-                          <div className="text-xs text-gray-600 dark:text-gray-400">
+                          <div className="text-xs text-muted-foreground">
                             Token限制: {apiKey.tokenLimit.toLocaleString()}
                           </div>
                         )}
                         {apiKey.rateLimitRequests && (
-                          <div className="text-xs text-gray-600 dark:text-gray-400">
+                          <div className="text-xs text-muted-foreground">
                             请求限制: {apiKey.rateLimitRequests}/{apiKey.rateLimitWindow || 60}分钟
                           </div>
                         )}
                         {apiKey.concurrencyLimit > 0 && (
-                          <div className="text-xs text-gray-600 dark:text-gray-400">
+                          <div className="text-xs text-muted-foreground">
                             并发限制: {apiKey.concurrencyLimit}
                           </div>
                         )}
                         {apiKey.dailyCostLimit > 0 && (
-                          <div className="text-xs text-gray-600 dark:text-gray-400">
+                          <div className="text-xs text-muted-foreground">
                             日费用限制: ${apiKey.dailyCostLimit}
                           </div>
                         )}
@@ -457,7 +457,7 @@ export default function ApiKeysPage() {
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Search className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium mb-2 dark:text-gray-100">未找到匹配的 API Key</h3>
+            <h3 className="text-lg font-medium mb-2">未找到匹配的 API Key</h3>
             <p className="text-muted-foreground text-center mb-4">
               请尝试调整搜索条件或过滤器。
             </p>
@@ -476,7 +476,7 @@ export default function ApiKeysPage() {
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Key className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium mb-2 dark:text-gray-100">暂无 API Key</h3>
+            <h3 className="text-lg font-medium mb-2">暂无 API Key</h3>
             <p className="text-muted-foreground text-center mb-4">
               还没有创建任何 API Key。点击上方按钮添加您的第一个 API Key。
             </p>

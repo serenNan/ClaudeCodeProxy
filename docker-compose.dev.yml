@@ -1,0 +1,134 @@
+version: '3.8'
+
+services:
+  # ============================================================================
+  # Development Backend Service
+  # ============================================================================
+  backend-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+      args:
+        - BUILDKIT_INLINE_CACHE=1
+    container_name: claudecodeproxy-backend-dev
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+      - "5001:5001"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:5000;https://+:5001
+      - DOTNET_WATCH_RESTART_ON_RUDE_EDIT=true
+      - DOTNET_WATCH_SUPPRESS_LAUNCH_BROWSER=true
+    volumes:
+      # Hot reload for backend
+      - ./src:/app/src
+      - ./data:/app/data
+      - ~/.aspnet/https:/https:ro
+      - ~/.microsoft/usersecrets:/root/.microsoft/usersecrets:ro
+    working_dir: /app
+    command: dotnet watch run --project src/ClaudeCodeProxy.Host/ClaudeCodeProxy.Host.csproj --urls "http://+:5000"
+    networks:
+      - claudecodeproxy-dev-network
+    profiles:
+      - backend
+
+  # ============================================================================
+  # Development Frontend Service
+  # ============================================================================
+  frontend-dev:
+    image: node:20-alpine
+    container_name: claudecodeproxy-frontend-dev
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+      - "24678:24678"  # HMR port
+    environment:
+      - NODE_ENV=development
+      - VITE_API_URL=http://localhost:5000
+      - CHOKIDAR_USEPOLLING=true
+    volumes:
+      # Hot reload for frontend
+      - ./web:/app
+      - /app/node_modules  # Anonymous volume for node_modules
+    working_dir: /app
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 5173"
+    networks:
+      - claudecodeproxy-dev-network
+    profiles:
+      - frontend
+
+  # ============================================================================
+  # Database for Development (Optional)
+  # ============================================================================
+  db-dev:
+    image: alpine:latest
+    container_name: claudecodeproxy-db-dev
+    restart: unless-stopped
+    volumes:
+      - ./data:/data
+    command: tail -f /dev/null  # Keep container running
+    networks:
+      - claudecodeproxy-dev-network
+    profiles:
+      - database
+
+  # ============================================================================
+  # Development Tools
+  # ============================================================================
+  # API Documentation Server
+  docs-dev:
+    image: swaggerapi/swagger-ui:latest
+    container_name: claudecodeproxy-docs-dev
+    restart: unless-stopped
+    ports:
+      - "8082:8080"
+    environment:
+      - SWAGGER_JSON_URL=http://localhost:5000/swagger/v1/swagger.json
+    networks:
+      - claudecodeproxy-dev-network
+    profiles:
+      - docs
+
+  # Mail Server for Development (MailHog)
+  mail-dev:
+    image: mailhog/mailhog:latest
+    container_name: claudecodeproxy-mail-dev
+    restart: unless-stopped
+    ports:
+      - "1025:1025"  # SMTP
+      - "8025:8025"  # Web UI
+    networks:
+      - claudecodeproxy-dev-network
+    profiles:
+      - mail
+
+  # Redis for Development (Optional)
+  redis-dev:
+    image: redis:7-alpine
+    container_name: claudecodeproxy-redis-dev
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-dev-data:/data
+    networks:
+      - claudecodeproxy-dev-network
+    profiles:
+      - cache
+
+# ============================================================================
+# Networks
+# ============================================================================
+networks:
+  claudecodeproxy-dev-network:
+    driver: bridge
+    name: claudecodeproxy-dev-network
+
+# ============================================================================
+# Volumes
+# ============================================================================
+volumes:
+  redis-dev-data:
+    name: claudecodeproxy-redis-dev-data

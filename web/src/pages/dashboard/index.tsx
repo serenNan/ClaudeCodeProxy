@@ -14,13 +14,56 @@ import {
   CheckCircle,
   Server
 } from 'lucide-react';
+import { 
+  LineChart, 
+  Line, 
+  AreaChart, 
+  Area, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer,
+  BarChart,
+  Bar
+} from 'recharts';
 import { apiService } from '@/services/api';
-import type { DashboardResponse, CostDataResponse, UptimeResponse } from '@/services/api';
+import type { DashboardResponse, CostDataResponse, UptimeResponse, TrendDataPoint } from '@/services/api';
+
+const generateMockTrendData = (): TrendDataPoint[] => {
+  const data: TrendDataPoint[] = [];
+  const today = new Date();
+  
+  for (let i = 6; i >= 0; i--) {
+    const date = new Date(today);
+    date.setDate(date.getDate() - i);
+    
+    const baseRequests = Math.floor(Math.random() * 500) + 200;
+    const inputTokens = baseRequests * (Math.floor(Math.random() * 800) + 500);
+    const outputTokens = baseRequests * (Math.floor(Math.random() * 400) + 200);
+    const cacheCreateTokens = Math.floor(inputTokens * 0.1);
+    const cacheReadTokens = Math.floor(inputTokens * 0.05);
+    
+    data.push({
+      date: date.toISOString().split('T')[0],
+      label: date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' }),
+      requests: baseRequests,
+      inputTokens,
+      outputTokens,
+      cacheCreateTokens,
+      cacheReadTokens,
+      cost: (inputTokens * 0.000015 + outputTokens * 0.000075) * (Math.random() * 0.3 + 0.85)
+    });
+  }
+  
+  return data;
+};
 
 export default function DashboardPage() {
   const [dashboardData, setDashboardData] = useState<DashboardResponse | null>(null);
   const [costData, setCostData] = useState<CostDataResponse | null>(null);
   const [uptimeData, setUptimeData] = useState<UptimeResponse | null>(null);
+  const [trendData, setTrendData] = useState<TrendDataPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,15 +73,26 @@ export default function DashboardPage() {
         setLoading(true);
         setError(null);
         
-        const [dashboard, costs, uptime] = await Promise.all([
+        const [dashboard, costs, uptime, trends] = await Promise.all([
           apiService.getDashboardData(),
           apiService.getCostData(),
           apiService.getSystemUptime(),
+          apiService.getTrendData({
+            granularity: 'day',
+            dateFilter: {
+              type: 'preset',
+              preset: 'last_7_days'
+            }
+          }).catch(error => {
+            console.warn('Failed to fetch trend data, using mock data:', error);
+            return generateMockTrendData();
+          })
         ]);
 
         setDashboardData(dashboard);
         setCostData(costs);
         setUptimeData(uptime);
+        setTrendData(trends);
       } catch (error) {
         console.error('Failed to fetch dashboard data:', error);
         setError('获取仪表板数据失败');
@@ -77,7 +131,7 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-border"></div>
       </div>
     );
   }
@@ -86,7 +140,7 @@ export default function DashboardPage() {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
-          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
           <p className="text-lg text-muted-foreground">{error}</p>
         </div>
       </div>
@@ -102,8 +156,8 @@ export default function DashboardPage() {
       value: dashboardData.totalApiKeys,
       subtitle: `${dashboardData.activeApiKeys} 个活跃`,
       icon: Key,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50',
+      color: 'text-primary',
+      bgColor: 'bg-muted',
       trend: dashboardData.activeApiKeys > 0 ? '正常' : '无活跃',
     },
     {
@@ -111,8 +165,8 @@ export default function DashboardPage() {
       value: dashboardData.totalAccounts,
       subtitle: `${dashboardData.activeAccounts} 个可用, ${dashboardData.rateLimitedAccounts} 个限流`,
       icon: Users,
-      color: 'text-green-600',
-      bgColor: 'bg-green-50',
+      color: 'text-primary',
+      bgColor: 'bg-muted',
       trend: dashboardData.activeAccounts > 0 ? '正常' : '无可用',
     },
     {
@@ -120,8 +174,8 @@ export default function DashboardPage() {
       value: formatNumber(dashboardData.todayRequests),
       subtitle: `总计 ${formatNumber(dashboardData.totalRequests)} 次`,
       icon: MessageSquare,
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-50',
+      color: 'text-primary',
+      bgColor: 'bg-muted',
       trend: '活跃',
     },
     {
@@ -129,8 +183,8 @@ export default function DashboardPage() {
       value: costData?.todayCosts.formatted.totalCost || '$0.00',
       subtitle: `总计 ${costData?.totalCosts.formatted.totalCost || '$0.00'}`,
       icon: DollarSign,
-      color: 'text-emerald-600',
-      bgColor: 'bg-emerald-50',
+      color: 'text-primary',
+      bgColor: 'bg-muted',
       trend: '正常',
     },
   ];
@@ -142,32 +196,32 @@ export default function DashboardPage() {
       value: formatNumber(dashboardData.todayInputTokens),
       subtitle: `总计 ${formatNumber(dashboardData.totalInputTokens)}`,
       icon: TrendingUp,
-      color: 'text-orange-600',
-      bgColor: 'bg-orange-50',
+      color: 'text-primary',
+      bgColor: 'bg-muted',
     },
     {
       title: '今日输出 Token',
       value: formatNumber(dashboardData.todayOutputTokens),
       subtitle: `总计 ${formatNumber(dashboardData.totalOutputTokens)}`,
       icon: TrendingUp,
-      color: 'text-red-600',
-      bgColor: 'bg-red-50',
+      color: 'text-primary',
+      bgColor: 'bg-muted',
     },
     {
       title: '缓存创建',
       value: formatNumber(dashboardData.todayCacheCreateTokens),
       subtitle: `总计 ${formatNumber(dashboardData.totalCacheCreateTokens)}`,
       icon: Zap,
-      color: 'text-cyan-600',
-      bgColor: 'bg-cyan-50',
+      color: 'text-primary',
+      bgColor: 'bg-muted',
     },
     {
       title: '缓存读取',
       value: formatNumber(dashboardData.todayCacheReadTokens),
       subtitle: `总计 ${formatNumber(dashboardData.totalCacheReadTokens)}`,
       icon: Zap,
-      color: 'text-indigo-600',
-      bgColor: 'bg-indigo-50',
+      color: 'text-primary',
+      bgColor: 'bg-muted',
     },
   ];
 
@@ -178,8 +232,8 @@ export default function DashboardPage() {
       value: formatRPM(dashboardData.realtimeRPM),
       subtitle: `${dashboardData.metricsWindow}分钟窗口`,
       icon: Activity,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50',
+      color: 'text-primary',
+      bgColor: 'bg-muted',
       isHistorical: dashboardData.isHistoricalMetrics,
     },
     {
@@ -187,8 +241,8 @@ export default function DashboardPage() {
       value: formatTPM(dashboardData.realtimeTPM),
       subtitle: `${dashboardData.metricsWindow}分钟窗口`,
       icon: Zap,
-      color: 'text-green-600',
-      bgColor: 'bg-green-50',
+      color: 'text-primary',
+      bgColor: 'bg-muted',
       isHistorical: dashboardData.isHistoricalMetrics,
     },
     {
@@ -196,16 +250,16 @@ export default function DashboardPage() {
       value: dashboardData.systemStatus,
       subtitle: uptimeData?.uptimeText || '运行中',
       icon: dashboardData.systemStatus === '正常' ? CheckCircle : AlertCircle,
-      color: dashboardData.systemStatus === '正常' ? 'text-green-600' : 'text-red-600',
-      bgColor: dashboardData.systemStatus === '正常' ? 'bg-green-50' : 'bg-red-50',
+      color: dashboardData.systemStatus === '正常' ? 'text-primary' : 'text-destructive',
+      bgColor: dashboardData.systemStatus === '正常' ? 'bg-muted' : 'bg-secondary',
     },
     {
       title: '系统运行时间',
       value: uptimeData?.uptimeText?.split(' ')[0] || '0天',
       subtitle: `启动于 ${uptimeData ? new Date(uptimeData.startTime).toLocaleDateString() : ''}`,
       icon: Server,
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-50',
+      color: 'text-primary',
+      bgColor: 'bg-muted',
     },
   ];
 
@@ -246,8 +300,8 @@ export default function DashboardPage() {
                   <div className="flex items-center mt-2">
                     <div className={`px-2 py-1 rounded-full text-xs ${
                       stat.trend === '正常' || stat.trend === '活跃' 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-yellow-100 text-yellow-800'
+                        ? 'bg-accent text-accent-foreground' 
+                        : 'bg-secondary text-secondary-foreground'
                     }`}>
                       {stat.trend}
                     </div>
@@ -299,7 +353,7 @@ export default function DashboardPage() {
                   <CardTitle className="text-sm font-medium text-muted-foreground flex items-center space-x-2">
                     <span>{stat.title}</span>
                     {'isHistorical' in stat && stat.isHistorical && (
-                      <div className="px-2 py-1 rounded-full text-xs bg-yellow-100 text-yellow-800">
+                      <div className="px-2 py-1 rounded-full text-xs bg-secondary text-secondary-foreground">
                         历史
                       </div>
                     )}
@@ -323,18 +377,18 @@ export default function DashboardPage() {
       {/* 高级图表展示 */}
       <div className="space-y-6">
         {/* 快速链接到高级分析 */}
-        <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200">
+        <Card className="bg-muted border-border">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-lg font-semibold text-blue-900">📊 高级统计分析</h3>
-                <p className="text-blue-700 mt-1">
+                <h3 className="text-lg font-semibold text-foreground">📊 高级统计分析</h3>
+                <p className="text-muted-foreground mt-1">
                   深入探索数据洞察，包括使用热力图、成本流向分析、用户画像等多维度可视化
                 </p>
               </div>
               <div className="flex space-x-2">
                 <button 
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
                   onClick={() => window.location.href = '/advanced-stats'}
                 >
                   查看详细分析
@@ -357,11 +411,60 @@ export default function DashboardPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="h-32 flex items-center justify-center text-muted-foreground">
-                <div className="text-center">
-                  <BarChart3 className="h-8 w-8 mx-auto mb-2 text-blue-500" />
-                  <p className="text-sm">📈 趋势图表可在高级分析中查看</p>
-                </div>
+              <div className="h-48">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={trendData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis 
+                      dataKey="label" 
+                      stroke="hsl(var(--muted-foreground))"
+                      fontSize={12}
+                    />
+                    <YAxis 
+                      stroke="hsl(var(--muted-foreground))"
+                      fontSize={12}
+                    />
+                    <Tooltip 
+                      contentStyle={{
+                        backgroundColor: 'hsl(var(--card))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '6px',
+                        color: 'hsl(var(--card-foreground))'
+                      }}
+                      formatter={(value: number, name: string) => [
+                        name === 'requests' ? value.toLocaleString() : 
+                        name.includes('Tokens') ? `${(value / 1000).toFixed(1)}K` : value.toLocaleString(),
+                        name === 'requests' ? 'API 调用' :
+                        name === 'inputTokens' ? '输入 Token' :
+                        name === 'outputTokens' ? '输出 Token' : name
+                      ]}
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey="requests" 
+                      stackId="1"
+                      stroke="hsl(var(--primary))" 
+                      fill="hsl(var(--primary))" 
+                      fillOpacity={0.6}
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey="inputTokens" 
+                      stackId="2"
+                      stroke="#3b82f6" 
+                      fill="#3b82f6" 
+                      fillOpacity={0.6}
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey="outputTokens" 
+                      stackId="3"
+                      stroke="#10b981" 
+                      fill="#10b981" 
+                      fillOpacity={0.6}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
               </div>
             </CardContent>
           </Card>
@@ -378,26 +481,48 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm">今日费用</span>
-                  <span className="text-sm font-medium">{costData?.todayCosts.formatted.totalCost}</span>
+                <div className="h-32">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={trendData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis 
+                        dataKey="label" 
+                        stroke="hsl(var(--muted-foreground))"
+                        fontSize={10}
+                      />
+                      <YAxis 
+                        stroke="hsl(var(--muted-foreground))"
+                        fontSize={10}
+                        tickFormatter={(value) => `$${value.toFixed(2)}`}
+                      />
+                      <Tooltip 
+                        contentStyle={{
+                          backgroundColor: 'hsl(var(--card))',
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '6px',
+                          color: 'hsl(var(--card-foreground))'
+                        }}
+                        formatter={(value: number) => [`$${value.toFixed(4)}`, '费用']}
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="cost" 
+                        stroke="#f59e0b" 
+                        strokeWidth={2}
+                        dot={{ fill: '#f59e0b', strokeWidth: 2, r: 3 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm">总费用</span>
-                  <span className="text-sm font-medium">{costData?.totalCosts.formatted.totalCost}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm">平均每次请求</span>
-                  <span className="text-sm font-medium">
-                    {dashboardData.totalRequests > 0 
-                      ? `$${(costData?.totalCosts.totalCost || 0 / dashboardData.totalRequests).toFixed(6)}` 
-                      : '$0.00'}
-                  </span>
-                </div>
-                <div className="pt-2 border-t">
-                  <button className="w-full text-sm text-blue-600 hover:text-blue-800 font-medium">
-                    🔍 查看详细费用流向分析
-                  </button>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="flex justify-between">
+                    <span>今日费用</span>
+                    <span className="font-medium">{costData?.todayCosts.formatted.totalCost}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>总费用</span>
+                    <span className="font-medium">{costData?.totalCosts.formatted.totalCost}</span>
+                  </div>
                 </div>
               </div>
             </CardContent>

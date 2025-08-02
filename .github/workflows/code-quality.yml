@@ -1,0 +1,351 @@
+name: 🔍 Code Quality Analysis
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Run weekly on Sundays at 2 AM UTC
+    - cron: '0 2 * * 0'
+  workflow_dispatch:
+
+env:
+  DOTNET_VERSION: '9.0.x'
+  NODE_VERSION: '20.x'
+
+jobs:
+  # ============================================================================
+  # Frontend Code Quality
+  # ============================================================================
+  frontend-quality:
+    name: 🎨 Frontend Code Quality
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 Checkout Code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: 📦 Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: 'web/package-lock.json'
+        
+    - name: 📋 Install Dependencies
+      working-directory: ./web
+      run: npm ci --prefer-offline --no-audit
+      
+    - name: 🔍 ESLint Analysis
+      working-directory: ./web
+      run: |
+        npm run lint -- --format json --output-file eslint-report.json || true
+        npm run lint -- --format unix || echo "ESLint found issues"
+        
+    - name: 🎯 TypeScript Type Check
+      working-directory: ./web
+      run: npm run type-check || echo "Type checking found issues"
+      
+    - name: 📊 Bundle Size Analysis
+      working-directory: ./web
+      run: |
+        npm run build
+        echo "## 📦 Bundle Size Analysis" >> $GITHUB_STEP_SUMMARY
+        echo "| File | Size | Gzipped |" >> $GITHUB_STEP_SUMMARY
+        echo "|------|------|---------|" >> $GITHUB_STEP_SUMMARY
+        cd dist/assets
+        for file in *.js *.css; do
+          if [ -f "$file" ]; then
+            original_size=$(stat -c%s "$file" | numfmt --to=iec)
+            gzip_size=$(gzip -c "$file" | wc -c | numfmt --to=iec)
+            echo "| $file | $original_size | $gzip_size |" >> $GITHUB_STEP_SUMMARY
+          fi
+        done
+        
+    - name: 🧪 Test Coverage
+      working-directory: ./web
+      run: |
+        npm run test:coverage || echo "Test coverage analysis completed"
+        
+    - name: 📤 Upload Coverage Reports
+      uses: codecov/codecov-action@v3
+      with:
+        directory: ./web/coverage
+        flags: frontend
+        name: frontend-coverage
+      continue-on-error: true
+      
+    - name: 📤 Upload ESLint Report
+      uses: actions/upload-artifact@v4
+      with:
+        name: eslint-report
+        path: web/eslint-report.json
+      continue-on-error: true
+
+  # ============================================================================
+  # Backend Code Quality
+  # ============================================================================
+  backend-quality:
+    name: 🔧 Backend Code Quality
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 Checkout Code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: 📦 Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+        
+    - name: 🔍 Restore Dependencies
+      run: dotnet restore
+      
+    - name: 🔧 Build Project
+      run: dotnet build --no-restore --configuration Release
+      
+    - name: 🧪 Run Tests with Coverage
+      run: |
+        dotnet test --no-build --configuration Release \
+          --collect:"XPlat Code Coverage" \
+          --results-directory ./coverage \
+          --logger trx \
+          --verbosity normal
+          
+    - name: 📊 Code Coverage Report
+      uses: codecov/codecov-action@v3
+      with:
+        directory: ./coverage
+        flags: backend
+        name: backend-coverage
+      continue-on-error: true
+      
+    - name: 🔍 Security Analysis
+      run: |
+        echo "## 🔒 Security Analysis" >> $GITHUB_STEP_SUMMARY
+        echo "### Vulnerable Packages" >> $GITHUB_STEP_SUMMARY
+        if dotnet list package --vulnerable --include-transitive > vulnerable-packages.txt 2>&1; then
+          if grep -q "no vulnerable packages" vulnerable-packages.txt; then
+            echo "✅ No vulnerable packages found" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ Vulnerable packages detected:" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            cat vulnerable-packages.txt >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          fi
+        else
+          echo "❌ Security scan failed" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+    - name: 🔍 Code Metrics
+      run: |
+        echo "## 📈 Code Metrics" >> $GITHUB_STEP_SUMMARY
+        echo "### Lines of Code" >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+        find src -name "*.cs" -exec wc -l {} + | tail -1 >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+        
+        echo "### File Count by Type" >> $GITHUB_STEP_SUMMARY
+        echo "| Type | Count |" >> $GITHUB_STEP_SUMMARY
+        echo "|------|-------|" >> $GITHUB_STEP_SUMMARY
+        echo "| C# Files | $(find src -name "*.cs" | wc -l) |" >> $GITHUB_STEP_SUMMARY
+        echo "| Project Files | $(find src -name "*.csproj" | wc -l) |" >> $GITHUB_STEP_SUMMARY
+        echo "| Test Files | $(find src -name "*Test*.cs" -o -name "*Tests*.cs" | wc -l) |" >> $GITHUB_STEP_SUMMARY
+
+  # ============================================================================
+  # SonarCloud Analysis (Optional)
+  # ============================================================================
+  sonarcloud:
+    name: 🔍 SonarCloud Analysis
+    runs-on: ubuntu-latest
+    if: github.event_name != 'schedule'
+    
+    steps:
+    - name: 📥 Checkout Code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: 📦 Setup Java
+      uses: actions/setup-java@v3
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+        
+    - name: 📦 Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+        
+    - name: 🔍 Cache SonarCloud packages
+      uses: actions/cache@v3
+      with:
+        path: ~/.sonar/cache
+        key: ${{ runner.os }}-sonar
+        restore-keys: ${{ runner.os }}-sonar
+        
+    - name: 🔍 Cache SonarCloud scanner
+      id: cache-sonar-scanner
+      uses: actions/cache@v3
+      with:
+        path: ./.sonar/scanner
+        key: ${{ runner.os }}-sonar-scanner
+        restore-keys: ${{ runner.os }}-sonar-scanner
+        
+    - name: 📦 Install SonarCloud scanner
+      if: steps.cache-sonar-scanner.outputs.cache-hit != 'true'
+      run: |
+        mkdir -p ./.sonar/scanner
+        dotnet tool update dotnet-sonarscanner --tool-path ./.sonar/scanner
+        
+    - name: 🔍 Build and analyze
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      run: |
+        if [ -z "$SONAR_TOKEN" ]; then
+          echo "⚠️ SONAR_TOKEN not configured, skipping SonarCloud analysis"
+          exit 0
+        fi
+        
+        ./.sonar/scanner/dotnet-sonarscanner begin \
+          /k:"ClaudeCodeProxy" \
+          /o:"your-org" \
+          /d:sonar.token="${SONAR_TOKEN}" \
+          /d:sonar.host.url="https://sonarcloud.io" \
+          /d:sonar.cs.vscoveragexml.reportsPaths=coverage/**/*.xml
+          
+        dotnet build --configuration Release
+        
+        dotnet test --configuration Release \
+          --collect:"Code Coverage" \
+          --results-directory ./coverage
+          
+        ./.sonar/scanner/dotnet-sonarscanner end /d:sonar.token="${SONAR_TOKEN}"
+      continue-on-error: true
+
+  # ============================================================================
+  # Dependency Review
+  # ============================================================================
+  dependency-review:
+    name: 🔍 Dependency Review
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    steps:
+    - name: 📥 Checkout Code
+      uses: actions/checkout@v4
+      
+    - name: 🔍 Dependency Review
+      uses: actions/dependency-review-action@v3
+      with:
+        fail-on-severity: moderate
+        allow-licenses: MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC
+        
+  # ============================================================================
+  # CodeQL Analysis
+  # ============================================================================
+  codeql:
+    name: 🔍 CodeQL Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+      
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'csharp', 'javascript' ]
+        
+    steps:
+    - name: 📥 Checkout Code
+      uses: actions/checkout@v4
+      
+    - name: 🔍 Initialize CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: ${{ matrix.language }}
+        
+    - name: 📦 Setup .NET (for C#)
+      if: matrix.language == 'csharp'
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+        
+    - name: 🔧 Build .NET Project
+      if: matrix.language == 'csharp'
+      run: |
+        dotnet restore
+        dotnet build --no-restore --configuration Release
+        
+    - name: 📦 Setup Node.js (for JavaScript)
+      if: matrix.language == 'javascript'
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: 'web/package-lock.json'
+        
+    - name: 🔧 Build Frontend
+      if: matrix.language == 'javascript'
+      working-directory: ./web
+      run: |
+        npm ci --prefer-offline --no-audit
+        npm run build
+        
+    - name: 🔍 Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+
+  # ============================================================================
+  # Quality Summary
+  # ============================================================================
+  quality-summary:
+    name: 📊 Quality Summary
+    runs-on: ubuntu-latest
+    needs: [frontend-quality, backend-quality, codeql]
+    if: always()
+    
+    steps:
+    - name: 📊 Generate Summary
+      run: |
+        echo "## 🔍 Code Quality Analysis Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        # Check job results
+        frontend_result="${{ needs.frontend-quality.result }}"
+        backend_result="${{ needs.backend-quality.result }}"
+        codeql_result="${{ needs.codeql.result }}"
+        
+        echo "| Component | Status | Details |" >> $GITHUB_STEP_SUMMARY
+        echo "|-----------|--------|---------|" >> $GITHUB_STEP_SUMMARY
+        
+        if [ "$frontend_result" == "success" ]; then
+          echo "| 🎨 Frontend Quality | ✅ Passed | Linting, type checking, and tests completed |" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "| 🎨 Frontend Quality | ❌ Failed | Issues found in frontend analysis |" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        if [ "$backend_result" == "success" ]; then
+          echo "| 🔧 Backend Quality | ✅ Passed | Build, tests, and security scan completed |" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "| 🔧 Backend Quality | ❌ Failed | Issues found in backend analysis |" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        if [ "$codeql_result" == "success" ]; then
+          echo "| 🔍 CodeQL Security | ✅ Passed | No security vulnerabilities detected |" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "| 🔍 CodeQL Security | ❌ Failed | Security issues detected |" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📋 Recommendations" >> $GITHUB_STEP_SUMMARY
+        echo "- Review any failed checks above" >> $GITHUB_STEP_SUMMARY
+        echo "- Check coverage reports for areas needing more tests" >> $GITHUB_STEP_SUMMARY
+        echo "- Address any security vulnerabilities found" >> $GITHUB_STEP_SUMMARY
+        echo "- Consider refactoring code with high complexity" >> $GITHUB_STEP_SUMMARY

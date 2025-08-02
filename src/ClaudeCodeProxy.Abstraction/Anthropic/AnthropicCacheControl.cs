@@ -4,6 +4,5 @@ namespace Thor.Abstractions.Anthropic;
 
 public sealed class AnthropicCacheControl
 {
-    [JsonPropertyName("type")]
-    public string Type { get; set; } 
+    [JsonPropertyName("type")] public string Type { get; set; }
 }

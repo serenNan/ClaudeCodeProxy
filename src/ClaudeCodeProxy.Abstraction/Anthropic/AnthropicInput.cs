@@ -22,15 +22,9 @@ public sealed class AnthropicInput
     {
         get
         {
-            if (string.IsNullOrEmpty(ToolChoiceString))
-            {
-                return ToolChoiceString;
-            }
+            if (string.IsNullOrEmpty(ToolChoiceString)) return ToolChoiceString;
 
-            if (ToolChoice?.Type == "function")
-            {
-                return ToolChoice;
-            }
+            if (ToolChoice?.Type == "function") return ToolChoice;
 
             return ToolChoice?.Type;
         }
@@ -39,13 +33,9 @@ public sealed class AnthropicInput
             if (value is JsonElement jsonElement)
             {
                 if (jsonElement.ValueKind == JsonValueKind.String)
-                {
                     ToolChoiceString = jsonElement.GetString();
-                }
                 else if (jsonElement.ValueKind == JsonValueKind.Object)
-                {
                     ToolChoice = jsonElement.Deserialize<AnthropicTooChoiceInput>(ThorJsonSerializer.DefaultOptions);
-                }
             }
             else
             {
@@ -67,15 +57,9 @@ public sealed class AnthropicInput
     {
         get
         {
-            if (System is not null && Systems is not null)
-            {
-                throw new ValidationException("System 和 Systems 字段不能同时有值");
-            }
+            if (System is not null && Systems is not null) throw new ValidationException("System 和 Systems 字段不能同时有值");
 
-            if (System is not null)
-            {
-                return System;
-            }
+            if (System is not null) return System;
 
             return Systems!;
         }
@@ -84,14 +68,10 @@ public sealed class AnthropicInput
             if (value is JsonElement str)
             {
                 if (str.ValueKind == JsonValueKind.String)
-                {
                     System = value?.ToString();
-                }
                 else if (str.ValueKind == JsonValueKind.Array)
-                {
                     Systems = JsonSerializer.Deserialize<IList<AnthropicMessageContent>>(value?.ToString(),
                         ThorJsonSerializer.DefaultOptions);
-                }
             }
             else
             {

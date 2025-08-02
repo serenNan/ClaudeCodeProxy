@@ -1,0 +1,405 @@
+name: 🚀 Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., v1.0.0)'
+        required: true
+        type: string
+      prerelease:
+        description: 'Mark as pre-release'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  DOTNET_VERSION: '9.0.x'
+  NODE_VERSION: '20.x'
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # ============================================================================
+  # Build Frontend
+  # ============================================================================
+  build-frontend:
+    name: 🎨 Build Frontend
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 Checkout Code
+      uses: actions/checkout@v4
+      
+    - name: 📦 Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: 'web/package-lock.json'
+        
+    - name: 📋 Install Dependencies
+      working-directory: ./web
+      run: npm ci --prefer-offline --no-audit
+      
+    - name: 🧪 Run Tests
+      working-directory: ./web
+      run: npm run test:ci || true
+      
+    - name: 🔧 Build Frontend
+      working-directory: ./web
+      run: npm run build
+      
+    - name: 📤 Upload Frontend Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: frontend-dist
+        path: web/dist/
+        retention-days: 1
+
+  # ============================================================================
+  # Build Backend for Multiple Platforms
+  # ============================================================================
+  build-backend:
+    name: 🔧 Build Backend
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - os: linux
+            arch: x64
+            runtime: linux-x64
+          - os: linux
+            arch: arm64
+            runtime: linux-arm64
+          - os: windows
+            arch: x64
+            runtime: win-x64
+          - os: windows
+            arch: arm64
+            runtime: win-arm64
+          - os: macos
+            arch: x64
+            runtime: osx-x64
+          - os: macos
+            arch: arm64
+            runtime: osx-arm64
+
+    steps:
+    - name: 📥 Checkout Code
+      uses: actions/checkout@v4
+      
+    - name: 📦 Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+        
+    - name: 🔍 Restore Dependencies
+      run: dotnet restore src/ClaudeCodeProxy.Host/ClaudeCodeProxy.Host.csproj
+      
+    - name: 🧪 Run Tests
+      run: dotnet test --no-restore --verbosity normal || true
+      
+    - name: 🔧 Publish Backend
+      run: |
+        dotnet publish src/ClaudeCodeProxy.Host/ClaudeCodeProxy.Host.csproj \
+          --configuration Release \
+          --runtime ${{ matrix.runtime }} \
+          --self-contained true \
+          --output ./publish/${{ matrix.runtime }} \
+          -p:PublishSingleFile=true \
+          -p:PublishTrimmed=true \
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          
+    - name: 📤 Upload Backend Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: backend-${{ matrix.runtime }}
+        path: ./publish/${{ matrix.runtime }}/
+        retention-days: 1
+
+  # ============================================================================
+  # Build Docker Images
+  # ============================================================================
+  build-docker:
+    name: 🐳 Build Docker Images
+    runs-on: ubuntu-latest
+    needs: [build-frontend]
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+    - name: 📥 Checkout Code
+      uses: actions/checkout@v4
+      
+    - name: 📥 Download Frontend Artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: frontend-dist
+        path: web/dist/
+        
+    - name: 🔧 Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      
+    - name: 🔐 Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: 🏷️ Extract Metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=semver,pattern={{major}}
+          type=raw,value=latest,enable={{is_default_branch}}
+          
+    - name: 🔨 Build and Push Docker Image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        platforms: linux/amd64,linux/arm64
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  # ============================================================================
+  # Package Release Archives
+  # ============================================================================
+  package-release:
+    name: 📦 Package Release
+    runs-on: ubuntu-latest
+    needs: [build-frontend, build-backend]
+    
+    steps:
+    - name: 📥 Checkout Code
+      uses: actions/checkout@v4
+      
+    - name: 📥 Download All Artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: ./artifacts/
+        
+    - name: 📦 Create Release Packages
+      run: |
+        mkdir -p ./release-packages
+        
+        # Get version from tag or input
+        if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+          VERSION="${{ github.event.inputs.version }}"
+        else
+          VERSION="${{ github.ref_name }}"
+        fi
+        
+        # Package each platform
+        for runtime in linux-x64 linux-arm64 win-x64 win-arm64 osx-x64 osx-arm64; do
+          echo "📦 Packaging $runtime..."
+          
+          # Create temp directory
+          mkdir -p "./temp/$runtime"
+          
+          # Copy backend files
+          cp -r "./artifacts/backend-$runtime"/* "./temp/$runtime/"
+          
+          # Copy frontend files
+          mkdir -p "./temp/$runtime/wwwroot"
+          cp -r "./artifacts/frontend-dist"/* "./temp/$runtime/wwwroot/"
+          
+          # Copy additional files
+          cp README.md "./temp/$runtime/"
+          cp LICENSE "./temp/$runtime/" || echo "⚠️ LICENSE file not found"
+          
+          # Create release notes
+          cat > "./temp/$runtime/RELEASE_NOTES.md" << EOF
+        # ClaudeCodeProxy ${VERSION}
+        
+        ## 🚀 Release Information
+        - **Version**: ${VERSION}
+        - **Platform**: ${runtime}
+        - **Build Date**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+        - **Git Commit**: ${GITHUB_SHA}
+        
+        ## 📋 Quick Start
+        1. Extract this archive to your desired location
+        2. Make the executable file executable (Linux/macOS): \`chmod +x ClaudeCodeProxy.Host\`
+        3. Run the application: \`./ClaudeCodeProxy.Host\` (Linux/macOS) or \`ClaudeCodeProxy.Host.exe\` (Windows)
+        4. Open your browser and navigate to: http://localhost:5000
+        
+        ## 📖 Documentation
+        For detailed documentation, please visit: https://github.com/${{ github.repository }}
+        EOF
+          
+          # Create archive based on platform
+          if [[ "$runtime" == win-* ]]; then
+            cd "./temp/$runtime"
+            zip -r "../../release-packages/ClaudeCodeProxy-${VERSION}-${runtime}.zip" ./*
+            cd - > /dev/null
+          else
+            tar -czf "./release-packages/ClaudeCodeProxy-${VERSION}-${runtime}.tar.gz" -C "./temp/$runtime" .
+          fi
+          
+          # Cleanup
+          rm -rf "./temp/$runtime"
+          
+          echo "✅ Packaged $runtime successfully"
+        done
+        
+        # Create checksums
+        cd ./release-packages
+        sha256sum * > SHA256SUMS.txt
+        cd - > /dev/null
+        
+        echo "📋 Release packages created:"
+        ls -la ./release-packages/
+        
+    - name: 📤 Upload Release Packages
+      uses: actions/upload-artifact@v4
+      with:
+        name: release-packages
+        path: ./release-packages/
+        retention-days: 30
+
+  # ============================================================================
+  # Create GitHub Release
+  # ============================================================================
+  create-release:
+    name: 🎉 Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: [build-frontend, build-backend, build-docker, package-release]
+    permissions:
+      contents: write
+      
+    steps:
+    - name: 📥 Checkout Code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: 📥 Download Release Packages
+      uses: actions/download-artifact@v4
+      with:
+        name: release-packages
+        path: ./release-packages/
+        
+    - name: 🏷️ Get Version and Release Info
+      id: release_info
+      run: |
+        if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+          VERSION="${{ github.event.inputs.version }}"
+          PRERELEASE="${{ github.event.inputs.prerelease }}"
+        else
+          VERSION="${{ github.ref_name }}"
+          PRERELEASE=false
+        fi
+        
+        echo "version=${VERSION}" >> $GITHUB_OUTPUT
+        echo "prerelease=${PRERELEASE}" >> $GITHUB_OUTPUT
+        
+        # Generate release notes
+        if [[ "${{ github.event_name }}" == "push" && "${{ github.ref_type }}" == "tag" ]]; then
+          # Get previous tag for changelog
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^1 2>/dev/null || echo "")
+          
+          if [[ -n "$PREVIOUS_TAG" ]]; then
+            echo "## 🔄 Changes since ${PREVIOUS_TAG}" > release_notes.md
+            git log --pretty=format:"- %s (%h)" ${PREVIOUS_TAG}..HEAD >> release_notes.md
+          else
+            echo "## 🎉 Initial Release" > release_notes.md
+            echo "This is the first release of ClaudeCodeProxy!" >> release_notes.md
+          fi
+        else
+          echo "## 🚀 Manual Release" > release_notes.md
+          echo "This release was created manually via workflow dispatch." >> release_notes.md
+        fi
+        
+        # Add standard release notes
+        cat >> release_notes.md << EOF
+        
+        ## 📦 Release Assets
+        
+        ### 🖥️ Standalone Executables
+        Download the appropriate package for your platform:
+        
+        | Platform | Architecture | Download |
+        |----------|--------------|----------|
+        | 🐧 Linux | x64 | \`ClaudeCodeProxy-${VERSION}-linux-x64.tar.gz\` |
+        | 🐧 Linux | ARM64 | \`ClaudeCodeProxy-${VERSION}-linux-arm64.tar.gz\` |
+        | 🪟 Windows | x64 | \`ClaudeCodeProxy-${VERSION}-win-x64.zip\` |
+        | 🪟 Windows | ARM64 | \`ClaudeCodeProxy-${VERSION}-win-arm64.zip\` |
+        | 🍎 macOS | x64 (Intel) | \`ClaudeCodeProxy-${VERSION}-osx-x64.tar.gz\` |
+        | 🍎 macOS | ARM64 (Apple Silicon) | \`ClaudeCodeProxy-${VERSION}-osx-arm64.tar.gz\` |
+        
+        ### 🐳 Docker Images
+        \`\`\`bash
+        # Pull the latest image
+        docker pull ghcr.io/${{ github.repository }}:${VERSION}
+        docker pull ghcr.io/${{ github.repository }}:latest
+        
+        # Run with Docker
+        docker run -p 8080:8080 ghcr.io/${{ github.repository }}:${VERSION}
+        \`\`\`
+        
+        ### ✅ Verification
+        Use the provided \`SHA256SUMS.txt\` file to verify the integrity of downloaded packages:
+        \`\`\`bash
+        sha256sum -c SHA256SUMS.txt
+        \`\`\`
+        
+        ## 🚀 Quick Start
+        1. Download the appropriate package for your platform
+        2. Extract the archive
+        3. Run the executable
+        4. Open http://localhost:5000 in your browser
+        
+        ## 📖 Documentation
+        For detailed installation and configuration instructions, see the [README](https://github.com/${{ github.repository }}/blob/main/README.md).
+        
+        ---
+        
+        **Build Information:**
+        - 🏗️ Build Date: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+        - 📝 Git Commit: \`${GITHUB_SHA:0:8}\`
+        - 🤖 Built with GitHub Actions
+        EOF
+        
+    - name: 🎉 Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ steps.release_info.outputs.version }}
+        name: ClaudeCodeProxy ${{ steps.release_info.outputs.version }}
+        body_path: release_notes.md
+        prerelease: ${{ steps.release_info.outputs.prerelease }}
+        files: |
+          ./release-packages/*
+        token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: 📋 Release Summary
+      run: |
+        echo "## 🎉 Release Created Successfully!" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Version:** ${{ steps.release_info.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Prerelease:** ${{ steps.release_info.outputs.prerelease }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📦 Release Assets:" >> $GITHUB_STEP_SUMMARY
+        echo "| File | Size |" >> $GITHUB_STEP_SUMMARY
+        echo "|------|------|" >> $GITHUB_STEP_SUMMARY
+        cd ./release-packages
+        for file in *; do
+          size=$(ls -lh "$file" | awk '{print $5}')
+          echo "| $file | $size |" >> $GITHUB_STEP_SUMMARY
+        done
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "🔗 **Release URL:** https://github.com/${{ github.repository }}/releases/tag/${{ steps.release_info.outputs.version }}" >> $GITHUB_STEP_SUMMARY

@@ -1,4 +1,5 @@
 ﻿using ClaudeCodeProxy.Abstraction.Chats;
+using ClaudeCodeProxy.Core.AI;
 using ClaudeCodeProxy.Host.Env;
 using ClaudeCodeProxy.Host.Extensions;
 using ClaudeCodeProxy.Host.Helper;
@@ -7,6 +8,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Thor.Abstractions;
 using Thor.Abstractions.Anthropic;
+using Thor.Abstractions.Chats;
 
 namespace ClaudeCodeProxy.Host.Services;
 
@@ -14,6 +16,7 @@ namespace ClaudeCodeProxy.Host.Services;
 public partial class MessageService(
     AccountsService accountsService,
     SessionHelper sessionHelper,
+    IThorChatCompletionsService thorChatCompletionsService,
     IAuthorizationService authorizationService)
 {
     public async Task HandleAsync(
@@ -82,11 +85,200 @@ public partial class MessageService(
         // 获取
 
         // 寻找对应的账号
-        if (apiKeyValue.IsClaude())
+        if (account is { IsClaude: true })
         {
             await HandleClaudeAsync(httpContext, request, chatCompletionsService, apiKeyValue,
                 account,
                 httpContext.RequestAborted);
+        }
+        else if (account is { IsClaudeConsole: true })
+        {
+            await HandleClaudeAsync(httpContext, request, chatCompletionsService, apiKeyValue,
+                account,
+                httpContext.RequestAborted);
+        }
+        else if (account?.IsOpenAI == true)
+        {
+            await HandleOpenAIAsync(httpContext, request, apiKeyValue, account,
+                httpContext.RequestAborted);
+        }
+        else
+        {
+            // 如果没有找到对应的账号，返回403 Forbidden
+            httpContext.Response.StatusCode = 403; // Forbidden
+            await httpContext.Response.WriteAsJsonAsync(new
+            {
+                message = "当前API Key没有访问Claude服务的权限",
+                code = "403"
+            }, cancellationToken: httpContext.RequestAborted);
+        }
+    }
+
+    private async Task HandleOpenAIAsync(
+        HttpContext httpContext,
+        AnthropicInput request,
+        Domain.ApiKey apiKeyValue,
+        Domain.Accounts? account,
+        CancellationToken cancellationToken = default)
+    {
+        // 获取统计服务
+        var statisticsService = httpContext.RequestServices.GetRequiredService<StatisticsService>();
+
+        var chatCompletionsService =
+            httpContext.RequestServices.GetRequiredService<OpenAIAnthropicChatCompletionsService>();
+
+        // 开始记录请求统计
+        var requestLog = await statisticsService.LogRequestAsync(
+            apiKeyValue.Id,
+            apiKeyValue.Name,
+            account?.Id,
+            account?.Name,
+            request.Model,
+            "claude",
+            request.Stream,
+            Guid.NewGuid().ToString(),
+            httpContext.Connection.RemoteIpAddress?.ToString(),
+            httpContext.Request.Headers["User-Agent"].FirstOrDefault(),
+            cancellationToken);
+
+        var accessToken = await accountsService.GetValidAccessTokenAsync(account, cancellationToken);
+
+        try
+        {
+            // 准备请求头和代理配置
+            var headers = new Dictionary<string, string>()
+            {
+                { "Authorization", "Bearer " + accessToken },
+                { "anthropic-version", EnvHelper.ApiVersion }
+            };
+
+            // 复制context的请求头
+            foreach (var header in httpContext.Request.Headers)
+            {
+                // 不要覆盖已有的Authorization和Content-Type头
+                if (header.Key.Equals("Authorization", StringComparison.OrdinalIgnoreCase) ||
+                    header.Key.Equals("Content-Type", StringComparison.OrdinalIgnoreCase) ||
+                    header.Key.Equals("Content-Length", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                headers[header.Key] = header.Value.ToString();
+            }
+
+            headers["anthropic-beta"] = EnvHelper.BetaHeader;
+
+            var proxyConfig = account?.Proxy;
+
+            // 调用真实的聊天完成服务
+            ClaudeChatCompletionDto response;
+            // 从response中提取实际的token usage信息
+            var inputTokens = 0;
+            var outputTokens = 0;
+            var cacheCreateTokens = 0;
+            var cacheReadTokens = 0;
+
+            if (request.Stream)
+            {
+                // 是否第一次输出
+                bool isFirst = true;
+
+                await foreach (var (eventName, value, item) in chatCompletionsService.StreamChatCompletionsAsync(
+                                   request,
+                                   headers, proxyConfig, new ThorPlatformOptions()
+                                   {
+                                       Address = account?.ApiUrl ?? "https://api.anthropic.com/",
+                                   }, cancellationToken))
+                {
+                    if (isFirst)
+                    {
+                        httpContext.SetEventStreamHeaders();
+                        isFirst = false;
+                    }
+
+                    if (item?.Usage is { input_tokens: > 0 } ||
+                        item?.message?.Usage?.input_tokens > 0)
+                    {
+                        inputTokens = item.Usage?.input_tokens ?? item?.message?.Usage?.input_tokens ?? 0;
+                    }
+
+                    if (item?.Usage is { output_tokens: > 0 } || item?.message?.Usage?.output_tokens > 0)
+                    {
+                        outputTokens = (item.Usage?.output_tokens ?? item?.message?.Usage?.output_tokens) ?? 0;
+                    }
+
+                    if (item?.Usage is { cache_creation_input_tokens: > 0 } ||
+                        item?.message?.Usage?.cache_creation_input_tokens > 0)
+                    {
+                        cacheCreateTokens += item.Usage?.cache_creation_input_tokens ??
+                                             item?.message?.Usage?.cache_creation_input_tokens ?? 0;
+                    }
+
+                    if (item?.Usage is { cache_read_input_tokens: > 0 } ||
+                        item?.message?.Usage?.cache_read_input_tokens > 0)
+                    {
+                        cacheReadTokens += item.Usage?.cache_read_input_tokens ??
+                                           item.message?.Usage?.cache_read_input_tokens ?? 0;
+                    }
+
+
+                    await httpContext.WriteAsEventStreamDataAsync(eventName, value);
+                }
+            }
+
+            else
+            {
+                // 非流式响应
+                response = await chatCompletionsService.ChatCompletionsAsync(request, headers, proxyConfig,
+                    new ThorPlatformOptions()
+                    {
+                        Address = account.ApiUrl,
+                    },
+                    cancellationToken);
+                await httpContext.Response.WriteAsJsonAsync(response, cancellationToken: cancellationToken);
+            }
+
+            // 计算费用（这里需要根据实际的定价模型来计算）
+            var cost = CalculateTokenCost(request.Model, inputTokens, outputTokens, cacheCreateTokens,
+                cacheReadTokens);
+
+            // 注意：我们不能直接修改实体然后保存，需要通过服务方法来更新
+            // 这里只是增加使用计数，具体的更新逻辑应该在服务层处理
+            // 可以考虑创建专门的方法来更新使用统计
+
+            // 完成请求日志记录（成功）
+            await statisticsService.CompleteRequestLogAsync(
+                requestLog.Id,
+                inputTokens: inputTokens,
+                outputTokens: outputTokens,
+                cacheCreateTokens: cacheCreateTokens,
+                cacheReadTokens: cacheReadTokens,
+                cost: cost,
+                status: "success",
+                httpStatusCode: 200,
+                cancellationToken: cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            // 完成请求日志记录（失败）
+            await statisticsService.CompleteRequestLogAsync(
+                requestLog.Id,
+                status: "error",
+                errorMessage: ex.Message,
+                httpStatusCode: 500,
+                cancellationToken: cancellationToken);
+
+            httpContext.Response.StatusCode = 500;
+            await httpContext.Response.WriteAsJsonAsync(new
+            {
+                // 返回claude需要的异常
+                error = new
+                {
+                    message = ex.Message,
+                    type = "server_error",
+                    code = "500"
+                }
+            }, cancellationToken: cancellationToken);
         }
     }
 

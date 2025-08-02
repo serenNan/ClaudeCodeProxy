@@ -6,7 +6,7 @@
 public sealed class Accounts : Entity<string>
 {
     /// <summary>
-    /// 平台类型：claude, claude-console, gemini
+    /// 平台类型：claude, claude-console, gemini,openai
     /// </summary>
     public string Platform { get; set; } = string.Empty;
 
@@ -108,4 +108,12 @@ public sealed class Accounts : Entity<string>
     /// 使用次数统计
     /// </summary>
     public long UsageCount { get; set; } = 0;
+
+    public bool IsClaudeConsole => Platform.Equals("claude-console", StringComparison.OrdinalIgnoreCase);
+
+    public bool IsGemini => Platform.Equals("gemini", StringComparison.OrdinalIgnoreCase);
+
+    public bool IsClaude => Platform.Equals("claude", StringComparison.OrdinalIgnoreCase);
+
+    public bool IsOpenAI => Platform.Equals("openai", StringComparison.OrdinalIgnoreCase);
 }

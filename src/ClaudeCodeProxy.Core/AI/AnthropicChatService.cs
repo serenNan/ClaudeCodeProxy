@@ -34,7 +34,8 @@ public class AnthropicChatService(ILogger<AnthropicChatService> logger) : IAnthr
         headers["Host"] = url.Host;
 
         var response =
-            await client.PostJsonAsync(options.Address.TrimEnd('/') + "/v1/messages", input, string.Empty, headers);
+            await client.PostJsonAsync(options.Address.TrimEnd('/') + "/v1/messages?beta=true", input, string.Empty,
+                headers);
 
         openai?.SetTag("Model", input.Model);
         openai?.SetTag("Response", response.StatusCode.ToString());
@@ -75,7 +76,8 @@ public class AnthropicChatService(ILogger<AnthropicChatService> logger) : IAnthr
         var url = new Uri(options.Address);
         headers["Host"] = url.Host;
 
-        var response = await client.HttpRequestRaw(options.Address.TrimEnd('/') + "/v1/messages", input, string.Empty,
+        var response = await client.HttpRequestRaw(options.Address.TrimEnd('/') + "/v1/messages?beta=true", input,
+            string.Empty,
             headers);
 
         openai?.SetTag("Model", input.Model);
@@ -85,10 +87,10 @@ public class AnthropicChatService(ILogger<AnthropicChatService> logger) : IAnthr
         if (response.StatusCode >= HttpStatusCode.BadRequest)
         {
             var error = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-            logger.LogError("OpenAI对话异常 请求地址：{Address}, StatusCode: {StatusCode} Response: {Response}", options.Address,
+            logger.LogError("OpenAI对话异常 请求地址：{Address}, StatusCode: {StatusCode} Response: {Response}", options.Address.TrimEnd('/') + "/v1/messages?beta=true",
                 response.StatusCode, error);
 
-            throw new Exception("OpenAI对话异常" + response.StatusCode);
+            throw new Exception("OpenAI对话异常" + error);
         }
 
         using var stream = new StreamReader(await response.Content.ReadAsStreamAsync(cancellationToken));
@@ -123,7 +125,7 @@ public class AnthropicChatService(ILogger<AnthropicChatService> logger) : IAnthr
             }
 
             if (!line.StartsWith(OpenAIConstant.Data)) continue;
-            
+
             data = line[OpenAIConstant.Data.Length..].Trim();
 
             var result = JsonSerializer.Deserialize<ClaudeStreamDto>(data,

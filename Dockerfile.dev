@@ -1,0 +1,49 @@
+# ============================================================================
+# Development Dockerfile for ClaudeCodeProxy
+# Optimized for development with hot reload and debugging
+# ============================================================================
+
+FROM mcr.microsoft.com/dotnet/sdk:9.0-alpine AS development
+
+LABEL description="Development environment for ClaudeCodeProxy"
+LABEL maintainer="ClaudeCodeProxy Team"
+
+# Install required packages for development
+RUN apk add --no-cache \
+    curl \
+    ca-certificates \
+    git \
+    nodejs \
+    npm \
+    && rm -rf /var/cache/apk/*
+
+# Set working directory
+WORKDIR /app
+
+# Install .NET development tools
+RUN dotnet tool install --global dotnet-ef
+RUN dotnet tool install --global dotnet-watch
+ENV PATH="${PATH}:/root/.dotnet/tools"
+
+# Set environment variables for development
+ENV ASPNETCORE_ENVIRONMENT=Development
+ENV DOTNET_USE_POLLING_FILE_WATCHER=true
+ENV DOTNET_RUNNING_IN_CONTAINER=true
+ENV DOTNET_EnableDiagnostics=1
+
+# Expose ports for debugging
+EXPOSE 5000 5001
+
+# Copy project files for dependency restoration
+COPY *.sln ./
+COPY src/ClaudeCodeProxy.Host/*.csproj ./src/ClaudeCodeProxy.Host/
+COPY src/ClaudeCodeProxy.Core/*.csproj ./src/ClaudeCodeProxy.Core/
+COPY src/ClaudeCodeProxy.Abstraction/*.csproj ./src/ClaudeCodeProxy.Abstraction/
+COPY src/ClaudeCodeProxy.Domain/*.csproj ./src/ClaudeCodeProxy.Domain/
+COPY src/ClaudeCodeProxy.EntityFrameworkCore.Sqlite/*.csproj ./src/ClaudeCodeProxy.EntityFrameworkCore.Sqlite/
+
+# Restore dependencies
+RUN dotnet restore
+
+# Default command for development
+CMD ["dotnet", "watch", "run", "--project", "src/ClaudeCodeProxy.Host/ClaudeCodeProxy.Host.csproj", "--urls", "http://+:5000"]

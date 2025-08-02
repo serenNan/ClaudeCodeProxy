@@ -11,9 +11,10 @@ import ConfirmModal from '@/components/common/ConfirmModal';
 import { useConfirm } from '@/hooks/useConfirm';
 
 const PLATFORMS = [
-  { value: 'claude', label: 'Claude', icon: Users, color: 'bg-blue-500' },
-  { value: 'claude-console', label: 'Claude Console', icon: Server, color: 'bg-purple-500' },
-  { value: 'gemini', label: 'Gemini', icon: Globe, color: 'bg-green-500' },
+  { value: 'claude', label: 'Claude', icon: Users, color: 'bg-primary' },
+  { value: 'claude-console', label: 'Claude Console', icon: Server, color: 'bg-secondary' },
+  { value: 'gemini', label: 'Gemini', icon: Globe, color: 'bg-muted' },
+  { value: 'openai', label: 'OpenAI', icon: Key, color: 'bg-accent' },
 ];
 
 export default function AccountsPage() {
