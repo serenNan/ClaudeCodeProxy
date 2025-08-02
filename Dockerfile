@@ -41,7 +41,7 @@ COPY src/ClaudeCodeProxy.Host/*.csproj ./src/ClaudeCodeProxy.Host/
 COPY src/ClaudeCodeProxy.Core/*.csproj ./src/ClaudeCodeProxy.Core/
 COPY src/ClaudeCodeProxy.Abstraction/*.csproj ./src/ClaudeCodeProxy.Abstraction/
 COPY src/ClaudeCodeProxy.Domain/*.csproj ./src/ClaudeCodeProxy.Domain/
-COPY src/ClaudeCodeProxy.EntityFrameworkCore.Sqlite/*.csproj ./src/ClaudeCodeProxy.EntityFrameworkCore.Sqlite/
+COPY src/Provide/ClaudeCodeProxy.EntityFrameworkCore.Sqlite/*.csproj ./src/Provide/ClaudeCodeProxy.EntityFrameworkCore.Sqlite/
 
 # Restore dependencies
 RUN dotnet restore
