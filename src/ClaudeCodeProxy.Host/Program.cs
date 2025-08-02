@@ -161,13 +161,6 @@ public static class Program
         // 如果是Windows服务模式，添加文件日志
         if (WindowsServiceHelper.IsWindows())
         {
-            // 自动创建目录
-            var logDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data");
-            if (!Directory.Exists(logDirectory))
-            {
-                Directory.CreateDirectory(logDirectory);
-            }
-
             var logPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logs", "claude-code-proxy-.log");
             loggerConfig.WriteTo.File(
                 logPath,
