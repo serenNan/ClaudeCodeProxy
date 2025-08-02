@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "build:prod": "tsc -b && vite build && echo 前端构建完成，文件已输出到后端wwwroot目录",
+    "build:prod": "cross-env VITE_OUT_DIR=../src/ClaudeCodeProxy.Host/wwwroot tsc -b && vite build && echo 前端构建完成，文件已输出到后端wwwroot目录",
+    "build:ci": "cross-env VITE_OUT_DIR=dist tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
@@ -36,10 +37,12 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.30.1",
+    "@tailwindcss/vite": "^4.0.3",
     "@types/node": "^24.1.0",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react": "^4.6.0",
+    "cross-env": "^7.0.3",
     "eslint": "^9.30.1",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",

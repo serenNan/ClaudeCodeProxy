@@ -14,6 +14,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Sqlite;
 using Scalar.AspNetCore;
 using Serilog;
+using System.Runtime.InteropServices;
 
 namespace ClaudeCodeProxy.Host;
 
@@ -21,7 +22,20 @@ public static class Program
 {
     public static async Task Main(string[] args)
     {
+        // 处理命令行参数
+        if (await HandleCommandLineArgumentsAsync(args))
+        {
+            return;
+        }
+
         var builder = WebApplication.CreateBuilder(args);
+        
+        // 如果是Windows系统，配置为Windows服务
+        if (WindowsServiceHelper.IsWindows())
+        {
+            builder.Host.UseWindowsService();
+        }
+
         EnvHelper.Initialize(builder.Configuration);
 
         // 配置服务
@@ -29,6 +43,7 @@ public static class Program
         ConfigureSerilog(builder.Services, builder.Configuration);
 
         var app = builder.Build();
+        
         // 配置中间件管道
         ConfigureMiddleware(app);
 
@@ -37,7 +52,80 @@ public static class Program
 
         await MigrateDatabaseAsync(app);
 
+        // 如果是Windows且未安装服务，提示用户
+        if (WindowsServiceHelper.IsWindows() && !await WindowsServiceHelper.IsServiceInstalledAsync())
+        {
+            Log.Information("检测到Windows系统，建议安装为Windows服务。");
+            Log.Information("运行 '{ExecutableName} --install-service' 以管理员身份安装服务", 
+                Environment.ProcessPath ?? "ClaudeCodeProxy.Host.exe");
+        }
+
         await app.RunAsync();
+    }
+
+    private static async Task<bool> HandleCommandLineArgumentsAsync(string[] args)
+    {
+        if (args.Length == 0)
+            return false;
+
+        var command = args[0].ToLowerInvariant();
+
+        switch (command)
+        {
+            case "--install-service":
+            case "/install-service":
+                await WindowsServiceHelper.InstallServiceAsync();
+                return true;
+
+            case "--uninstall-service":
+            case "/uninstall-service":
+                await WindowsServiceHelper.UninstallServiceAsync();
+                return true;
+
+            case "--start-service":
+            case "/start-service":
+                await WindowsServiceHelper.StartServiceAsync();
+                return true;
+
+            case "--stop-service":
+            case "/stop-service":
+                await WindowsServiceHelper.StopServiceAsync();
+                return true;
+
+            case "--service-status":
+            case "/service-status":
+                await WindowsServiceHelper.ShowServiceStatusAsync();
+                return true;
+
+            case "--help":
+            case "/help":
+            case "-h":
+            case "/h":
+                ShowHelp();
+                return true;
+
+            default:
+                return false;
+        }
+    }
+
+    private static void ShowHelp()
+    {
+        var executableName = Path.GetFileNameWithoutExtension(Environment.ProcessPath) ?? "ClaudeCodeProxy.Host";
+        
+        Console.WriteLine("Claude Code Proxy Host");
+        Console.WriteLine("用法:");
+        Console.WriteLine($"  {executableName}                    启动应用程序");
+        Console.WriteLine($"  {executableName} --help             显示此帮助信息");
+        Console.WriteLine();
+        Console.WriteLine("Windows服务管理 (需要管理员权限):");
+        Console.WriteLine($"  {executableName} --install-service   安装为Windows服务");
+        Console.WriteLine($"  {executableName} --uninstall-service 卸载Windows服务");
+        Console.WriteLine($"  {executableName} --start-service     启动Windows服务");
+        Console.WriteLine($"  {executableName} --stop-service      停止Windows服务");
+        Console.WriteLine($"  {executableName} --service-status    显示Windows服务状态");
+        Console.WriteLine();
+        Console.WriteLine("注意: 在Windows系统上，建议安装为系统服务以获得更好的稳定性和自动启动功能。");
     }
 
     private static async Task MigrateDatabaseAsync(WebApplication app)
@@ -61,11 +149,24 @@ public static class Program
     {
         services.AddSerilog();
 
-        Log.Logger = new LoggerConfiguration()
+        var loggerConfig = new LoggerConfiguration()
             .ReadFrom.Configuration(configuration)
             .Enrich.FromLogContext()
-            .WriteTo.Console()
-            .CreateLogger();
+            .WriteTo.Console();
+
+        // 如果是Windows服务模式，添加文件日志
+        if (WindowsServiceHelper.IsWindows())
+        {
+            var logPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logs", "claude-code-proxy-.log");
+            loggerConfig.WriteTo.File(
+                logPath,
+                rollingInterval: RollingInterval.Day,
+                retainedFileCountLimit: 30,
+                shared: true,
+                flushToDiskInterval: TimeSpan.FromSeconds(1));
+        }
+
+        Log.Logger = loggerConfig.CreateLogger();
 
         services.AddLogging(loggingBuilder =>
         {
@@ -180,6 +281,28 @@ public static class Program
             .WithName("HealthCheck")
             .WithSummary("健康检查")
             .WithTags("System");
+
+        // 系统信息端点
+        app.MapGet("/system-info", () => 
+        {
+            var info = new
+            {
+                Version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(),
+                Framework = RuntimeInformation.FrameworkDescription,
+                OS = RuntimeInformation.OSDescription,
+                Architecture = RuntimeInformation.OSArchitecture.ToString(),
+                IsWindows = WindowsServiceHelper.IsWindows(),
+                ProcessId = Environment.ProcessId,
+                WorkingDirectory = Environment.CurrentDirectory,
+                MachineName = Environment.MachineName,
+                UserName = Environment.UserName,
+                Timestamp = DateTime.UtcNow
+            };
+            return Results.Ok(info);
+        })
+        .WithName("SystemInfo")
+        .WithSummary("系统信息")
+        .WithTags("System");
 
         // SPA fallback - 所有非API请求都返回index.html
         app.MapFallbackToFile("index.html");
