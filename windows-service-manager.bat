@@ -14,24 +14,45 @@ if %errorLevel% == 0 (
     exit /b 1
 )
 
-:: 设置应用程序路径
+:: 查找应用程序路径
 set "APP_NAME=ClaudeCodeProxy.Host.exe"
-set "APP_PATH=%~dp0%APP_NAME%"
+set "APP_PATH="
 
-:: 检查应用程序是否存在
-if not exist "%APP_PATH%" (
-    echo [×] 找不到应用程序: %APP_PATH%
-    echo.
-    echo 请确保此批处理文件与 %APP_NAME% 在同一目录下
-    pause
-    exit /b 1
+:: 尝试多个可能的路径
+set "PATHS[0]=%~dp0%APP_NAME%"
+set "PATHS[1]=%~dp0src\ClaudeCodeProxy.Host\bin\Release\net8.0\%APP_NAME%"
+set "PATHS[2]=%~dp0src\ClaudeCodeProxy.Host\bin\Debug\net8.0\%APP_NAME%"
+set "PATHS[3]=%~dp0src\ClaudeCodeProxy.Host\bin\Release\net8.0\publish\%APP_NAME%"
+
+for /L %%i in (0,1,3) do (
+    call set "CURRENT_PATH=%%PATHS[%%i]%%"
+    if exist "!CURRENT_PATH!" (
+        set "APP_PATH=!CURRENT_PATH!"
+        goto :PATH_FOUND
+    )
 )
+
+echo [×] 找不到应用程序 %APP_NAME%
+echo.
+echo 请确保已编译项目，尝试的路径：
+for /L %%i in (0,1,3) do (
+    call echo   %%PATHS[%%i]%%
+)
+echo.
+pause
+exit /b 1
+
+:PATH_FOUND
+echo [√] 找到应用程序: %APP_PATH%
+echo.
 
 :MENU
 cls
 echo =========================================
 echo      Claude Code Proxy 服务管理器
 echo =========================================
+echo.
+echo 应用程序: %APP_PATH%
 echo.
 echo 请选择操作：
 echo.
