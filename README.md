@@ -184,10 +184,6 @@ graph TB
 ```bash
 # Build and run with Docker Compose
 docker-compose up -d
-
-# Or build manually
-docker build -t claudecodeproxy .
-docker run -p 8080:8080 claudecodeproxy
 ```
 
 ### 🖥️ Manual Deployment

@@ -1,7 +1,57 @@
-﻿services:
-  claudecodeproxy.host:
-    image: claudecodeproxy.host
-    build:
-      context: .
-      dockerfile: src/ClaudeCodeProxy.Host/Dockerfile
+﻿version: '3.8'
+
+services:
+  # 主应用服务
+  claude-code-proxy:
+    container_name: claude-code-proxy
+    image: crpi-j9ha7sxwhatgtvj4.cn-shenzhen.personal.cr.aliyuncs.com/koala-ai/claude-code-proxy
+    ports:
+      - "8080:8080"    # HTTP端口
+    environment:
+      - ConnectionStrings:DefaultConnection=Data Source=/app/data/ClaudeCodeProxy.db;Cache=Shared
+      - RunMigrationsAtStartup=true
+      - USER_NAME=admin
+      - PASSWORD=admin123
+    volumes:
+      # 数据持久化
+      - claudecodeproxy_data:/app/data
+      # 日志持久化 (可选)
+      - claudecodeproxy_logs:/app/logs
+    networks:
+      - claudecodeproxy-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Nginx反向代理 (可选，用于生产环境)
+  nginx:
+    container_name: claudecodeproxy-nginx
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    networks:
+      - claudecodeproxy-network
+    depends_on:
+      - claudecodeproxy
+    restart: unless-stopped
+
+volumes:
+  # 数据库文件持久化
+  claudecodeproxy_data:
+    driver: local
+  # 日志文件持久化
+  claudecodeproxy_logs:
+    driver: local
+
+networks:
+  claudecodeproxy-network:
+    driver: bridge
 
