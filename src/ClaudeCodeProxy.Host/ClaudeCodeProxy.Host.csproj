@@ -50,4 +50,10 @@
       </Content>
     </ItemGroup>
 
+    <ItemGroup>
+      <None Update="*.bat">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </None>
+    </ItemGroup>
+
 </Project>
