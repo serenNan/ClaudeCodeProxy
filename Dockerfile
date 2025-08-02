@@ -43,8 +43,8 @@ COPY src/ClaudeCodeProxy.Abstraction/*.csproj ./src/ClaudeCodeProxy.Abstraction/
 COPY src/ClaudeCodeProxy.Domain/*.csproj ./src/ClaudeCodeProxy.Domain/
 COPY src/Provide/ClaudeCodeProxy.EntityFrameworkCore.Sqlite/*.csproj ./src/Provide/ClaudeCodeProxy.EntityFrameworkCore.Sqlite/
 
-# Restore dependencies
-RUN dotnet restore
+# Restore dependencies for linux-x64 runtime
+RUN dotnet restore --runtime linux-x64
 
 # Copy source code
 COPY src/ ./src/
