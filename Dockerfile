@@ -17,7 +17,7 @@ WORKDIR /app/web
 COPY web/package*.json ./
 
 # Install dependencies with cache optimization
-RUN npm ci --no-audit --prefer-offline
+RUN npm i --no-audit --prefer-offline
 
 # Copy source code
 COPY web/ ./
