@@ -24,11 +24,10 @@ jobs:
     - uses: actions/setup-node@v4
       with:
         node-version: ${{ env.NODE_VERSION }}
-        cache: npm
-        cache-dependency-path: 'web/package-lock.json'
     - name: Build frontend
       working-directory: ./web
       run: |
+        rm -rf package-lock.json node_modules
         npm i
         npm run build
     - uses: actions/upload-artifact@v4

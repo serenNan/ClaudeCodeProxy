@@ -19,7 +19,7 @@ RUN apk add --no-cache \
     libc6-compat
 
 # 复制package文件优先，利用缓存
-COPY lobe/package*.json lobe/yarn.lock* ./
+COPY web/package*.json web/yarn.lock* ./
 RUN yarn install --frozen-lockfile --network-timeout 100000 || npm install --force
 
 # 复制源代码并构建
