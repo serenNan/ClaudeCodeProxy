@@ -29,7 +29,7 @@ public static class Program
         }
 
         var builder = WebApplication.CreateBuilder(args);
-        
+
         // 如果是Windows系统，配置为Windows服务
         if (WindowsServiceHelper.IsWindows())
         {
@@ -43,7 +43,7 @@ public static class Program
         ConfigureSerilog(builder.Services, builder.Configuration);
 
         var app = builder.Build();
-        
+
         // 配置中间件管道
         ConfigureMiddleware(app);
 
@@ -56,7 +56,7 @@ public static class Program
         if (WindowsServiceHelper.IsWindows() && !await WindowsServiceHelper.IsServiceInstalledAsync())
         {
             Log.Information("检测到Windows系统，建议安装为Windows服务。");
-            Log.Information("运行 '{ExecutableName} --install-service' 以管理员身份安装服务", 
+            Log.Information("运行 '{ExecutableName} --install-service' 以管理员身份安装服务",
                 Environment.ProcessPath ?? "ClaudeCodeProxy.Host.exe");
         }
 
@@ -112,7 +112,7 @@ public static class Program
     private static void ShowHelp()
     {
         var executableName = Path.GetFileNameWithoutExtension(Environment.ProcessPath) ?? "ClaudeCodeProxy.Host";
-        
+
         Console.WriteLine("Claude Code Proxy Host");
         Console.WriteLine("用法:");
         Console.WriteLine($"  {executableName}                    启动应用程序");
@@ -157,6 +157,13 @@ public static class Program
         // 如果是Windows服务模式，添加文件日志
         if (WindowsServiceHelper.IsWindows())
         {
+            // 自动创建目录
+            var logDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data");
+            if (!Directory.Exists(logDirectory))
+            {
+                Directory.CreateDirectory(logDirectory);
+            }
+
             var logPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logs", "claude-code-proxy-.log");
             loggerConfig.WriteTo.File(
                 logPath,
@@ -283,26 +290,26 @@ public static class Program
             .WithTags("System");
 
         // 系统信息端点
-        app.MapGet("/system-info", () => 
-        {
-            var info = new
+        app.MapGet("/system-info", () =>
             {
-                Version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(),
-                Framework = RuntimeInformation.FrameworkDescription,
-                OS = RuntimeInformation.OSDescription,
-                Architecture = RuntimeInformation.OSArchitecture.ToString(),
-                IsWindows = WindowsServiceHelper.IsWindows(),
-                ProcessId = Environment.ProcessId,
-                WorkingDirectory = Environment.CurrentDirectory,
-                MachineName = Environment.MachineName,
-                UserName = Environment.UserName,
-                Timestamp = DateTime.UtcNow
-            };
-            return Results.Ok(info);
-        })
-        .WithName("SystemInfo")
-        .WithSummary("系统信息")
-        .WithTags("System");
+                var info = new
+                {
+                    Version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(),
+                    Framework = RuntimeInformation.FrameworkDescription,
+                    OS = RuntimeInformation.OSDescription,
+                    Architecture = RuntimeInformation.OSArchitecture.ToString(),
+                    IsWindows = WindowsServiceHelper.IsWindows(),
+                    ProcessId = Environment.ProcessId,
+                    WorkingDirectory = Environment.CurrentDirectory,
+                    MachineName = Environment.MachineName,
+                    UserName = Environment.UserName,
+                    Timestamp = DateTime.UtcNow
+                };
+                return Results.Ok(info);
+            })
+            .WithName("SystemInfo")
+            .WithSummary("系统信息")
+            .WithTags("System");
 
         // SPA fallback - 所有非API请求都返回index.html
         app.MapFallbackToFile("index.html");
