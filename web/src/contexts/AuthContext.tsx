@@ -51,7 +51,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async (username: string, password: string) => {
     try {
       const response = await apiService.login({ username, password });
-      const userData = { username: response.user.username };
+      const userData = { username: response.username };
       setUser(userData);
       localStorage.setItem('user', JSON.stringify(userData));
     } catch (error) {

@@ -4,10 +4,11 @@ interface LoginRequest {
 }
 
 interface LoginResponse {
-  token: string;
-  user: {
-    username: string;
-  };
+  accessToken: string;
+  refreshToken: string;
+  tokenType: string;
+  expiresIn: number;
+  username: string;
 }
 
 // Dashboard 相关类型定义
@@ -249,24 +250,14 @@ class ApiService {
         body: JSON.stringify(data),
       });
       
-      if (response.token) {
-        this.token = response.token;
-        localStorage.setItem('token', response.token);
+      if (response.accessToken) {
+        this.token = response.accessToken;
+        localStorage.setItem('token', response.accessToken);
       }
-      
+
       return response;
     } catch (error) {
-      // For demo purposes, allow any login to work
-      console.warn('Backend not available, using mock login');
-      const mockResponse = {
-        token: 'mock-jwt-token',
-        user: { username: data.username }
-      };
-      
-      this.token = mockResponse.token;
-      localStorage.setItem('token', mockResponse.token);
-      
-      return mockResponse;
+      throw error;
     }
   }
 
