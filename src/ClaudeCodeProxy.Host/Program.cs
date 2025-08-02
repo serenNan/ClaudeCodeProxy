@@ -86,6 +86,7 @@ public static class Program
             options.SerializerOptions.DefaultIgnoreCondition =
                 System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
         });
+
         services.AddHttpClient();
         services.AddMemoryCache();
 
@@ -153,6 +154,8 @@ public static class Program
         // 静态文件服务
         app.UseDefaultFiles();
         app.UseStaticFiles();
+
+        app.MapFallbackToFile("index.html");
 
         // 认证和授权中间件
         app.UseJwtAuthentication();

@@ -32,12 +32,6 @@
     </ItemGroup>
 
     <ItemGroup>
-      <Content Include="..\..\.dockerignore">
-        <Link>.dockerignore</Link>
-      </Content>
-    </ItemGroup>
-
-    <ItemGroup>
       <ProjectReference Include="..\ClaudeCodeProxy.Abstraction\ClaudeCodeProxy.Abstraction.csproj" />
       <ProjectReference Include="..\ClaudeCodeProxy.Core\ClaudeCodeProxy.Core.csproj" />
       <ProjectReference Include="..\ClaudeCodeProxy.Domain\ClaudeCodeProxy.Domain.csproj" />
@@ -46,6 +40,12 @@
 
     <ItemGroup>
       <Folder Include="Extensions\" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Content Include="..\..\.dockerignore">
+        <Link>.dockerignore</Link>
+      </Content>
     </ItemGroup>
 
 </Project>
