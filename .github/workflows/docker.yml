@@ -26,6 +26,8 @@ jobs:
       
       - name: Build frontend
         working-directory: ./web
+        env:
+          VITE_OUT_DIR: dist
         run: |
           rm -rf package-lock.json node_modules
           npm i
