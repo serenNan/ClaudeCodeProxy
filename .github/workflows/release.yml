@@ -77,26 +77,47 @@ jobs:
         name: frontend-dist
         path: web/dist/
     - uses: docker/setup-buildx-action@v3
+    
+    # Login to GitHub Container Registry
     - uses: docker/login-action@v3
       with:
         registry: ${{ env.REGISTRY }}
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
+    
+    # Login to Alibaba Cloud Container Registry
+    - uses: docker/login-action@v3
+      with:
+        registry: crpi-j9ha7sxwhatgtvj4.cn-shenzhen.personal.cr.aliyuncs.com
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+    
     - uses: docker/metadata-action@v5
-      id: meta
+      id: meta-github
       with:
         images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
         tags: |
           type=raw,value=${{ github.event.inputs.version || github.ref_name }}
           type=raw,value=latest
+    
+    - uses: docker/metadata-action@v5
+      id: meta-aliyun
+      with:
+        images: crpi-j9ha7sxwhatgtvj4.cn-shenzhen.personal.cr.aliyuncs.com/koala-ai/claude-code-proxy
+        tags: |
+          type=raw,value=${{ github.event.inputs.version || github.ref_name }}
+          type=raw,value=latest
+    
     - uses: docker/build-push-action@v5
       with:
         context: .
         file: src/ClaudeCodeProxy.Host/Dockerfile
         platforms: linux/amd64,linux/arm64
         push: true
-        tags: ${{ steps.meta.outputs.tags }}
-        labels: ${{ steps.meta.outputs.labels }}
+        tags: |
+          ${{ steps.meta-github.outputs.tags }}
+          ${{ steps.meta-aliyun.outputs.tags }}
+        labels: ${{ steps.meta-github.outputs.labels }}
 
   create-release:
     runs-on: ubuntu-latest
@@ -108,26 +129,61 @@ jobs:
     - uses: actions/download-artifact@v4
       with:
         path: ./artifacts/
+    - name: Debug artifacts
+      run: |
+        echo "Available artifacts:"
+        ls -la ./artifacts/
+        echo "Checking for required artifacts..."
+        for runtime in linux-x64 win-x64 osx-arm64; do
+          if [ -d "./artifacts/backend-$runtime" ]; then
+            echo "✓ backend-$runtime artifacts found"
+            ls -la "./artifacts/backend-$runtime/"
+          else
+            echo "✗ backend-$runtime artifacts missing"
+          fi
+        done
     - name: Package releases
       run: |
         VERSION="${{ github.event.inputs.version || github.ref_name }}"
         mkdir -p release-packages
         
         for runtime in linux-x64 win-x64 osx-arm64; do
+          echo "Processing runtime: $runtime"
+          
+          # Check if backend artifact exists
+          if [ ! -d "artifacts/backend-$runtime" ]; then
+            echo "Warning: backend-$runtime artifacts not found, skipping..."
+            continue
+          fi
+          
+          # Check if frontend artifact exists
+          if [ ! -d "artifacts/frontend-dist" ]; then
+            echo "Error: frontend-dist artifacts not found"
+            exit 1
+          fi
+          
           mkdir -p "temp/$runtime"
+          echo "Copying backend files for $runtime..."
           cp -r "artifacts/backend-$runtime"/* "temp/$runtime/"
+          
           mkdir -p "temp/$runtime/wwwroot"
+          echo "Copying frontend files for $runtime..."
           cp -r "artifacts/frontend-dist"/* "temp/$runtime/wwwroot/"
           
+          echo "Creating package for $runtime..."
           if [[ "$runtime" == win-* ]]; then
-            cd "temp/$runtime" && zip -r "../../release-packages/ClaudeCodeProxy-${VERSION}-${runtime}.zip" .
+            cd "temp/$runtime" && zip -r "../../release-packages/ClaudeCodeProxy-${VERSION}-${runtime}.zip" . && cd ../..
           else
             tar -czf "release-packages/ClaudeCodeProxy-${VERSION}-${runtime}.tar.gz" -C "temp/$runtime" .
           fi
           rm -rf "temp/$runtime"
+          echo "Package created for $runtime"
         done
         
+        echo "Creating checksums..."
         cd release-packages && sha256sum * > SHA256SUMS.txt
+        echo "Final packages:"
+        ls -la
     - uses: softprops/action-gh-release@v1
       with:
         tag_name: ${{ github.event.inputs.version || github.ref_name }}
@@ -138,7 +194,14 @@ jobs:
           Download the appropriate package for your platform and extract it.
           
           ### Docker
+          
+          **GitHub Container Registry:**
           ```bash
           docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.event.inputs.version || github.ref_name }}
+          ```
+          
+          **Alibaba Cloud Container Registry:**
+          ```bash
+          docker pull crpi-j9ha7sxwhatgtvj4.cn-shenzhen.personal.cr.aliyuncs.com/koala-ai/claude-code-proxy:${{ github.event.inputs.version || github.ref_name }}
           ```
         files: release-packages/*
