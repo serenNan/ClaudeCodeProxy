@@ -8,7 +8,7 @@ jobs:
     strategy:
       matrix:
         image: [
-          { name: 'claude-code-proxy', type: 'backend', dockerfile: 'src/KoalaWiki/Dockerfile', context: '.' }
+          { name: 'claude-code-proxy', type: 'backend', dockerfile: 'src/ClaudeCodeProxy.Host/Dockerfile', context: '.' }
         ]
       fail-fast: false
     runs-on: ubuntu-latest
