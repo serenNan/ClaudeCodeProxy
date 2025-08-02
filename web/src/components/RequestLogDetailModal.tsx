@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { 
-  X, 
   Clock, 
   User, 
   Key, 
@@ -14,6 +13,7 @@ import {
 } from 'lucide-react';
 import { apiService } from '@/services/api';
 import type { RequestLogDetail } from '@/services/api';
+import Modal from '@/components/ui/modal';
 
 interface RequestLogDetailModalProps {
   logId: string | null;
@@ -111,320 +111,305 @@ export default function RequestLogDetailModal({ logId, onClose }: RequestLogDeta
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'success':
-        return <CheckCircle className="h-5 w-5 text-green-600" />;
+        return <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />;
       case 'error':
-        return <XCircle className="h-5 w-5 text-red-600" />;
+        return <XCircle className="h-5 w-5 text-red-600 dark:text-red-400" />;
       case 'timeout':
-        return <Clock className="h-5 w-5 text-yellow-600" />;
+        return <Clock className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />;
       default:
-        return <AlertTriangle className="h-5 w-5 text-gray-600" />;
+        return <AlertTriangle className="h-5 w-5 text-gray-600 dark:text-gray-400" />;
     }
   };
 
   const getStatusColor = (status: string): string => {
     switch (status) {
       case 'success':
-        return 'bg-green-100 text-green-800 border-green-200';
+        return 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800';
       case 'error':
-        return 'bg-red-100 text-red-800 border-red-200';
+        return 'bg-red-100 text-red-800 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800';
       case 'timeout':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-400 dark:border-yellow-800';
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+        return 'bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600';
     }
   };
 
   if (!logId) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <div className="flex items-center space-x-3">
-            <Eye className="h-6 w-6 text-blue-600" />
-            <h2 className="text-xl font-semibold">请求日志详情</h2>
+    <Modal
+      isOpen={!!logId}
+      onClose={onClose}
+      title="请求日志详情"
+      size="5xl"
+      icon={<Eye className="h-6 w-6 text-white" />}
+    >
+      {loading && (
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-600 dark:border-gray-400"></div>
+        </div>
+      )}
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 dark:bg-red-900/20 dark:border-red-800">
+          <div className="flex items-center space-x-2">
+            <XCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
+            <span className="text-red-800 dark:text-red-400">{error}</span>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <X className="h-5 w-5" />
-          </button>
         </div>
+      )}
 
-        {/* Content */}
-        <div className="overflow-y-auto max-h-[calc(90vh-80px)]">
-          {loading && (
-            <div className="flex items-center justify-center h-64">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      {logDetail && (
+        <div className="space-y-6">
+          {/* Basic Info */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold border-b border-gray-200 dark:border-gray-700 pb-2 text-gray-900 dark:text-gray-100">基本信息</h3>
+              
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">请求ID:</span>
+                  <div className="flex items-center space-x-2">
+                    <span className="font-mono text-sm text-gray-900 dark:text-gray-100">{logDetail.requestId || '-'}</span>
+                    {logDetail.requestId && (
+                      <button
+                        onClick={() => copyToClipboard(logDetail.requestId!)}
+                        className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
+                      >
+                        <Copy className="h-3 w-3 text-gray-600 dark:text-gray-400" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">状态:</span>
+                  <div className="flex items-center space-x-2">
+                    {getStatusIcon(logDetail.status)}
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(logDetail.status)}`}>
+                      {logDetail.status.toUpperCase()}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">HTTP状态码:</span>
+                  <span className="font-mono text-sm text-gray-900 dark:text-gray-100">{logDetail.httpStatusCode || '-'}</span>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">响应时间:</span>
+                  <span className="font-mono text-sm text-gray-900 dark:text-gray-100">{formatDuration(logDetail.durationMs)}</span>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">费用:</span>
+                  <span className="font-mono text-sm text-green-600 dark:text-green-400">{formatCost(logDetail.cost)}</span>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">流式响应:</span>
+                  <span className="text-sm text-gray-900 dark:text-gray-100">{logDetail.isStreaming ? '是' : '否'}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold border-b border-gray-200 dark:border-gray-700 pb-2 text-gray-900 dark:text-gray-100">时间信息</h3>
+              
+              <div className="space-y-3">
+                <div className="flex items-start justify-between">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">请求开始:</span>
+                  <span className="font-mono text-sm text-right text-gray-900 dark:text-gray-100">{formatTime(logDetail.requestStartTime)}</span>
+                </div>
+
+                <div className="flex items-start justify-between">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">请求结束:</span>
+                  <span className="font-mono text-sm text-right text-gray-900 dark:text-gray-100">
+                    {logDetail.requestEndTime ? formatTime(logDetail.requestEndTime) : '-'}
+                  </span>
+                </div>
+
+                <div className="flex items-start justify-between">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">创建时间:</span>
+                  <span className="font-mono text-sm text-right text-gray-900 dark:text-gray-100">{formatTime(logDetail.createdAt)}</span>
+                </div>
+
+                {logDetail.updatedAt && (
+                  <div className="flex items-start justify-between">
+                    <span className="text-sm text-gray-600 dark:text-gray-400">更新时间:</span>
+                    <span className="font-mono text-sm text-right text-gray-900 dark:text-gray-100">{formatTime(logDetail.updatedAt)}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* API Key & Account Info */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold border-b border-gray-200 dark:border-gray-700 pb-2 flex items-center space-x-2 text-gray-900 dark:text-gray-100">
+                <Key className="h-5 w-5" />
+                <span>API Key信息</span>
+              </h3>
+              
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">API Key名称:</span>
+                  <span className="font-medium text-sm text-gray-900 dark:text-gray-100">{logDetail.apiKeyName}</span>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">API Key ID:</span>
+                  <div className="flex items-center space-x-2">
+                    <span className="font-mono text-sm truncate max-w-32 text-gray-900 dark:text-gray-100">{logDetail.apiKeyId}</span>
+                    <button
+                      onClick={() => copyToClipboard(logDetail.apiKeyId)}
+                      className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
+                    >
+                      <Copy className="h-3 w-3 text-gray-600 dark:text-gray-400" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold border-b border-gray-200 dark:border-gray-700 pb-2 flex items-center space-x-2 text-gray-900 dark:text-gray-100">
+                <User className="h-5 w-5" />
+                <span>账户信息</span>
+              </h3>
+              
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">账户名称:</span>
+                  <span className="font-medium text-sm text-gray-900 dark:text-gray-100">{logDetail.accountName || '-'}</span>
+                </div>
+
+                {logDetail.accountId && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600 dark:text-gray-400">账户ID:</span>
+                    <div className="flex items-center space-x-2">
+                      <span className="font-mono text-sm truncate max-w-32 text-gray-900 dark:text-gray-100">{logDetail.accountId}</span>
+                      <button
+                        onClick={() => copyToClipboard(logDetail.accountId!)}
+                        className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
+                      >
+                        <Copy className="h-3 w-3 text-gray-600 dark:text-gray-400" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Model & Platform Info */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold border-b border-gray-200 dark:border-gray-700 pb-2 flex items-center space-x-2 text-gray-900 dark:text-gray-100">
+                <Cpu className="h-5 w-5" />
+                <span>模型信息</span>
+              </h3>
+              
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">模型名称:</span>
+                  <span className="font-mono text-sm text-gray-900 dark:text-gray-100">{logDetail.model}</span>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">平台:</span>
+                  <span className="px-2 py-1 bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300 rounded-full text-xs font-medium capitalize">
+                    {logDetail.platform}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold border-b border-gray-200 dark:border-gray-700 pb-2 flex items-center space-x-2 text-gray-900 dark:text-gray-100">
+                <Globe className="h-5 w-5" />
+                <span>客户端信息</span>
+              </h3>
+              
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">客户端IP:</span>
+                  <span className="font-mono text-sm text-gray-900 dark:text-gray-100">{logDetail.clientIp || '-'}</span>
+                </div>
+
+                {logDetail.userAgent && (
+                  <div className="space-y-1">
+                    <span className="text-sm text-gray-600 dark:text-gray-400">User-Agent:</span>
+                    <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-2 max-h-16 overflow-y-auto">
+                      <span className="font-mono text-xs text-gray-700 dark:text-gray-300 break-all">
+                        {logDetail.userAgent}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Token Usage */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold border-b border-gray-200 dark:border-gray-700 pb-2 text-gray-900 dark:text-gray-100">Token使用情况</h3>
+            
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 text-center border border-gray-200 dark:border-gray-700">
+                <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">输入Token</div>
+                <div className="text-xl font-bold text-gray-900 dark:text-gray-100">{logDetail.inputTokens.toLocaleString()}</div>
+              </div>
+              
+              <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 text-center border border-gray-200 dark:border-gray-700">
+                <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">输出Token</div>
+                <div className="text-xl font-bold text-gray-900 dark:text-gray-100">{logDetail.outputTokens.toLocaleString()}</div>
+              </div>
+              
+              <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 text-center border border-gray-200 dark:border-gray-700">
+                <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">缓存创建</div>
+                <div className="text-xl font-bold text-gray-900 dark:text-gray-100">{logDetail.cacheCreateTokens.toLocaleString()}</div>
+              </div>
+              
+              <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 text-center border border-gray-200 dark:border-gray-700">
+                <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">缓存读取</div>
+                <div className="text-xl font-bold text-gray-900 dark:text-gray-100">{logDetail.cacheReadTokens.toLocaleString()}</div>
+              </div>
+              
+              <div className="bg-gray-100 dark:bg-gray-700 rounded-lg p-3 text-center border border-gray-300 dark:border-gray-600">
+                <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">总Token数</div>
+                <div className="text-xl font-bold text-gray-900 dark:text-gray-100">{logDetail.totalTokens.toLocaleString()}</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Error Message */}
+          {logDetail.errorMessage && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold border-b border-gray-200 dark:border-gray-700 pb-2 text-red-600 dark:text-red-400">错误信息</h3>
+              <div className="bg-red-50 border border-red-200 dark:bg-red-900/20 dark:border-red-800 rounded-lg p-4">
+                <p className="text-red-800 dark:text-red-400 font-mono text-sm whitespace-pre-wrap">
+                  {logDetail.errorMessage}
+                </p>
+              </div>
             </div>
           )}
 
-          {error && (
-            <div className="p-6">
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                <div className="flex items-center space-x-2">
-                  <XCircle className="h-5 w-5 text-red-600" />
-                  <span className="text-red-800">{error}</span>
-                </div>
+          {/* Metadata */}
+          {logDetail.metadata && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold border-b border-gray-200 dark:border-gray-700 pb-2 text-gray-900 dark:text-gray-100">元数据</h3>
+              <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 max-h-64 overflow-y-auto">
+                <pre className="font-mono text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                  {logDetail.metadata}
+                </pre>
               </div>
-            </div>
-          )}
-
-          {logDetail && (
-            <div className="p-6 space-y-6">
-              {/* Basic Info */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold border-b border-gray-200 pb-2">基本信息</h3>
-                  
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">请求ID:</span>
-                      <div className="flex items-center space-x-2">
-                        <span className="font-mono text-sm">{logDetail.requestId || '-'}</span>
-                        {logDetail.requestId && (
-                          <button
-                            onClick={() => copyToClipboard(logDetail.requestId!)}
-                            className="p-1 hover:bg-gray-100 rounded"
-                          >
-                            <Copy className="h-3 w-3" />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">状态:</span>
-                      <div className="flex items-center space-x-2">
-                        {getStatusIcon(logDetail.status)}
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(logDetail.status)}`}>
-                          {logDetail.status.toUpperCase()}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">HTTP状态码:</span>
-                      <span className="font-mono text-sm">{logDetail.httpStatusCode || '-'}</span>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">响应时间:</span>
-                      <span className="font-mono text-sm">{formatDuration(logDetail.durationMs)}</span>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">费用:</span>
-                      <span className="font-mono text-sm text-green-600">{formatCost(logDetail.cost)}</span>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">流式响应:</span>
-                      <span className="text-sm">{logDetail.isStreaming ? '是' : '否'}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold border-b border-gray-200 pb-2">时间信息</h3>
-                  
-                  <div className="space-y-3">
-                    <div className="flex items-start justify-between">
-                      <span className="text-sm text-gray-600">请求开始:</span>
-                      <span className="font-mono text-sm text-right">{formatTime(logDetail.requestStartTime)}</span>
-                    </div>
-
-                    <div className="flex items-start justify-between">
-                      <span className="text-sm text-gray-600">请求结束:</span>
-                      <span className="font-mono text-sm text-right">
-                        {logDetail.requestEndTime ? formatTime(logDetail.requestEndTime) : '-'}
-                      </span>
-                    </div>
-
-                    <div className="flex items-start justify-between">
-                      <span className="text-sm text-gray-600">创建时间:</span>
-                      <span className="font-mono text-sm text-right">{formatTime(logDetail.createdAt)}</span>
-                    </div>
-
-                    {logDetail.updatedAt && (
-                      <div className="flex items-start justify-between">
-                        <span className="text-sm text-gray-600">更新时间:</span>
-                        <span className="font-mono text-sm text-right">{formatTime(logDetail.updatedAt)}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* API Key & Account Info */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold border-b border-gray-200 pb-2 flex items-center space-x-2">
-                    <Key className="h-5 w-5" />
-                    <span>API Key信息</span>
-                  </h3>
-                  
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">API Key名称:</span>
-                      <span className="font-medium text-sm">{logDetail.apiKeyName}</span>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">API Key ID:</span>
-                      <div className="flex items-center space-x-2">
-                        <span className="font-mono text-sm truncate max-w-32">{logDetail.apiKeyId}</span>
-                        <button
-                          onClick={() => copyToClipboard(logDetail.apiKeyId)}
-                          className="p-1 hover:bg-gray-100 rounded"
-                        >
-                          <Copy className="h-3 w-3" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold border-b border-gray-200 pb-2 flex items-center space-x-2">
-                    <User className="h-5 w-5" />
-                    <span>账户信息</span>
-                  </h3>
-                  
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">账户名称:</span>
-                      <span className="font-medium text-sm">{logDetail.accountName || '-'}</span>
-                    </div>
-
-                    {logDetail.accountId && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600">账户ID:</span>
-                        <div className="flex items-center space-x-2">
-                          <span className="font-mono text-sm truncate max-w-32">{logDetail.accountId}</span>
-                          <button
-                            onClick={() => copyToClipboard(logDetail.accountId!)}
-                            className="p-1 hover:bg-gray-100 rounded"
-                          >
-                            <Copy className="h-3 w-3" />
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Model & Platform Info */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold border-b border-gray-200 pb-2 flex items-center space-x-2">
-                    <Cpu className="h-5 w-5" />
-                    <span>模型信息</span>
-                  </h3>
-                  
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">模型名称:</span>
-                      <span className="font-mono text-sm">{logDetail.model}</span>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">平台:</span>
-                      <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium capitalize">
-                        {logDetail.platform}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold border-b border-gray-200 pb-2 flex items-center space-x-2">
-                    <Globe className="h-5 w-5" />
-                    <span>客户端信息</span>
-                  </h3>
-                  
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">客户端IP:</span>
-                      <span className="font-mono text-sm">{logDetail.clientIp || '-'}</span>
-                    </div>
-
-                    {logDetail.userAgent && (
-                      <div className="space-y-1">
-                        <span className="text-sm text-gray-600">User-Agent:</span>
-                        <div className="bg-gray-50 rounded-lg p-2 max-h-16 overflow-y-auto">
-                          <span className="font-mono text-xs text-gray-700 break-all">
-                            {logDetail.userAgent}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Token Usage */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold border-b border-gray-200 pb-2">Token使用情况</h3>
-                
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                  <div className="bg-blue-50 rounded-lg p-3 text-center">
-                    <div className="text-sm text-gray-600 mb-1">输入Token</div>
-                    <div className="text-xl font-bold text-blue-600">{logDetail.inputTokens.toLocaleString()}</div>
-                  </div>
-                  
-                  <div className="bg-green-50 rounded-lg p-3 text-center">
-                    <div className="text-sm text-gray-600 mb-1">输出Token</div>
-                    <div className="text-xl font-bold text-green-600">{logDetail.outputTokens.toLocaleString()}</div>
-                  </div>
-                  
-                  <div className="bg-purple-50 rounded-lg p-3 text-center">
-                    <div className="text-sm text-gray-600 mb-1">缓存创建</div>
-                    <div className="text-xl font-bold text-purple-600">{logDetail.cacheCreateTokens.toLocaleString()}</div>
-                  </div>
-                  
-                  <div className="bg-orange-50 rounded-lg p-3 text-center">
-                    <div className="text-sm text-gray-600 mb-1">缓存读取</div>
-                    <div className="text-xl font-bold text-orange-600">{logDetail.cacheReadTokens.toLocaleString()}</div>
-                  </div>
-                  
-                  <div className="bg-gray-50 rounded-lg p-3 text-center">
-                    <div className="text-sm text-gray-600 mb-1">总Token数</div>
-                    <div className="text-xl font-bold text-gray-600">{logDetail.totalTokens.toLocaleString()}</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Error Message */}
-              {logDetail.errorMessage && (
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold border-b border-gray-200 pb-2 text-red-600">错误信息</h3>
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                    <p className="text-red-800 font-mono text-sm whitespace-pre-wrap">
-                      {logDetail.errorMessage}
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {/* Metadata */}
-              {logDetail.metadata && (
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold border-b border-gray-200 pb-2">元数据</h3>
-                  <div className="bg-gray-50 rounded-lg p-4 max-h-64 overflow-y-auto">
-                    <pre className="font-mono text-xs text-gray-700 whitespace-pre-wrap">
-                      {logDetail.metadata}
-                    </pre>
-                  </div>
-                </div>
-              )}
             </div>
           )}
         </div>
-      </div>
-    </div>
+      )}
+    </Modal>
   );
 }

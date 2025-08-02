@@ -10,7 +10,6 @@ import ModelDistributionChart from './ModelDistributionChart';
 import RealTimeMetricsGauge from './RealTimeMetricsGauge';
 import UsageHeatmap from './UsageHeatmap';
 import CostFlowChart from './CostFlowChart';
-import UserProfileRadar from './UserProfileRadar';
 
 interface AdvancedStatsDashboardProps {
   className?: string;
@@ -21,12 +20,6 @@ interface ErrorStats {
   count: number;
   status: 'success' | 'warning' | 'error';
   label: string;
-}
-
-interface ApiKeyRanking {
-  name: string;
-  requests: number;
-  tokens: number;
 }
 
 interface QuickStat {
@@ -41,7 +34,6 @@ interface QuickStat {
 export default function AdvancedStatsDashboard({ className }: AdvancedStatsDashboardProps) {
   const [quickStats, setQuickStats] = useState<QuickStat[]>([]);
   const [errorStats, setErrorStats] = useState<ErrorStats[]>([]);
-  const [apiKeyRanking, setApiKeyRanking] = useState<ApiKeyRanking[]>([]);
   const [loading, setLoading] = useState(true);
   const [isRealData, setIsRealData] = useState(false);
 
@@ -50,7 +42,7 @@ export default function AdvancedStatsDashboard({ className }: AdvancedStatsDashb
     const fetchQuickStats = async () => {
       try {
         setLoading(true);
-        const [dashboardData, costData, requestStats, apiKeyTrend] = await Promise.all([
+        const [dashboardData, costData, requestStats] = await Promise.all([
           apiService.getDashboardData(),
           apiService.getCostData(),
           apiService.getRequestStatusStats({
@@ -137,91 +129,10 @@ export default function AdvancedStatsDashboard({ className }: AdvancedStatsDashb
         }));
         
         setErrorStats(errorStatsData);
-
-        // 处理API Key排行数据  
-        const apiKeyRankingData: ApiKeyRanking[] = apiKeyTrend.topApiKeys.slice(0, 5).map((apiKeyInfo, index) => {
-          return {
-            name: apiKeyInfo.name || `Key-${index + 1}`,
-            requests: Math.floor(apiKeyInfo.usage / 1000) || 100, // 基于历史使用量估算请求数
-            tokens: apiKeyInfo.usage || Math.floor(Math.random() * 1000000) + 100000 // 使用历史Token数据
-          };
-        });
         
-        setApiKeyRanking(apiKeyRankingData);
         setIsRealData(true);
       } catch (error) {
         console.error('获取统计数据失败，使用模拟数据:', error);
-        
-        // Fallback to mock data
-        const stats: QuickStat[] = [
-        {
-          title: '总请求数',
-          value: '125.6K',
-          change: '+12.5%',
-          trend: 'up',
-          icon: BarChart3,
-          color: 'text-blue-600'
-        },
-        {
-          title: '活跃用户',
-          value: '1,234',
-          change: '+8.2%',
-          trend: 'up',
-          icon: Users,
-          color: 'text-green-600'
-        },
-        {
-          title: '总费用',
-          value: '$2,456.78',
-          change: '+15.3%',
-          trend: 'up',
-          icon: DollarSign,
-          color: 'text-yellow-600'
-        },
-        {
-          title: '平均响应时间',
-          value: '234ms',
-          change: '-5.1%',
-          trend: 'down',
-          icon: Activity,
-          color: 'text-purple-600'
-        },
-        {
-          title: 'Token使用量',
-          value: '45.2M',
-          change: '+18.7%',
-          trend: 'up',
-          icon: TrendingUp,
-          color: 'text-red-600'
-        },
-        {
-          title: '成功率',
-          value: '99.2%',
-          change: '+0.3%',
-          trend: 'up',
-          icon: PieChart,
-          color: 'text-indigo-600'
-        }
-        ];
-        
-        setQuickStats(stats);
-
-        // Mock error stats
-        setErrorStats([
-          { code: 'success', count: 125634, status: 'success', label: '成功' },
-          { code: 'rate_limited', count: 234, status: 'warning', label: '限流' },
-          { code: 'error', count: 12, status: 'error', label: '错误' },
-          { code: 'timeout', count: 8, status: 'error', label: '超时' }
-        ]);
-
-        // Mock API Key ranking data
-        setApiKeyRanking([
-          { name: 'API-Key-001', requests: 12543, tokens: 2456789 },
-          { name: 'API-Key-002', requests: 9876, tokens: 1987654 },
-          { name: 'API-Key-003', requests: 7654, tokens: 1543210 },
-          { name: 'API-Key-004', requests: 5432, tokens: 1098765 },
-          { name: 'API-Key-005', requests: 3210, tokens: 654321 }
-        ]);
         
         setIsRealData(false);
       } finally {

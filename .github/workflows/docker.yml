@@ -1,241 +1,70 @@
-name: 🐳 Docker Build and Push
+name: Docker Build
 
 on:
   push:
-    branches:
-      - main
-      - develop
-    paths:
-      - 'src/**'
-      - 'web/**'
-      - 'Dockerfile*'
-      - '.dockerignore'
+    branches: [main, develop]
+    paths: ['src/**', 'web/**', 'Dockerfile*']
   pull_request:
-    branches:
-      - main
-      - develop
-    paths:
-      - 'src/**'
-      - 'web/**'
-      - 'Dockerfile*'
-      - '.dockerignore'
-  workflow_dispatch:
-    inputs:
-      push_image:
-        description: 'Push image to registry'
-        required: false
-        type: boolean
-        default: true
+    branches: [main, develop]
+    paths: ['src/**', 'web/**', 'Dockerfile*']
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
-  ALIYUN_REGISTRY: crpi-j9ha7sxwhatgtvj4.cn-shenzhen.personal.cr.aliyuncs.com
-  ALIYUN_NAMESPACE: koala-ai
 
 jobs:
-  # ============================================================================
-  # Build Frontend for Docker
-  # ============================================================================
   build-frontend:
-    name: 🎨 Build Frontend for Docker
     runs-on: ubuntu-latest
-    
     steps:
-    - name: 📥 Checkout Code
-      uses: actions/checkout@v4
-      
-    - name: 📦 Setup Node.js
-      uses: actions/setup-node@v4
+    - uses: actions/checkout@v4
+    - uses: actions/setup-node@v4
       with:
         node-version: '20.x'
-        cache: 'npm'
+        cache: npm
         cache-dependency-path: 'web/package-lock.json'
-        
-    - name: 📋 Install Dependencies
+    - name: Install and build
       working-directory: ./web
-      run: npm ci --prefer-offline --no-audit
-      
-    - name: 🔧 Build Frontend
-      working-directory: ./web
-      run: npm run build
-      
-    - name: 📤 Upload Frontend Build
-      uses: actions/upload-artifact@v4
+      run: |
+        npm ci
+        npm run build
+    - uses: actions/upload-artifact@v4
       with:
-        name: frontend-docker-build
+        name: frontend-build
         path: web/dist/
-        retention-days: 1
 
-  # ============================================================================
-  # Docker Build and Test
-  # ============================================================================
   docker-build:
-    name: 🐳 Docker Build and Test
     runs-on: ubuntu-latest
-    needs: [build-frontend]
+    needs: build-frontend
     permissions:
       contents: read
       packages: write
-      security-events: write
-
     steps:
-    - name: 📥 Checkout Code
-      uses: actions/checkout@v4
-      
-    - name: 📥 Download Frontend Build
-      uses: actions/download-artifact@v4
+    - uses: actions/checkout@v4
+    - uses: actions/download-artifact@v4
       with:
-        name: frontend-docker-build
+        name: frontend-build
         path: web/dist/
-        
-    - name: 🔧 Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-      
-    - name: 🔐 Log in to GitHub Container Registry
+    - uses: docker/setup-buildx-action@v3
+    - uses: docker/login-action@v3
       if: github.event_name != 'pull_request'
-      uses: docker/login-action@v3
       with:
         registry: ${{ env.REGISTRY }}
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
-        
-    - name: 🔐 Log in to Aliyun Container Registry
-      if: github.event_name != 'pull_request' && secrets.ALIYUN_DOCKER_USERNAME != '' && secrets.ALIYUN_DOCKER_PASSWORD != ''
-      uses: docker/login-action@v3
-      with:
-        registry: ${{ env.ALIYUN_REGISTRY }}
-        username: ${{ secrets.ALIYUN_DOCKER_USERNAME }}
-        password: ${{ secrets.ALIYUN_DOCKER_PASSWORD }}
-        
-    - name: 🏷️ Extract Metadata
+    - uses: docker/metadata-action@v5
       id: meta
-      uses: docker/metadata-action@v5
       with:
         images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
         tags: |
           type=ref,event=branch
           type=ref,event=pr
-          type=sha,prefix={{branch}}-
           type=raw,value=latest,enable={{is_default_branch}}
-        labels: |
-          org.opencontainers.image.title=ClaudeCodeProxy
-          org.opencontainers.image.description=Enterprise-Grade AI API Proxy Management Platform
-          org.opencontainers.image.vendor=ClaudeCodeProxy Team
-          
-    - name: 🔨 Build Docker Image
-      uses: docker/build-push-action@v5
-      id: build
+    - uses: docker/build-push-action@v5
       with:
         context: .
         platforms: linux/amd64,linux/arm64
-        push: false
+        push: ${{ github.event_name != 'pull_request' }}
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
-        outputs: type=docker,dest=/tmp/image.tar
-        
-    - name: 🧪 Test Docker Image
-      run: |
-        # Load the image
-        docker load --input /tmp/image.tar
-        
-        # Get the first tag for testing
-        IMAGE_TAG=$(echo "${{ steps.meta.outputs.tags }}" | head -n1)
-        echo "Testing image: $IMAGE_TAG"
-        
-        # Run basic container tests
-        echo "🧪 Starting container health tests..."
-        
-        # Start container in background
-        CONTAINER_ID=$(docker run -d -p 8080:8080 "$IMAGE_TAG")
-        echo "Container ID: $CONTAINER_ID"
-        
-        # Wait for container to start
-        echo "⏳ Waiting for container to start..."
-        for i in {1..30}; do
-          if docker exec "$CONTAINER_ID" sh -c "curl -f http://localhost:8080/health" > /dev/null 2>&1; then
-            echo "✅ Container health check passed"
-            break
-          fi
-          sleep 2
-          if [ $i -eq 30 ]; then
-            echo "❌ Container health check failed"
-            docker logs "$CONTAINER_ID"
-            exit 1
-          fi
-        done
-        
-        # Test API endpoint
-        echo "🧪 Testing API endpoints..."
-        if docker exec "$CONTAINER_ID" sh -c "curl -f http://localhost:8080/scalar/v1" > /dev/null 2>&1; then
-          echo "✅ API documentation endpoint accessible"
-        else
-          echo "❌ API documentation endpoint failed"
-          docker logs "$CONTAINER_ID"
-          exit 1
-        fi
-        
-        # Check container logs for errors
-        echo "📋 Container logs:"
-        docker logs "$CONTAINER_ID" --tail 20
-        
-        # Cleanup
-        docker stop "$CONTAINER_ID"
-        docker rm "$CONTAINER_ID"
-        
-        echo "✅ Docker image tests completed successfully"
-        
-    - name: 🔍 Security Scan
-      uses: aquasecurity/trivy-action@master
-      with:
-        input: /tmp/image.tar
-        format: 'sarif'
-        output: 'trivy-results.sarif'
-      continue-on-error: true
-      
-    - name: 📤 Upload Security Scan Results
-      uses: github/codeql-action/upload-sarif@v3
-      if: always()
-      with:
-        sarif_file: 'trivy-results.sarif'
-      continue-on-error: true
-      
-    - name: 🚀 Push Docker Image
-      if: |
-        github.event_name != 'pull_request' && 
-        (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' || 
-         (github.event_name == 'workflow_dispatch' && github.event.inputs.push_image == 'true'))
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        platforms: linux/amd64,linux/arm64
-        push: true
-        tags: ${{ steps.meta.outputs.tags }}
-        labels: ${{ steps.meta.outputs.labels }}
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
-        
-    - name: 📋 Build Summary
-      run: |
-        echo "## 🐳 Docker Build Summary" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "**Image Tags:**" >> $GITHUB_STEP_SUMMARY
-        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-        echo "${{ steps.meta.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
-        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        
-        if [ "${{ github.event_name }}" != "pull_request" ] && \
-           [ "${{ github.ref }}" == "refs/heads/main" -o "${{ github.ref }}" == "refs/heads/develop" -o \
-             \( "${{ github.event_name }}" == "workflow_dispatch" -a "${{ github.event.inputs.push_image }}" == "true" \) ]; then
-          echo "✅ **Image pushed to registry**" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Pull command:**" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
-          echo "docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-        else
-          echo "ℹ️ **Image built but not pushed** (PR or manual run without push)" >> $GITHUB_STEP_SUMMARY
-        fi

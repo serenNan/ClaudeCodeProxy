@@ -103,12 +103,12 @@
   --input: oklch(0.22 0.006 0);
   --ring: oklch(0.48 0.012 0);
   
-  /* Chart colors - monochromatic gray scale for better consistency */
-  --chart-1: oklch(0.75 0.04 0);
-  --chart-2: oklch(0.65 0.06 0);
-  --chart-3: oklch(0.55 0.08 0);
-  --chart-4: oklch(0.45 0.10 0);
-  --chart-5: oklch(0.35 0.12 0);
+  /* Chart colors - vibrant colors for better visibility in dark mode */
+  --chart-1: oklch(0.7 0.15 260);  /* Blue */
+  --chart-2: oklch(0.65 0.18 142); /* Green */
+  --chart-3: oklch(0.68 0.20 60);  /* Orange/Yellow */
+  --chart-4: oklch(0.62 0.16 320); /* Purple */
+  --chart-5: oklch(0.66 0.17 15);  /* Red */
   
   /* Sidebar - refined gray hierarchy */
   --sidebar: oklch(0.10 0.004 0);

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Download, FileSpreadsheet, FileImage, FileText } from 'lucide-react';
+import { FileSpreadsheet, FileImage, FileText } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface ExportButtonProps {
@@ -38,12 +38,6 @@ export default function ExportButton({ data, filename = 'export', className }: E
     link.click();
   };
 
-  const exportToPng = async (elementId: string, filename: string) => {
-    // 这里需要实现截图功能，可以使用 html2canvas 库
-    // 暂时显示提示信息
-    alert('PNG导出功能开发中...');
-  };
-
   const handleExport = async () => {
     setIsExporting(true);
     
@@ -60,7 +54,7 @@ export default function ExportButton({ data, filename = 'export', className }: E
           exportToJson(data, filename);
           break;
         case 'png':
-          await exportToPng('chart-container', filename);
+          // await exportToPng('chart-container', filename);
           break;
       }
     } catch (error) {

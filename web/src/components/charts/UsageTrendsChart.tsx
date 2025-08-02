@@ -3,7 +3,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { TrendingUp, Calendar, BarChart3 } from 'lucide-react';
+import { TrendingUp, BarChart3 } from 'lucide-react';
 import { apiService, type TrendDataRequest, type TrendDataPoint } from '@/services/api';
 
 interface UsageTrendsChartProps {

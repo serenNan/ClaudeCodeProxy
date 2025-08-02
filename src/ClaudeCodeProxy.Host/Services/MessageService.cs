@@ -1,4 +1,5 @@
-﻿using ClaudeCodeProxy.Abstraction.Chats;
+﻿using ClaudeCodeProxy.Abstraction;
+using ClaudeCodeProxy.Abstraction.Chats;
 using ClaudeCodeProxy.Core.AI;
 using ClaudeCodeProxy.Host.Env;
 using ClaudeCodeProxy.Host.Extensions;
@@ -153,18 +154,19 @@ public partial class MessageService(
             };
 
             // 复制context的请求头
-            foreach (var header in httpContext.Request.Headers)
-            {
-                // 不要覆盖已有的Authorization和Content-Type头
-                if (header.Key.Equals("Authorization", StringComparison.OrdinalIgnoreCase) ||
-                    header.Key.Equals("Content-Type", StringComparison.OrdinalIgnoreCase) ||
-                    header.Key.Equals("Content-Length", StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-
-                headers[header.Key] = header.Value.ToString();
-            }
+            // foreach (var header in httpContext.Request.Headers)
+            // {
+            //     // 不要覆盖已有的Authorization和Content-Type头
+            //     if (header.Key.Equals("Authorization", StringComparison.OrdinalIgnoreCase) ||
+            //         header.Key.Equals("Content-Type", StringComparison.OrdinalIgnoreCase) ||
+            //         header.Key.Equals("Connection", StringComparison.OrdinalIgnoreCase) ||
+            //         header.Key.Equals("Content-Length", StringComparison.OrdinalIgnoreCase))
+            //     {
+            //         continue;
+            //     }
+            //
+            //     headers[header.Key] = header.Value.ToString();
+            // }
 
             headers["anthropic-beta"] = EnvHelper.BetaHeader;
 
@@ -283,6 +285,90 @@ public partial class MessageService(
     }
 
     /// <summary>
+    /// 处理系统提示词 - 如果不是真实的Claude Code请求，需要添加Claude Code系统提示词
+    /// </summary>
+    /// <param name="request">AnthropicInput请求</param>
+    /// <param name="httpContext">HTTP上下文</param>
+    private void ProcessSystemPrompts(AnthropicInput request, HttpContext httpContext)
+    {
+        // 判断是否是真实的Claude Code请求
+        var isRealClaudeCode = IsClaudeCodeRequest(httpContext);
+
+        // 如果不是真实的Claude Code请求，需要设置Claude Code系统提示词
+        if (!isRealClaudeCode)
+        {
+            var claudeCodePrompt = new AnthropicMessageContent
+            {
+                Type = "text",
+                Text = PromptConstant.ClaudeCodeSystemPrompt,
+                CacheControl = new AnthropicCacheControl { Type = "ephemeral" }
+            };
+
+            if (request.SystemCalculated != null)
+            {
+                if (request.System != null)
+                {
+                    // 字符串格式：转换为数组，Claude Code 提示词在第一位
+                    var userSystemPrompt = new AnthropicMessageContent
+                    {
+                        Type = "text",
+                        Text = request.System
+                    };
+
+                    // 如果用户的提示词与Claude Code提示词相同，只保留一个
+                    if (request.System.Trim() == PromptConstant.ClaudeCodeSystemPrompt)
+                    {
+                        request.Systems = new List<AnthropicMessageContent> { claudeCodePrompt };
+                    }
+                    else
+                    {
+                        request.Systems = new List<AnthropicMessageContent> { claudeCodePrompt, userSystemPrompt };
+                    }
+
+                    request.System = null;
+                }
+                else if (request.Systems != null)
+                {
+                    // 检查第一个元素是否是Claude Code系统提示词
+                    var firstItem = request.Systems.FirstOrDefault();
+                    var isFirstItemClaudeCode = firstItem != null &&
+                                                firstItem.Type == "text" &&
+                                                firstItem.Text == PromptConstant.ClaudeCodeSystemPrompt;
+
+                    if (!isFirstItemClaudeCode)
+                    {
+                        // 如果第一个不是Claude Code提示词，需要在开头插入
+                        // 同时检查数组中是否有其他位置包含Claude Code提示词，如果有则移除
+                        var filteredSystem = request.Systems
+                            .Where(item =>
+                                !(item != null && item.Type == "text" &&
+                                  item.Text == PromptConstant.ClaudeCodeSystemPrompt))
+                            .ToList();
+
+                        var newSystems = new List<AnthropicMessageContent> { claudeCodePrompt };
+                        newSystems.AddRange(filteredSystem);
+                        request.Systems = newSystems;
+                    }
+                }
+            }
+            else
+            {
+                // 用户没有传递system，需要添加Claude Code提示词
+                request.Systems = new List<AnthropicMessageContent> { claudeCodePrompt };
+            }
+
+            request.System = null;
+
+            request.Systems.Insert(0, new AnthropicMessageContent
+            {
+                Type = "text",
+                Text = PromptConstant.ClaudeCliSystemPrompt,
+                CacheControl = new AnthropicCacheControl { Type = "ephemeral" }
+            });
+        }
+    }
+
+    /// <summary>
     /// 处理Claude请求
     /// </summary>
     private async Task HandleClaudeAsync(
@@ -312,6 +398,9 @@ public partial class MessageService(
 
         var accessToken = await accountsService.GetValidAccessTokenAsync(account, cancellationToken);
 
+        // 处理系统提示词 - 如果不是真实的Claude Code请求，需要添加Claude Code系统提示词
+        ProcessSystemPrompts(request, httpContext);
+
         try
         {
             // 准备请求头和代理配置
@@ -321,19 +410,43 @@ public partial class MessageService(
                 { "anthropic-version", EnvHelper.ApiVersion }
             };
 
-            // 复制context的请求头
-            foreach (var header in httpContext.Request.Headers)
+            if (IsClaudeCodeRequest(httpContext))
             {
-                // 不要覆盖已有的Authorization和Content-Type头
-                if (header.Key.Equals("Authorization", StringComparison.OrdinalIgnoreCase) ||
-                    header.Key.Equals("Content-Type", StringComparison.OrdinalIgnoreCase) ||
-                    header.Key.Equals("Content-Length", StringComparison.OrdinalIgnoreCase))
+                // 复制context的请求头
+                foreach (var header in httpContext.Request.Headers)
                 {
-                    continue;
-                }
+                    // 不要覆盖已有的Authorization和Content-Type头
+                    if (header.Key.Equals("Authorization", StringComparison.OrdinalIgnoreCase) ||
+                        header.Key.Equals("Content-Type", StringComparison.OrdinalIgnoreCase) ||
+                        header.Key.Equals("Content-Length", StringComparison.OrdinalIgnoreCase) ||
+                        header.Key.Equals("x-api-key", StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
 
-                headers[header.Key] = header.Value.ToString();
+                    headers[header.Key] = header.Value.ToString();
+                }
             }
+            else
+            {
+                headers["User-Agent"] = "claude-cli/1.0.67 (external,cli)";
+                headers["Accept-Encoding"] = "gzip, deflate, br";
+                headers["Accept-Language"] = "*";
+                headers["X-Stainless-Retry-Count"] = "0";
+                headers["x-Stainless-Timeout"] = "60";
+                headers["X-Stainless-Lang"] = "js";
+                headers["X-Stainless-Package-Version"] = "0.55.1";
+                headers["X-Stainless-OS"] = "Windows";
+                headers["X-Stainless-Arch"] = "x64";
+                headers["X-Stainless-Runtime"] = "node";
+                headers["X-Stainless-Runtime-Version"] = "v22.15.0";
+                headers["anthropic-dangerous-direct-browser-access"] = "true";
+                headers["x-app"] = "cli";
+                headers["sec-fetch-mode"] = "cors";
+                headers["sec-fetch-site"] = "cross-site";
+                headers["sec-fetch-dest"] = "empty";
+            }
+
 
             headers["anthropic-beta"] = EnvHelper.BetaHeader;
 
@@ -480,5 +593,17 @@ public partial class MessageService(
         var cacheReadCost = cacheReadTokens * pricing.CacheRead;
 
         return inputCost + outputCost + cacheCreateCost + cacheReadCost;
+    }
+
+    /// <summary>
+    /// 判断当前请求是否Claude Code发起，如果是则需要提供默认的请求头
+    /// </summary>
+    /// <returns></returns>
+    private bool IsClaudeCodeRequest(HttpContext httpContext)
+    {
+        // 检查是否有特定的请求头或标识符来判断是否是Claude Code发起的请求
+        // 这里可以根据实际情况调整
+        return httpContext.Request.Headers.UserAgent.ToString()
+            .Contains("claude-cli", StringComparison.OrdinalIgnoreCase);
     }
 }

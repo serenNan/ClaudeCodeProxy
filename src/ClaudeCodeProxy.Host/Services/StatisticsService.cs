@@ -96,7 +96,40 @@ public class StatisticsService
         requestLog.CalculateTotalTokens();
         requestLog.CompleteRequest(DateTime.UtcNow, status, errorMessage);
 
+        // 同时更新 API Key 统计信息
+        // 无论成功还是失败都要增加使用次数，但只有成功才累加费用
+        await UpdateApiKeyStatisticsAsync(requestLog.ApiKeyId, status == "success" ? cost : 0, cancellationToken);
+
         await _context.SaveAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// 更新 API Key 统计信息
+    /// </summary>
+    public async Task UpdateApiKeyStatisticsAsync(
+        Guid apiKeyId,
+        decimal cost = 0,
+        CancellationToken cancellationToken = default)
+    {
+        var apiKey = await _context.ApiKeys
+            .FirstOrDefaultAsync(x => x.Id == apiKeyId, cancellationToken);
+
+        if (apiKey == null)
+        {
+            _logger.LogWarning("API Key with ID {ApiKeyId} not found", apiKeyId);
+            return;
+        }
+
+        // 增加使用次数
+        apiKey.TotalUsageCount++;
+        
+        // 累加总费用
+        apiKey.TotalCost += cost;
+        
+        // 更新最后使用时间
+        apiKey.LastUsedAt = DateTime.UtcNow;
+
+        // 注意：这里不调用 SaveAsync，因为会在 CompleteRequestLogAsync 中统一保存
     }
 
     /// <summary>
@@ -361,13 +394,13 @@ public class StatisticsService
         DateTime endDate,
         CancellationToken cancellationToken = default)
     {
-        var query = _context.RequestLogs
+        // 先获取聚合数据（不包含字符串格式化）
+        var aggregateData = await _context.RequestLogs
             .Where(x => x.RequestDate >= startDate && x.RequestDate <= endDate)
             .GroupBy(x => x.RequestDate)
-            .Select(g => new TrendDataPoint
+            .Select(g => new
             {
-                Date = g.Key.ToString("yyyy-MM-dd"),
-                Label = g.Key.ToString("MM/dd"),
+                RequestDate = g.Key,
                 InputTokens = g.Sum(x => (long)x.InputTokens),
                 OutputTokens = g.Sum(x => (long)x.OutputTokens),
                 CacheCreateTokens = g.Sum(x => (long)x.CacheCreateTokens),
@@ -375,9 +408,21 @@ public class StatisticsService
                 Requests = g.LongCount(),
                 Cost = g.Sum(x => x.Cost)
             })
-            .OrderBy(x => x.Date);
+            .OrderBy(x => x.RequestDate)
+            .ToListAsync(cancellationToken);
 
-        return await query.ToListAsync(cancellationToken);
+        // 在内存中进行字符串格式化
+        return aggregateData.Select(item => new TrendDataPoint
+        {
+            Date = item.RequestDate.ToString("yyyy-MM-dd"),
+            Label = item.RequestDate.ToString("MM/dd"),
+            InputTokens = item.InputTokens,
+            OutputTokens = item.OutputTokens,
+            CacheCreateTokens = item.CacheCreateTokens,
+            CacheReadTokens = item.CacheReadTokens,
+            Requests = item.Requests,
+            Cost = item.Cost
+        }).ToList();
     }
 
     /// <summary>
@@ -388,13 +433,14 @@ public class StatisticsService
         DateTime endDate,
         CancellationToken cancellationToken = default)
     {
-        var query = _context.RequestLogs
+        // 先获取聚合数据（不包含字符串格式化）
+        var aggregateData = await _context.RequestLogs
             .Where(x => x.RequestStartTime >= startDate && x.RequestStartTime <= endDate.AddDays(1))
             .GroupBy(x => new { x.RequestDate, x.RequestHour })
-            .Select(g => new TrendDataPoint
+            .Select(g => new
             {
-                Hour = g.Key.RequestDate.AddHours(g.Key.RequestHour).ToString("yyyy-MM-dd HH:mm:ss"),
-                Label = g.Key.RequestDate.AddHours(g.Key.RequestHour).ToString("MM/dd HH:00"),
+                RequestDate = g.Key.RequestDate,
+                RequestHour = g.Key.RequestHour,
                 InputTokens = g.Sum(x => (long)x.InputTokens),
                 OutputTokens = g.Sum(x => (long)x.OutputTokens),
                 CacheCreateTokens = g.Sum(x => (long)x.CacheCreateTokens),
@@ -402,9 +448,21 @@ public class StatisticsService
                 Requests = g.LongCount(),
                 Cost = g.Sum(x => x.Cost)
             })
-            .OrderBy(x => x.Hour);
+            .OrderBy(x => x.RequestDate).ThenBy(x => x.RequestHour)
+            .ToListAsync(cancellationToken);
 
-        return await query.ToListAsync(cancellationToken);
+        // 在内存中进行字符串格式化
+        return aggregateData.Select(item => new TrendDataPoint
+        {
+            Hour = item.RequestDate.AddHours(item.RequestHour).ToString("yyyy-MM-dd HH:mm:ss"),
+            Label = item.RequestDate.AddHours(item.RequestHour).ToString("MM/dd HH:00"),
+            InputTokens = item.InputTokens,
+            OutputTokens = item.OutputTokens,
+            CacheCreateTokens = item.CacheCreateTokens,
+            CacheReadTokens = item.CacheReadTokens,
+            Requests = item.Requests,
+            Cost = item.Cost
+        }).ToList();
     }
 
     /// <summary>

@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Legend } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { User, Users, TrendingUp } from 'lucide-react';
 import { apiService } from '@/services/api';
 
@@ -37,7 +36,7 @@ export default function UserProfileRadar({ className }: UserProfileRadarProps) {
               preset: 'last7days'
             }
           });
-          
+
           if (apiKeyTrend.topApiKeys.length > 0) {
             const keyNames = apiKeyTrend.topApiKeys.slice(0, 10).map(key => key.name);
             setAvailableApiKeys(keyNames);
@@ -77,16 +76,6 @@ export default function UserProfileRadar({ className }: UserProfileRadarProps) {
       try {
         setLoading(true);
 
-        // 获取API Keys趋势数据来分析用户画像
-        const apiKeyTrend = await apiService.getApiKeysTrend({
-          metric: 'tokens',
-          granularity: 'day',
-          dateFilter: {
-            type: 'preset',
-            preset: 'last30days'
-          }
-        });
-
         // 获取实时请求数据
         const realtimeData = await apiService.getRealtimeRequests(60); // 过去1小时
 
@@ -106,9 +95,9 @@ export default function UserProfileRadar({ className }: UserProfileRadarProps) {
           };
 
           // 为每个选中的API Key计算真实数据
-          selectedApiKeys.forEach((apiKeyName, index) => {
+          selectedApiKeys.forEach((apiKeyName) => {
             let value: number;
-            
+
             // 基于真实数据计算各项指标的相对得分
             switch (metric.metric) {
               case '请求频率':
@@ -118,7 +107,7 @@ export default function UserProfileRadar({ className }: UserProfileRadarProps) {
                   .filter(req => req.apiKeyName === apiKeyName).length;
                 value = Math.min(100, (apiKeyRequests / Math.max(1, avgRequests)) * 50);
                 break;
-                
+
               case 'Token使用量':
                 // 基于Token使用量
                 const totalTokens = realtimeData.recentRequests
@@ -127,7 +116,7 @@ export default function UserProfileRadar({ className }: UserProfileRadarProps) {
                 const avgTokens = realtimeData.stats.totalTokens / Math.max(1, availableApiKeys.length);
                 value = Math.min(100, (totalTokens / Math.max(1, avgTokens)) * 50);
                 break;
-                
+
               case '费用支出':
                 // 基于费用支出
                 const totalCost = realtimeData.recentRequests
@@ -135,18 +124,18 @@ export default function UserProfileRadar({ className }: UserProfileRadarProps) {
                   .reduce((sum, req) => sum + req.cost, 0);
                 value = Math.min(100, totalCost * 1000); // 按比例缩放
                 break;
-                
+
               case '响应时间':
                 // 基于平均响应时间（越低越好，所以取反）
                 const avgResponseTime = realtimeData.stats.averageResponseTimeMs;
                 value = Math.max(0, 100 - (avgResponseTime / 10));
                 break;
-                
+
               case '成功率':
                 // 基于成功率
                 value = realtimeData.stats.successRate;
                 break;
-                
+
               case '模型多样性':
                 // 基于使用的不同模型数量
                 const uniqueModels = new Set(
@@ -156,11 +145,11 @@ export default function UserProfileRadar({ className }: UserProfileRadarProps) {
                 ).size;
                 value = Math.min(100, uniqueModels * 25); // 每个模型25分
                 break;
-                
+
               default:
                 value = Math.random() * 100;
             }
-            
+
             dataPoint[apiKeyName] = Math.round(Math.max(0, Math.min(100, value)));
           });
 
@@ -170,7 +159,7 @@ export default function UserProfileRadar({ className }: UserProfileRadarProps) {
         setData(radarData);
       } catch (error) {
         console.error('获取雷达图数据失败，使用模拟数据:', error);
-        
+
         // Fallback to mock data
         const metrics = [
           { metric: '请求频率', fullMark: 100 },
@@ -187,7 +176,7 @@ export default function UserProfileRadar({ className }: UserProfileRadarProps) {
             fullMark: metric.fullMark
           };
 
-          selectedApiKeys.forEach((apiKey, index) => {
+          selectedApiKeys.forEach((apiKey) => {
             let value: number;
             switch (metric.metric) {
               case '请求频率':
@@ -211,7 +200,7 @@ export default function UserProfileRadar({ className }: UserProfileRadarProps) {
               default:
                 value = Math.random() * 100;
             }
-            
+
             dataPoint[apiKey] = Math.round(value);
           });
 
@@ -268,23 +257,22 @@ export default function UserProfileRadar({ className }: UserProfileRadarProps) {
         {/* API Key 选择器 */}
         <div className="mb-6">
           <div className="flex flex-wrap gap-2">
-            {availableApiKeys.map((apiKey, index) => (
+            {availableApiKeys.map((apiKey) => (
               <button
                 key={apiKey}
                 onClick={() => handleApiKeyToggle(apiKey)}
-                className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
-                  selectedApiKeys.includes(apiKey)
+                className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${selectedApiKeys.includes(apiKey)
                     ? `bg-blue-100 text-blue-800 border-2 border-blue-300`
                     : 'bg-gray-100 text-gray-600 border-2 border-transparent hover:bg-gray-200'
-                }`}
+                  }`}
                 style={{
-                  backgroundColor: selectedApiKeys.includes(apiKey) 
+                  backgroundColor: selectedApiKeys.includes(apiKey)
                     ? `${COLORS[selectedApiKeys.indexOf(apiKey)]}20`
                     : undefined,
-                  borderColor: selectedApiKeys.includes(apiKey) 
+                  borderColor: selectedApiKeys.includes(apiKey)
                     ? COLORS[selectedApiKeys.indexOf(apiKey)]
                     : undefined,
-                  color: selectedApiKeys.includes(apiKey) 
+                  color: selectedApiKeys.includes(apiKey)
                     ? COLORS[selectedApiKeys.indexOf(apiKey)]
                     : undefined
                 }}
@@ -343,13 +331,13 @@ export default function UserProfileRadar({ className }: UserProfileRadarProps) {
                   >
                     <div className="flex items-center justify-between mb-2">
                       <h4 className="font-medium text-sm">{apiKey}</h4>
-                      <TrendingUp 
-                        className="h-4 w-4" 
+                      <TrendingUp
+                        className="h-4 w-4"
                         style={{ color: COLORS[index] }}
                       />
                     </div>
                     <div className="text-center">
-                      <div 
+                      <div
                         className="text-2xl font-bold"
                         style={{ color: COLORS[index] }}
                       >
@@ -357,14 +345,13 @@ export default function UserProfileRadar({ className }: UserProfileRadarProps) {
                       </div>
                       <div className="text-xs text-muted-foreground">综合评分</div>
                     </div>
-                    
+
                     {/* 评分等级 */}
                     <div className="mt-2 text-center">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        score >= 80 ? 'bg-green-100 text-green-800' :
-                        score >= 60 ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-red-100 text-red-800'
-                      }`}>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${score >= 80 ? 'bg-green-100 text-green-800' :
+                          score >= 60 ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-red-100 text-red-800'
+                        }`}>
                         {score >= 80 ? '优秀' : score >= 60 ? '良好' : '待优化'}
                       </span>
                     </div>

@@ -436,7 +436,8 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
         // 根据API Key的服务类型过滤
         if (apiKey.IsClaude())
         {
-            query = query.Where(x => x.Platform == "claude" || x.Platform == "claude-console");
+            query = query.Where(x =>
+                x.Platform == "claude" || x.Platform == "claude-console" || x.Platform == "openai");
         }
         else if (apiKey.IsGemini())
         {
@@ -652,6 +653,13 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
 
             // 如果是Gemini账户
             if (account.Platform == "gemini" && !string.IsNullOrEmpty(account.ApiKey))
+            {
+                // 更新最后使用时间
+                await UpdateAccountLastUsedAsync(account.Id, cancellationToken);
+                return account.ApiKey;
+            }
+
+            if (account.Platform == "openai" && !string.IsNullOrEmpty(account.ApiKey))
             {
                 // 更新最后使用时间
                 await UpdateAccountLastUsedAsync(account.Id, cancellationToken);

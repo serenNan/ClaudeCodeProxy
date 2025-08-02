@@ -3,7 +3,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Ba
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { PieChart as PieChartIcon, BarChart3, Zap } from 'lucide-react';
+import { PieChart as PieChartIcon,  Zap } from 'lucide-react';
 import { apiService, type ModelStatistics, type DateFilterRequest } from '@/services/api';
 
 interface ModelDistributionChartProps {
@@ -160,12 +160,12 @@ export default function ModelDistributionChart({ className }: ModelDistributionC
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(1)}%`}
+                  label={({ name, percent }) => `${name} ${(percent ?? 0 * 100).toFixed(1)}%`}
                   outerRadius={80}
                   fill="#8884d8"
                   dataKey="value"
                 >
-                  {chartData.map((entry, index) => (
+                  {chartData.map((_, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
@@ -188,7 +188,7 @@ export default function ModelDistributionChart({ className }: ModelDistributionC
                 />
                 <Tooltip content={<CustomTooltip />} />
                 <Bar dataKey="value" fill="#8884d8">
-                  {chartData.map((entry, index) => (
+                  {chartData.map((_, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Bar>

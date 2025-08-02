@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { X, Plus } from 'lucide-react';
 import { apiService } from '@/services/api';
@@ -47,28 +46,10 @@ const AVAILABLE_SERVICES = [
   { value: 'all', label: '全部服务' }
 ];
 
-const AVAILABLE_MODELS = [
-  'claude-3-5-sonnet-20241022',
-  'claude-3-5-haiku-20241022',
-  'claude-3-opus-20240229',
-  'gemini-pro',
-  'gemini-pro-vision',
-  'gpt-4',
-  'gpt-4-turbo',
-  'gpt-3.5-turbo'
-];
-
-const AVAILABLE_CLIENTS = [
-  { id: 'web', name: 'Web 客户端', description: '网页界面' },
-  { id: 'api', name: 'API 客户端', description: 'REST API 访问' },
-  { id: 'cli', name: 'CLI 客户端', description: '命令行工具' },
-  { id: 'mobile', name: '移动客户端', description: '移动应用' }
-];
 
 export default function ApiKeyModal({ open, onClose, editingKey, onSuccess }: ApiKeyModalProps) {
   const [loading, setLoading] = useState(false);
   const [newTag, setNewTag] = useState('');
-  const [newModel, setNewModel] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const getInitialFormData = (editingKey?: ApiKey | null): FormData => {
@@ -126,7 +107,6 @@ export default function ApiKeyModal({ open, onClose, editingKey, onSuccess }: Ap
   useEffect(() => {
     setFormData(getInitialFormData(editingKey));
     setNewTag('');
-    setNewModel('');
     setErrors({});
   }, [editingKey, open]);
 
@@ -146,26 +126,6 @@ export default function ApiKeyModal({ open, onClose, editingKey, onSuccess }: Ap
 
   const removeTag = (index: number) => {
     updateFormData('tags', formData.tags.filter((_, i) => i !== index));
-  };
-
-  const addModel = () => {
-    if (newModel.trim() && !formData.restrictedModels.includes(newModel.trim())) {
-      updateFormData('restrictedModels', [...formData.restrictedModels, newModel.trim()]);
-      setNewModel('');
-    }
-  };
-
-  const removeModel = (index: number) => {
-    updateFormData('restrictedModels', formData.restrictedModels.filter((_, i) => i !== index));
-  };
-
-  const toggleClient = (clientId: string) => {
-    const currentClients = formData.allowedClients;
-    if (currentClients.includes(clientId)) {
-      updateFormData('allowedClients', currentClients.filter(id => id !== clientId));
-    } else {
-      updateFormData('allowedClients', [...currentClients, clientId]);
-    }
   };
 
   const validateForm = () => {

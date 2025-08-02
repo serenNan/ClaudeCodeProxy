@@ -89,7 +89,7 @@ public class OpenAIAnthropicChatCompletionsService
             {
                 hasStarted = true;
                 var messageStartEvent = CreateMessageStartEvent(messageId, input.Model);
-                yield return ("messageiinpinp",JsonSerializer.Serialize(messageStartEvent,ThorJsonSerializer.DefaultOptions), messageStartEvent);
+                yield return ("message_start",JsonSerializer.Serialize(messageStartEvent,ThorJsonSerializer.DefaultOptions), messageStartEvent);
             }
 
             if (openAIResponse.Choices is { Count: > 0 })

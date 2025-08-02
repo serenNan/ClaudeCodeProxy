@@ -23,76 +23,81 @@ import {
   YAxis, 
   CartesianGrid, 
   Tooltip, 
-  ResponsiveContainer,
-  BarChart,
-  Bar
+  ResponsiveContainer
 } from 'recharts';
 import { apiService } from '@/services/api';
 import type { DashboardResponse, CostDataResponse, UptimeResponse, TrendDataPoint } from '@/services/api';
-
-const generateMockTrendData = (): TrendDataPoint[] => {
-  const data: TrendDataPoint[] = [];
-  const today = new Date();
-  
-  for (let i = 6; i >= 0; i--) {
-    const date = new Date(today);
-    date.setDate(date.getDate() - i);
-    
-    const baseRequests = Math.floor(Math.random() * 500) + 200;
-    const inputTokens = baseRequests * (Math.floor(Math.random() * 800) + 500);
-    const outputTokens = baseRequests * (Math.floor(Math.random() * 400) + 200);
-    const cacheCreateTokens = Math.floor(inputTokens * 0.1);
-    const cacheReadTokens = Math.floor(inputTokens * 0.05);
-    
-    data.push({
-      date: date.toISOString().split('T')[0],
-      label: date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' }),
-      requests: baseRequests,
-      inputTokens,
-      outputTokens,
-      cacheCreateTokens,
-      cacheReadTokens,
-      cost: (inputTokens * 0.000015 + outputTokens * 0.000075) * (Math.random() * 0.3 + 0.85)
-    });
-  }
-  
-  return data;
-};
+import { useTheme } from '@/contexts/ThemeContext';
 
 export default function DashboardPage() {
+  const { actualTheme } = useTheme();
   const [dashboardData, setDashboardData] = useState<DashboardResponse | null>(null);
   const [costData, setCostData] = useState<CostDataResponse | null>(null);
   const [uptimeData, setUptimeData] = useState<UptimeResponse | null>(null);
   const [trendData, setTrendData] = useState<TrendDataPoint[]>([]);
+  const [trendError, setTrendError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // 主题感知的图表颜色
+  const chartColors = {
+    light: {
+      primary: '#8b5cf6',    // 紫色 - API调用
+      secondary: '#3b82f6',  // 蓝色 - 输入Token  
+      tertiary: '#10b981',   // 绿色 - 输出Token
+      quaternary: '#f59e0b', // 橙色 - 缓存创建Token
+      quinary: '#ef4444',    // 红色 - 缓存读取Token
+      accent: '#fbbf24',     // 黄色 - 费用
+      grid: '#e5e7eb',       // 网格线
+      text: '#6b7280'        // 文本
+    },
+    dark: {
+      primary: '#a855f7',    // 亮紫色 - API调用
+      secondary: '#60a5fa',  // 亮蓝色 - 输入Token
+      tertiary: '#34d399',   // 亮绿色 - 输出Token  
+      quaternary: '#fbbf24', // 亮橙色 - 缓存创建Token
+      quinary: '#f87171',    // 亮红色 - 缓存读取Token
+      accent: '#fde047',     // 亮黄色 - 费用
+      grid: '#374151',       // 网格线
+      text: '#9ca3af'        // 文本
+    }
+  };
+
+  const colors = chartColors[actualTheme];
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
         setError(null);
+        setTrendError(null);
         
-        const [dashboard, costs, uptime, trends] = await Promise.all([
+        // 分别处理核心数据和趋势数据
+        const [dashboard, costs, uptime] = await Promise.all([
           apiService.getDashboardData(),
           apiService.getCostData(),
           apiService.getSystemUptime(),
-          apiService.getTrendData({
-            granularity: 'day',
-            dateFilter: {
-              type: 'preset',
-              preset: 'last_7_days'
-            }
-          }).catch(error => {
-            console.warn('Failed to fetch trend data, using mock data:', error);
-            return generateMockTrendData();
-          })
         ]);
 
         setDashboardData(dashboard);
         setCostData(costs);
         setUptimeData(uptime);
-        setTrendData(trends);
+
+        // 单独尝试获取趋势数据
+        try {
+          const trends = await apiService.getTrendData({
+            granularity: 'day',
+            dateFilter: {
+              type: 'preset',
+              preset: 'last_7_days'
+            }
+          });
+          setTrendData(trends);
+        } catch (trendErr) {
+          console.error('Failed to fetch trend data:', trendErr);
+          setTrendError('趋势数据暂时无法获取，后端查询需要优化');
+          setTrendData([]);
+        }
       } catch (error) {
         console.error('Failed to fetch dashboard data:', error);
         setError('获取仪表板数据失败');
@@ -115,6 +120,17 @@ export default function DashboardPage() {
       return (num / 1000).toFixed(1) + 'K';
     }
     return num.toString();
+  };
+
+  const formatTokens = (num: number): string => {
+    if (num >= 1000000000) {
+      return (num / 1000000000).toFixed(2) + 'B';
+    } else if (num >= 1000000) {
+      return (num / 1000000).toFixed(1) + 'M';
+    } else if (num >= 1000) {
+      return (num / 1000).toFixed(1) + 'K';
+    }
+    return num.toLocaleString();
   };
 
   const formatRPM = (rpm: number): string => {
@@ -411,18 +427,35 @@ export default function DashboardPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="h-48">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={trendData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              {trendError ? (
+                <div className="h-48 flex items-center justify-center">
+                  <div className="text-center text-muted-foreground">
+                    <AlertCircle className="h-8 w-8 mx-auto mb-2" />
+                    <p className="text-sm">{trendError}</p>
+                    <p className="text-xs mt-1">显示其他统计数据</p>
+                  </div>
+                </div>
+              ) : trendData.length === 0 ? (
+                <div className="h-48 flex items-center justify-center">
+                  <div className="text-center text-muted-foreground">
+                    <BarChart3 className="h-8 w-8 mx-auto mb-2" />
+                    <p className="text-sm">暂无趋势数据</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="h-48">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={trendData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={colors.grid} />
                     <XAxis 
                       dataKey="label" 
-                      stroke="hsl(var(--muted-foreground))"
+                      stroke={colors.text}
                       fontSize={12}
                     />
                     <YAxis 
-                      stroke="hsl(var(--muted-foreground))"
+                      stroke={colors.text}
                       fontSize={12}
+                      tickFormatter={(value) => formatTokens(value)}
                     />
                     <Tooltip 
                       contentStyle={{
@@ -433,39 +466,58 @@ export default function DashboardPage() {
                       }}
                       formatter={(value: number, name: string) => [
                         name === 'requests' ? value.toLocaleString() : 
-                        name.includes('Tokens') ? `${(value / 1000).toFixed(1)}K` : value.toLocaleString(),
+                        name.includes('Tokens') ? formatTokens(value) : value.toLocaleString(),
                         name === 'requests' ? 'API 调用' :
                         name === 'inputTokens' ? '输入 Token' :
-                        name === 'outputTokens' ? '输出 Token' : name
+                        name === 'outputTokens' ? '输出 Token' :
+                        name === 'cacheCreateTokens' ? '缓存创建 Token' :
+                        name === 'cacheReadTokens' ? '缓存读取 Token' : name
                       ]}
                     />
                     <Area 
                       type="monotone" 
                       dataKey="requests" 
                       stackId="1"
-                      stroke="hsl(var(--primary))" 
-                      fill="hsl(var(--primary))" 
+                      stroke={colors.primary} 
+                      fill={colors.primary} 
                       fillOpacity={0.6}
                     />
                     <Area 
                       type="monotone" 
                       dataKey="inputTokens" 
                       stackId="2"
-                      stroke="#3b82f6" 
-                      fill="#3b82f6" 
+                      stroke={colors.secondary} 
+                      fill={colors.secondary} 
                       fillOpacity={0.6}
                     />
                     <Area 
                       type="monotone" 
                       dataKey="outputTokens" 
                       stackId="3"
-                      stroke="#10b981" 
-                      fill="#10b981" 
+                      stroke={colors.tertiary} 
+                      fill={colors.tertiary} 
                       fillOpacity={0.6}
                     />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
+                    <Area 
+                      type="monotone" 
+                      dataKey="cacheCreateTokens" 
+                      stackId="4"
+                      stroke={colors.quaternary} 
+                      fill={colors.quaternary} 
+                      fillOpacity={0.6}
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey="cacheReadTokens" 
+                      stackId="5"
+                      stroke={colors.quinary} 
+                      fill={colors.quinary} 
+                      fillOpacity={0.6}
+                    />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -481,17 +533,32 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                <div className="h-32">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={trendData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                {trendError ? (
+                  <div className="h-32 flex items-center justify-center">
+                    <div className="text-center text-muted-foreground">
+                      <AlertCircle className="h-6 w-6 mx-auto mb-1" />
+                      <p className="text-xs">费用趋势暂不可用</p>
+                    </div>
+                  </div>
+                ) : trendData.length === 0 ? (
+                  <div className="h-32 flex items-center justify-center">
+                    <div className="text-center text-muted-foreground">
+                      <Activity className="h-6 w-6 mx-auto mb-1" />
+                      <p className="text-xs">暂无费用数据</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="h-32">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={trendData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke={colors.grid} />
                       <XAxis 
                         dataKey="label" 
-                        stroke="hsl(var(--muted-foreground))"
+                        stroke={colors.text}
                         fontSize={10}
                       />
                       <YAxis 
-                        stroke="hsl(var(--muted-foreground))"
+                        stroke={colors.text}
                         fontSize={10}
                         tickFormatter={(value) => `$${value.toFixed(2)}`}
                       />
@@ -507,13 +574,14 @@ export default function DashboardPage() {
                       <Line 
                         type="monotone" 
                         dataKey="cost" 
-                        stroke="#f59e0b" 
+                        stroke={colors.accent} 
                         strokeWidth={2}
-                        dot={{ fill: '#f59e0b', strokeWidth: 2, r: 3 }}
+                        dot={{ fill: colors.accent, strokeWidth: 2, r: 3 }}
                       />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div className="flex justify-between">
                     <span>今日费用</span>

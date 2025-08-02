@@ -29,14 +29,14 @@ export default function RealTimePerformanceChart({ className }: RealTimePerforma
   const [avgTPM, setAvgTPM] = useState(0);
   const [maxRPM, setMaxRPM] = useState(0);
   const [maxTPM, setMaxTPM] = useState(0);
-  const intervalRef = useRef<NodeJS.Timeout>();
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const fetchPerformanceData = async () => {
     try {
       const dashboardData: DashboardResponse = await apiService.getDashboardData();
       const now = new Date();
       const timeStr = now.toLocaleTimeString();
-      
+
       const newDataPoint: PerformanceDataPoint = {
         time: timeStr,
         rpm: dashboardData.realtimeRPM,
@@ -62,7 +62,7 @@ export default function RealTimePerformanceChart({ className }: RealTimePerforma
         if (currentData.length > 0) {
           const rpms = currentData.map(d => d.rpm);
           const tpms = currentData.map(d => d.tpm);
-          
+
           setAvgRPM(rpms.reduce((sum, val) => sum + val, 0) / rpms.length);
           setAvgTPM(tpms.reduce((sum, val) => sum + val, 0) / tpms.length);
           setMaxRPM(Math.max(...rpms));
@@ -143,8 +143,8 @@ export default function RealTimePerformanceChart({ className }: RealTimePerforma
             <div className={`w-2 h-2 rounded-full ${isRunning ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`} />
           </div>
           <div className="flex items-center space-x-2">
-            <Select 
-              value={refreshInterval.toString()} 
+            <Select
+              value={refreshInterval.toString()}
               onValueChange={(value) => setRefreshInterval(parseInt(value))}
             >
               <SelectTrigger className="w-20">
@@ -158,11 +158,11 @@ export default function RealTimePerformanceChart({ className }: RealTimePerforma
                 <SelectItem value="30000">30秒</SelectItem>
               </SelectContent>
             </Select>
-            
+
             <Button variant="outline" size="sm" onClick={toggleRunning}>
               {isRunning ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
             </Button>
-            
+
             <Button variant="outline" size="sm" onClick={clearData}>
               <RotateCcw className="h-4 w-4" />
             </Button>
@@ -182,7 +182,7 @@ export default function RealTimePerformanceChart({ className }: RealTimePerforma
             </div>
             <div className="text-2xl font-bold text-blue-700">{formatValue(currentRPM)}</div>
           </div>
-          
+
           <div className="text-center p-3 bg-green-50 rounded-lg">
             <div className="flex items-center justify-center space-x-1 mb-1">
               <Zap className="h-4 w-4 text-green-600" />
@@ -190,7 +190,7 @@ export default function RealTimePerformanceChart({ className }: RealTimePerforma
             </div>
             <div className="text-2xl font-bold text-green-700">{formatValue(currentTPM, 0)}</div>
           </div>
-          
+
           <div className="text-center p-3 bg-purple-50 rounded-lg">
             <div className="flex items-center justify-center space-x-1 mb-1">
               <Activity className="h-4 w-4 text-purple-600" />
@@ -198,7 +198,7 @@ export default function RealTimePerformanceChart({ className }: RealTimePerforma
             </div>
             <div className="text-lg font-semibold text-purple-700">{formatValue(avgRPM)}</div>
           </div>
-          
+
           <div className="text-center p-3 bg-orange-50 rounded-lg">
             <div className="flex items-center justify-center space-x-1 mb-1">
               <Zap className="h-4 w-4 text-orange-600" />
@@ -212,20 +212,20 @@ export default function RealTimePerformanceChart({ className }: RealTimePerforma
         <ResponsiveContainer width="100%" height={320}>
           <LineChart data={data}>
             <CartesianGrid strokeDasharray="3 3" />
-            <XAxis 
-              dataKey="time" 
+            <XAxis
+              dataKey="time"
               fontSize={12}
               interval="preserveStartEnd"
               minTickGap={30}
             />
-            <YAxis 
+            <YAxis
               fontSize={12}
               domain={[0, yAxisMax]}
               tickFormatter={(value) => formatValue(value, 0)}
             />
             <Tooltip content={<CustomTooltip />} />
             <Legend />
-            
+
             {/* RPM 折线 */}
             <Line
               type="monotone"
@@ -236,7 +236,7 @@ export default function RealTimePerformanceChart({ className }: RealTimePerforma
               name="RPM"
               connectNulls={false}
             />
-            
+
             {/* TPM 折线 */}
             <Line
               type="monotone"
@@ -247,23 +247,23 @@ export default function RealTimePerformanceChart({ className }: RealTimePerforma
               name="TPM"
               connectNulls={false}
             />
-            
+
             {/* 平均线参考 */}
             {avgRPM > 0 && (
-              <ReferenceLine 
-                y={avgRPM} 
-                stroke="#3B82F6" 
-                strokeDasharray="5 5" 
-                label={{ value: `平均RPM: ${formatValue(avgRPM)}`, position: 'topRight' }}
+              <ReferenceLine
+                y={avgRPM}
+                stroke="#3B82F6"
+                strokeDasharray="5 5"
+                label={{ value: `平均RPM: ${formatValue(avgRPM)}`, position: 'top' }}
               />
             )}
-            
+
             {avgTPM > 0 && (
-              <ReferenceLine 
-                y={avgTPM} 
-                stroke="#10B981" 
-                strokeDasharray="5 5" 
-                label={{ value: `平均TPM: ${formatValue(avgTPM, 0)}`, position: 'bottomRight' }}
+              <ReferenceLine
+                y={avgTPM}
+                stroke="#10B981"
+                strokeDasharray="5 5"
+                label={{ value: `平均TPM: ${formatValue(avgTPM, 0)}`, position: 'bottom' }}
               />
             )}
           </LineChart>

@@ -1,5 +1,6 @@
 ﻿using System.Collections.Concurrent;
 using System.Net;
+using System.Net.Security;
 using ClaudeCodeProxy.Domain;
 
 namespace ClaudeCodeProxy.Core;
@@ -49,10 +50,11 @@ public static class HttpClientFactory
             var proxy = new HttpClientHandler()
             {
                 AllowAutoRedirect = true,
-                AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate,
-                UseCookies = true,
+                AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate |
+                                         DecompressionMethods.Brotli,
                 UseDefaultCredentials = false,
                 PreAuthenticate = false,
+                ServerCertificateCustomValidationCallback = (message, certificate2, arg3, arg4) => true,
                 MaxAutomaticRedirections = 3
             };
             if (config != null && !string.IsNullOrEmpty(config.Host) && config.Port > 0)
@@ -68,23 +70,45 @@ public static class HttpClientFactory
                 }
 
                 proxy.UseProxy = true;
+                var clients = new List<HttpClient>(PoolSize);
+
+                for (var i = 0; i < PoolSize; i++)
+                {
+                    clients.Add(new HttpClient(proxy)
+                    {
+                        Timeout = TimeSpan.FromMinutes(30)
+                    });
+                }
+
+                return clients;
             }
             else
             {
-                proxy.UseProxy = false;
-            }
+                var clients = new List<HttpClient>(PoolSize);
 
-            var clients = new List<HttpClient>(PoolSize);
-
-            for (var i = 0; i < PoolSize; i++)
-            {
-                clients.Add(new HttpClient(proxy)
+                for (var i = 0; i < PoolSize; i++)
                 {
-                    Timeout = TimeSpan.FromMinutes(30)
-                });
-            }
+                    clients.Add(new HttpClient(new SocketsHttpHandler()
+                    {
+                        AllowAutoRedirect = true,
+                        AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate |
+                                                 DecompressionMethods.Brotli,
+                        PreAuthenticate = false,
+                        // 不要验证ssl
+                        SslOptions = new SslClientAuthenticationOptions()
+                        {
+                            RemoteCertificateValidationCallback = (message, certificate2, arg3, arg4) => true
+                        },
+                        EnableMultipleHttp2Connections = true,
+                        MaxAutomaticRedirections = 3
+                    })
+                    {
+                        Timeout = TimeSpan.FromMinutes(30)
+                    });
+                }
 
-            return clients;
+                return clients;
+            }
         })).Value[new Random().Next(0, PoolSize)];
     }
 }

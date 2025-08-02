@@ -26,7 +26,7 @@ export default function ApiKeyUsageChart({ className }: ApiKeyUsageChartProps) {
   const fetchApiKeysTrend = async () => {
     try {
       setLoading(true);
-      
+
       const request: ApiKeysTrendRequest = {
         metric,
         granularity,
@@ -60,20 +60,20 @@ export default function ApiKeyUsageChart({ className }: ApiKeyUsageChartProps) {
 
   const getChartData = () => {
     if (!data?.data) return [];
-    
+
     return data.data.map(item => {
       const result: any = {
         name: item.label || item.date || item.hour,
         total: 0
       };
-      
+
       // 为每个API Key添加数据
-      Object.entries(item.apiKeys).forEach(([apiKeyId, keyData]) => {
+      Object.entries(item.apiKeys).forEach(([_, keyData]: any) => {
         const value = metric === 'requests' ? keyData.requests : keyData.tokens;
         result[keyData.name] = value;
         result.total += value;
       });
-      
+
       return result;
     });
   };
@@ -128,7 +128,7 @@ export default function ApiKeyUsageChart({ className }: ApiKeyUsageChartProps) {
                 <SelectItem value="line">折线图</SelectItem>
               </SelectContent>
             </Select>
-            
+
             <Select value={metric} onValueChange={(value: 'requests' | 'tokens') => setMetric(value)}>
               <SelectTrigger className="w-20">
                 <SelectValue />
@@ -138,7 +138,7 @@ export default function ApiKeyUsageChart({ className }: ApiKeyUsageChartProps) {
                 <SelectItem value="tokens">Token数</SelectItem>
               </SelectContent>
             </Select>
-            
+
             <Select value={granularity} onValueChange={(value: 'day' | 'hour') => setGranularity(value)}>
               <SelectTrigger className="w-20">
                 <SelectValue />
@@ -148,7 +148,7 @@ export default function ApiKeyUsageChart({ className }: ApiKeyUsageChartProps) {
                 <SelectItem value="hour">按小时</SelectItem>
               </SelectContent>
             </Select>
-            
+
             <Select value={dateRange} onValueChange={setDateRange}>
               <SelectTrigger className="w-20">
                 <SelectValue />
@@ -159,7 +159,7 @@ export default function ApiKeyUsageChart({ className }: ApiKeyUsageChartProps) {
                 <SelectItem value="30days">30天</SelectItem>
               </SelectContent>
             </Select>
-            
+
             <Button variant="outline" size="sm" onClick={fetchApiKeysTrend}>
               <TrendingUp className="h-4 w-4" />
             </Button>
@@ -192,10 +192,10 @@ export default function ApiKeyUsageChart({ className }: ApiKeyUsageChartProps) {
                     // 找到对应的API Key名称
                     const sampleData = chartData.find(d => Object.keys(d).some(k => k !== 'name' && k !== 'total'));
                     const keyName = sampleData ? Object.keys(sampleData).find(k => k !== 'name' && k !== 'total') : `API Key ${index + 1}`;
-                    
+
                     return (
                       <Line
-                        key={apiKeyId}
+                        key={apiKeyId.id}
                         type="monotone"
                         dataKey={keyName || `key_${index}`}
                         stroke={COLORS[index % COLORS.length]}
@@ -218,10 +218,10 @@ export default function ApiKeyUsageChart({ className }: ApiKeyUsageChartProps) {
                       const sampleData = chartData.find(d => Object.keys(d).some(k => k !== 'name' && k !== 'total'));
                       const keyNames = sampleData ? Object.keys(sampleData).filter(k => k !== 'name' && k !== 'total') : [];
                       const keyName = keyNames[index] || `API Key ${index + 1}`;
-                      
+
                       return (
                         <Bar
-                          key={apiKeyId}
+                          key={apiKeyId.id}
                           dataKey={keyName}
                           stackId="1"
                           fill={COLORS[index % COLORS.length]}
@@ -236,7 +236,7 @@ export default function ApiKeyUsageChart({ className }: ApiKeyUsageChartProps) {
                 </BarChart>
               )}
             </ResponsiveContainer>
-            
+
             {/* 统计摘要 */}
             <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="text-center">

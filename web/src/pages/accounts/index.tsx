@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Users, Plus, Edit2, Trash2, Calendar, Activity, Server, Globe, Key, Settings } from 'lucide-react';
+import { Users, Plus, Edit2, Trash2, Calendar, Activity, Server, Globe, Key, Settings, Zap } from 'lucide-react';
 import { apiService } from '@/services/api';
 import type { Account } from '@/services/api';
 import { showToast } from '@/utils/toast';
@@ -14,7 +14,7 @@ const PLATFORMS = [
   { value: 'claude', label: 'Claude', icon: Users, color: 'bg-primary' },
   { value: 'claude-console', label: 'Claude Console', icon: Server, color: 'bg-secondary' },
   { value: 'gemini', label: 'Gemini', icon: Globe, color: 'bg-muted' },
-  { value: 'openai', label: 'OpenAI', icon: Key, color: 'bg-accent' },
+  { value: 'openai', label: 'OpenAI', icon: Zap, color: 'bg-slate-500' },
 ];
 
 export default function AccountsPage() {
@@ -224,6 +224,37 @@ export default function AccountsPage() {
                         {account.projectId}
                       </p>
                     </div>
+                  )}
+
+                  {/* OpenAI 特定信息 */}
+                  {account.platform === 'openai' && (
+                    <>
+                      {account.apiKey && (
+                        <div>
+                          <p className="text-sm font-medium text-foreground mb-1 flex items-center gap-1">
+                            <Key className="w-4 h-4" />
+                            API Key
+                          </p>
+                          <p className="font-mono text-sm bg-muted p-2 rounded break-all">
+                            {account.apiKey.length > 50 
+                              ? `${account.apiKey.substring(0, 20)}...${account.apiKey.substring(account.apiKey.length - 20)}`
+                              : account.apiKey
+                            }
+                          </p>
+                        </div>
+                      )}
+                      {account.baseUrl && (
+                        <div>
+                          <p className="text-sm font-medium text-foreground mb-1 flex items-center gap-1">
+                            <Server className="w-4 h-4" />
+                            Base URL
+                          </p>
+                          <p className="text-sm bg-muted p-2 rounded break-all">
+                            {account.baseUrl}
+                          </p>
+                        </div>
+                      )}
+                    </>
                   )}
 
                   {/* 代理信息 */}

@@ -13,6 +13,7 @@ using Making.AspNetCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Sqlite;
 using Scalar.AspNetCore;
+using Serilog;
 
 namespace ClaudeCodeProxy.Host;
 
@@ -25,9 +26,9 @@ public static class Program
 
         // 配置服务
         ConfigureServices(builder.Services, builder.Configuration);
+        ConfigureSerilog(builder.Services, builder.Configuration);
 
         var app = builder.Build();
-
         // 配置中间件管道
         ConfigureMiddleware(app);
 
@@ -54,6 +55,23 @@ public static class Program
 
         // 执行数据库迁移
         await dbContext.MigrateAsync();
+    }
+
+    private static void ConfigureSerilog(IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddSerilog();
+
+        Log.Logger = new LoggerConfiguration()
+            .ReadFrom.Configuration(configuration)
+            .Enrich.FromLogContext()
+            .WriteTo.Console()
+            .CreateLogger();
+
+        services.AddLogging(loggingBuilder =>
+        {
+            loggingBuilder.ClearProviders();
+            loggingBuilder.AddSerilog(Log.Logger, dispose: true);
+        });
     }
 
     private static void ConfigureServices(IServiceCollection services, IConfiguration configuration)

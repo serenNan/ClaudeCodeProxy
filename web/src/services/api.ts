@@ -152,7 +152,7 @@ interface ProxyConfig {
 interface Account {
   id: string;
   name: string;
-  platform: 'claude' | 'claude-console' | 'gemini';
+  platform: 'claude' | 'claude-console' | 'gemini' | 'openai';
   sessionKey?: string;
   isEnabled: boolean;
   lastUsedAt?: string;
@@ -164,6 +164,7 @@ interface Account {
   priority?: number;
   apiUrl?: string;
   apiKey?: string;
+  baseUrl?: string;
   supportedModels?: Record<string, string>;
   userAgent?: string;
   rateLimitDuration?: number;
@@ -431,7 +432,7 @@ class ApiService {
     claudeAiOauth?: any;
     geminiOauth?: any;
   }): Promise<Account> {
-    return this.request<Account>('/accounts', {
+    return this.request<Account>('/accounts/openai', {
       method: 'POST',
       body: JSON.stringify(data),
     });
