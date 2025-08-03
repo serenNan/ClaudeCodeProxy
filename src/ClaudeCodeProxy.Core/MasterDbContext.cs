@@ -483,7 +483,7 @@ public class MasterDbContext(DbContextOptions<MasterDbContext> options) : DbCont
     private void ProcessAuditableEntities()
     {
         var currentUser = string.Empty;
-        var currentTime = DateTime.UtcNow;
+        var currentTime = DateTime.Now;
 
         var auditableEntries = ChangeTracker.Entries<IAuditable>()
             .Where(e => e.State == EntityState.Added || e.State == EntityState.Modified);
@@ -492,20 +492,20 @@ public class MasterDbContext(DbContextOptions<MasterDbContext> options) : DbCont
         {
             var entity = entry.Entity;
 
-            if (entry.State == EntityState.Added)
+            switch (entry.State)
             {
-                entity.CreatedAt = currentTime;
-                entity.CreatedBy = currentUser;
-            }
+                case EntityState.Added:
+                    entity.CreatedAt = currentTime;
+                    entity.CreatedBy = currentUser;
+                    break;
+                case EntityState.Modified:
+                    entity.ModifiedAt = currentTime;
+                    entity.ModifiedBy = currentUser;
 
-            if (entry.State == EntityState.Modified)
-            {
-                entity.ModifiedAt = currentTime;
-                entity.ModifiedBy = currentUser;
-
-                // 确保创建时间和创建者不被修改
-                entry.Property(nameof(entity.CreatedAt)).IsModified = false;
-                entry.Property(nameof(entity.CreatedBy)).IsModified = false;
+                    // 确保创建时间和创建者不被修改
+                    entry.Property(nameof(entity.CreatedAt)).IsModified = false;
+                    entry.Property(nameof(entity.CreatedBy)).IsModified = false;
+                    break;
             }
         }
     }
