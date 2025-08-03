@@ -7,6 +7,7 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{F687CBD4-FD33-47BD-B950-2ED51AA35576}"
 	ProjectSection(SolutionItems) = preProject
 		docker-compose.yaml = docker-compose.yaml
+		Directory.Build.props = Directory.Build.props
 	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ClaudeCodeProxy.Core", "src\ClaudeCodeProxy.Core\ClaudeCodeProxy.Core.csproj", "{8F2FFD27-22BC-4762-A0F6-A404C1A58202}"

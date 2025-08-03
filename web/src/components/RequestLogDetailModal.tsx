@@ -117,7 +117,7 @@ export default function RequestLogDetailModal({ logId, onClose }: RequestLogDeta
       case 'timeout':
         return <Clock className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />;
       default:
-        return <AlertTriangle className="h-5 w-5 text-gray-600 dark:text-gray-400" />;
+        return <AlertTriangle className="h-5 w-5 text-muted-foreground" />;
     }
   };
 
@@ -130,7 +130,7 @@ export default function RequestLogDetailModal({ logId, onClose }: RequestLogDeta
       case 'timeout':
         return 'bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-400 dark:border-yellow-800';
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600';
+        return 'bg-muted text-muted-foreground border-border';
     }
   };
 
@@ -146,7 +146,7 @@ export default function RequestLogDetailModal({ logId, onClose }: RequestLogDeta
     >
       {loading && (
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-600 dark:border-gray-400"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-border"></div>
         </div>
       )}
 
@@ -164,26 +164,26 @@ export default function RequestLogDetailModal({ logId, onClose }: RequestLogDeta
           {/* Basic Info */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold border-b border-gray-200 dark:border-gray-700 pb-2 text-gray-900 dark:text-gray-100">基本信息</h3>
+              <h3 className="text-lg font-semibold border-b border-border pb-2 text-foreground">基本信息</h3>
               
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">请求ID:</span>
+                  <span className="text-sm text-muted-foreground">请求ID:</span>
                   <div className="flex items-center space-x-2">
-                    <span className="font-mono text-sm text-gray-900 dark:text-gray-100">{logDetail.requestId || '-'}</span>
+                    <span className="font-mono text-sm text-foreground">{logDetail.requestId || '-'}</span>
                     {logDetail.requestId && (
                       <button
                         onClick={() => copyToClipboard(logDetail.requestId!)}
-                        className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
+                        className="p-1 hover:bg-muted rounded transition-colors"
                       >
-                        <Copy className="h-3 w-3 text-gray-600 dark:text-gray-400" />
+                        <Copy className="h-3 w-3 text-muted-foreground" />
                       </button>
                     )}
                   </div>
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">状态:</span>
+                  <span className="text-sm text-muted-foreground">状态:</span>
                   <div className="flex items-center space-x-2">
                     {getStatusIcon(logDetail.status)}
                     <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(logDetail.status)}`}>
@@ -193,52 +193,52 @@ export default function RequestLogDetailModal({ logId, onClose }: RequestLogDeta
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">HTTP状态码:</span>
-                  <span className="font-mono text-sm text-gray-900 dark:text-gray-100">{logDetail.httpStatusCode || '-'}</span>
+                  <span className="text-sm text-muted-foreground">HTTP状态码:</span>
+                  <span className="font-mono text-sm text-foreground">{logDetail.httpStatusCode || '-'}</span>
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">响应时间:</span>
-                  <span className="font-mono text-sm text-gray-900 dark:text-gray-100">{formatDuration(logDetail.durationMs)}</span>
+                  <span className="text-sm text-muted-foreground">响应时间:</span>
+                  <span className="font-mono text-sm text-foreground">{formatDuration(logDetail.durationMs)}</span>
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">费用:</span>
+                  <span className="text-sm text-muted-foreground">费用:</span>
                   <span className="font-mono text-sm text-green-600 dark:text-green-400">{formatCost(logDetail.cost)}</span>
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">流式响应:</span>
-                  <span className="text-sm text-gray-900 dark:text-gray-100">{logDetail.isStreaming ? '是' : '否'}</span>
+                  <span className="text-sm text-muted-foreground">流式响应:</span>
+                  <span className="text-sm text-foreground">{logDetail.isStreaming ? '是' : '否'}</span>
                 </div>
               </div>
             </div>
 
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold border-b border-gray-200 dark:border-gray-700 pb-2 text-gray-900 dark:text-gray-100">时间信息</h3>
+              <h3 className="text-lg font-semibold border-b border-border pb-2 text-foreground">时间信息</h3>
               
               <div className="space-y-3">
                 <div className="flex items-start justify-between">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">请求开始:</span>
-                  <span className="font-mono text-sm text-right text-gray-900 dark:text-gray-100">{formatTime(logDetail.requestStartTime)}</span>
+                  <span className="text-sm text-muted-foreground">请求开始:</span>
+                  <span className="font-mono text-sm text-right text-foreground">{formatTime(logDetail.requestStartTime)}</span>
                 </div>
 
                 <div className="flex items-start justify-between">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">请求结束:</span>
-                  <span className="font-mono text-sm text-right text-gray-900 dark:text-gray-100">
+                  <span className="text-sm text-muted-foreground">请求结束:</span>
+                  <span className="font-mono text-sm text-right text-foreground">
                     {logDetail.requestEndTime ? formatTime(logDetail.requestEndTime) : '-'}
                   </span>
                 </div>
 
                 <div className="flex items-start justify-between">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">创建时间:</span>
-                  <span className="font-mono text-sm text-right text-gray-900 dark:text-gray-100">{formatTime(logDetail.createdAt)}</span>
+                  <span className="text-sm text-muted-foreground">创建时间:</span>
+                  <span className="font-mono text-sm text-right text-foreground">{formatTime(logDetail.createdAt)}</span>
                 </div>
 
                 {logDetail.updatedAt && (
                   <div className="flex items-start justify-between">
-                    <span className="text-sm text-gray-600 dark:text-gray-400">更新时间:</span>
-                    <span className="font-mono text-sm text-right text-gray-900 dark:text-gray-100">{formatTime(logDetail.updatedAt)}</span>
+                    <span className="text-sm text-muted-foreground">更新时间:</span>
+                    <span className="font-mono text-sm text-right text-foreground">{formatTime(logDetail.updatedAt)}</span>
                   </div>
                 )}
               </div>
@@ -248,26 +248,26 @@ export default function RequestLogDetailModal({ logId, onClose }: RequestLogDeta
           {/* API Key & Account Info */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold border-b border-gray-200 dark:border-gray-700 pb-2 flex items-center space-x-2 text-gray-900 dark:text-gray-100">
+              <h3 className="text-lg font-semibold border-b border-border pb-2 flex items-center space-x-2 text-foreground">
                 <Key className="h-5 w-5" />
                 <span>API Key信息</span>
               </h3>
               
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">API Key名称:</span>
-                  <span className="font-medium text-sm text-gray-900 dark:text-gray-100">{logDetail.apiKeyName}</span>
+                  <span className="text-sm text-muted-foreground">API Key名称:</span>
+                  <span className="font-medium text-sm text-foreground">{logDetail.apiKeyName}</span>
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">API Key ID:</span>
+                  <span className="text-sm text-muted-foreground">API Key ID:</span>
                   <div className="flex items-center space-x-2">
-                    <span className="font-mono text-sm truncate max-w-32 text-gray-900 dark:text-gray-100">{logDetail.apiKeyId}</span>
+                    <span className="font-mono text-sm truncate max-w-32 text-foreground">{logDetail.apiKeyId}</span>
                     <button
                       onClick={() => copyToClipboard(logDetail.apiKeyId)}
-                      className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
+                      className="p-1 hover:bg-muted rounded transition-colors"
                     >
-                      <Copy className="h-3 w-3 text-gray-600 dark:text-gray-400" />
+                      <Copy className="h-3 w-3 text-muted-foreground" />
                     </button>
                   </div>
                 </div>
@@ -275,27 +275,27 @@ export default function RequestLogDetailModal({ logId, onClose }: RequestLogDeta
             </div>
 
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold border-b border-gray-200 dark:border-gray-700 pb-2 flex items-center space-x-2 text-gray-900 dark:text-gray-100">
+              <h3 className="text-lg font-semibold border-b border-border pb-2 flex items-center space-x-2 text-foreground">
                 <User className="h-5 w-5" />
                 <span>账户信息</span>
               </h3>
               
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">账户名称:</span>
-                  <span className="font-medium text-sm text-gray-900 dark:text-gray-100">{logDetail.accountName || '-'}</span>
+                  <span className="text-sm text-muted-foreground">账户名称:</span>
+                  <span className="font-medium text-sm text-foreground">{logDetail.accountName || '-'}</span>
                 </div>
 
                 {logDetail.accountId && (
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600 dark:text-gray-400">账户ID:</span>
+                    <span className="text-sm text-muted-foreground">账户ID:</span>
                     <div className="flex items-center space-x-2">
-                      <span className="font-mono text-sm truncate max-w-32 text-gray-900 dark:text-gray-100">{logDetail.accountId}</span>
+                      <span className="font-mono text-sm truncate max-w-32 text-foreground">{logDetail.accountId}</span>
                       <button
                         onClick={() => copyToClipboard(logDetail.accountId!)}
-                        className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
+                        className="p-1 hover:bg-muted rounded transition-colors"
                       >
-                        <Copy className="h-3 w-3 text-gray-600 dark:text-gray-400" />
+                        <Copy className="h-3 w-3 text-muted-foreground" />
                       </button>
                     </div>
                   </div>
@@ -307,20 +307,20 @@ export default function RequestLogDetailModal({ logId, onClose }: RequestLogDeta
           {/* Model & Platform Info */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold border-b border-gray-200 dark:border-gray-700 pb-2 flex items-center space-x-2 text-gray-900 dark:text-gray-100">
+              <h3 className="text-lg font-semibold border-b border-border pb-2 flex items-center space-x-2 text-foreground">
                 <Cpu className="h-5 w-5" />
                 <span>模型信息</span>
               </h3>
               
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">模型名称:</span>
-                  <span className="font-mono text-sm text-gray-900 dark:text-gray-100">{logDetail.model}</span>
+                  <span className="text-sm text-muted-foreground">模型名称:</span>
+                  <span className="font-mono text-sm text-foreground">{logDetail.model}</span>
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">平台:</span>
-                  <span className="px-2 py-1 bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300 rounded-full text-xs font-medium capitalize">
+                  <span className="text-sm text-muted-foreground">平台:</span>
+                  <span className="px-2 py-1 bg-muted text-muted-foreground rounded-full text-xs font-medium capitalize">
                     {logDetail.platform}
                   </span>
                 </div>
@@ -328,22 +328,22 @@ export default function RequestLogDetailModal({ logId, onClose }: RequestLogDeta
             </div>
 
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold border-b border-gray-200 dark:border-gray-700 pb-2 flex items-center space-x-2 text-gray-900 dark:text-gray-100">
+              <h3 className="text-lg font-semibold border-b border-border pb-2 flex items-center space-x-2 text-foreground">
                 <Globe className="h-5 w-5" />
                 <span>客户端信息</span>
               </h3>
               
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">客户端IP:</span>
-                  <span className="font-mono text-sm text-gray-900 dark:text-gray-100">{logDetail.clientIp || '-'}</span>
+                  <span className="text-sm text-muted-foreground">客户端IP:</span>
+                  <span className="font-mono text-sm text-foreground">{logDetail.clientIp || '-'}</span>
                 </div>
 
                 {logDetail.userAgent && (
                   <div className="space-y-1">
-                    <span className="text-sm text-gray-600 dark:text-gray-400">User-Agent:</span>
-                    <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-2 max-h-16 overflow-y-auto">
-                      <span className="font-mono text-xs text-gray-700 dark:text-gray-300 break-all">
+                    <span className="text-sm text-muted-foreground">User-Agent:</span>
+                    <div className="bg-muted rounded-lg p-2 max-h-16 overflow-y-auto">
+                      <span className="font-mono text-xs text-muted-foreground break-all">
                         {logDetail.userAgent}
                       </span>
                     </div>
@@ -355,32 +355,32 @@ export default function RequestLogDetailModal({ logId, onClose }: RequestLogDeta
 
           {/* Token Usage */}
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold border-b border-gray-200 dark:border-gray-700 pb-2 text-gray-900 dark:text-gray-100">Token使用情况</h3>
+            <h3 className="text-lg font-semibold border-b border-border pb-2 text-foreground">Token使用情况</h3>
             
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-              <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 text-center border border-gray-200 dark:border-gray-700">
-                <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">输入Token</div>
-                <div className="text-xl font-bold text-gray-900 dark:text-gray-100">{logDetail.inputTokens.toLocaleString()}</div>
+              <div className="bg-muted rounded-lg p-3 text-center border border-border">
+                <div className="text-sm text-muted-foreground mb-1">输入Token</div>
+                <div className="text-xl font-bold text-foreground">{logDetail.inputTokens.toLocaleString()}</div>
               </div>
               
-              <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 text-center border border-gray-200 dark:border-gray-700">
-                <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">输出Token</div>
-                <div className="text-xl font-bold text-gray-900 dark:text-gray-100">{logDetail.outputTokens.toLocaleString()}</div>
+              <div className="bg-muted rounded-lg p-3 text-center border border-border">
+                <div className="text-sm text-muted-foreground mb-1">输出Token</div>
+                <div className="text-xl font-bold text-foreground">{logDetail.outputTokens.toLocaleString()}</div>
               </div>
               
-              <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 text-center border border-gray-200 dark:border-gray-700">
-                <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">缓存创建</div>
-                <div className="text-xl font-bold text-gray-900 dark:text-gray-100">{logDetail.cacheCreateTokens.toLocaleString()}</div>
+              <div className="bg-muted rounded-lg p-3 text-center border border-border">
+                <div className="text-sm text-muted-foreground mb-1">缓存创建</div>
+                <div className="text-xl font-bold text-foreground">{logDetail.cacheCreateTokens.toLocaleString()}</div>
               </div>
               
-              <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 text-center border border-gray-200 dark:border-gray-700">
-                <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">缓存读取</div>
-                <div className="text-xl font-bold text-gray-900 dark:text-gray-100">{logDetail.cacheReadTokens.toLocaleString()}</div>
+              <div className="bg-muted rounded-lg p-3 text-center border border-border">
+                <div className="text-sm text-muted-foreground mb-1">缓存读取</div>
+                <div className="text-xl font-bold text-foreground">{logDetail.cacheReadTokens.toLocaleString()}</div>
               </div>
               
-              <div className="bg-gray-100 dark:bg-gray-700 rounded-lg p-3 text-center border border-gray-300 dark:border-gray-600">
-                <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">总Token数</div>
-                <div className="text-xl font-bold text-gray-900 dark:text-gray-100">{logDetail.totalTokens.toLocaleString()}</div>
+              <div className="bg-muted rounded-lg p-3 text-center border border-border">
+                <div className="text-sm text-muted-foreground mb-1">总Token数</div>
+                <div className="text-xl font-bold text-foreground">{logDetail.totalTokens.toLocaleString()}</div>
               </div>
             </div>
           </div>
@@ -388,7 +388,7 @@ export default function RequestLogDetailModal({ logId, onClose }: RequestLogDeta
           {/* Error Message */}
           {logDetail.errorMessage && (
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold border-b border-gray-200 dark:border-gray-700 pb-2 text-red-600 dark:text-red-400">错误信息</h3>
+              <h3 className="text-lg font-semibold border-b border-border pb-2 text-red-600 dark:text-red-400">错误信息</h3>
               <div className="bg-red-50 border border-red-200 dark:bg-red-900/20 dark:border-red-800 rounded-lg p-4">
                 <p className="text-red-800 dark:text-red-400 font-mono text-sm whitespace-pre-wrap">
                   {logDetail.errorMessage}
@@ -400,9 +400,9 @@ export default function RequestLogDetailModal({ logId, onClose }: RequestLogDeta
           {/* Metadata */}
           {logDetail.metadata && (
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold border-b border-gray-200 dark:border-gray-700 pb-2 text-gray-900 dark:text-gray-100">元数据</h3>
-              <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 max-h-64 overflow-y-auto">
-                <pre className="font-mono text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+              <h3 className="text-lg font-semibold border-b border-border pb-2 text-foreground">元数据</h3>
+              <div className="bg-muted rounded-lg p-4 max-h-64 overflow-y-auto">
+                <pre className="font-mono text-xs text-muted-foreground whitespace-pre-wrap">
                   {logDetail.metadata}
                 </pre>
               </div>

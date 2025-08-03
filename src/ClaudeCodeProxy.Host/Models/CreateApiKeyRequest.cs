@@ -13,6 +13,8 @@ public record CreateApiKeyRequest(
     int? RateLimitRequests = null,
     int ConcurrencyLimit = 0,
     decimal DailyCostLimit = 0,
+    decimal MonthlyCostLimit = 0,
+    decimal TotalCostLimit = 0,
     DateTime? ExpiresAt = null,
     string Permissions = "all",
     string? ClaudeAccountId = null,

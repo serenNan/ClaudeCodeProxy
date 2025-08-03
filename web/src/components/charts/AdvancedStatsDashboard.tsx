@@ -68,7 +68,7 @@ export default function AdvancedStatsDashboard({ className }: AdvancedStatsDashb
             change: '+12.5%', // 这个需要通过历史对比计算
             trend: 'up',
             icon: BarChart3,
-            color: 'text-blue-600'
+            color: 'text-primary'
           },
           {
             title: '活跃API Keys',
@@ -76,7 +76,7 @@ export default function AdvancedStatsDashboard({ className }: AdvancedStatsDashb
             change: `${dashboardData.totalApiKeys - dashboardData.activeApiKeys} 个未启用`,
             trend: dashboardData.activeApiKeys > 0 ? 'up' : 'neutral',
             icon: Users,
-            color: 'text-green-600'
+            color: 'text-muted-foreground'
           },
           {
             title: '总费用',
@@ -84,7 +84,7 @@ export default function AdvancedStatsDashboard({ className }: AdvancedStatsDashb
             change: `今日 ${costData.todayCosts.formatted.totalCost}`,
             trend: 'up',
             icon: DollarSign,
-            color: 'text-yellow-600'
+            color: 'text-muted-foreground'
           },
           {
             title: '平均RPM',
@@ -92,7 +92,7 @@ export default function AdvancedStatsDashboard({ className }: AdvancedStatsDashb
             change: dashboardData.isHistoricalMetrics ? '历史数据' : '实时数据',
             trend: dashboardData.realtimeRPM > 0 ? 'up' : 'neutral',
             icon: Activity,
-            color: 'text-purple-600'
+            color: 'text-muted-foreground'
           },
           {
             title: 'Token使用量',
@@ -102,7 +102,7 @@ export default function AdvancedStatsDashboard({ className }: AdvancedStatsDashb
             change: `今日 ${Math.floor((dashboardData.todayInputTokens + dashboardData.todayOutputTokens) / 1000)}K`,
             trend: 'up',
             icon: TrendingUp,
-            color: 'text-red-600'
+            color: 'text-muted-foreground'
           },
           {
             title: '系统状态',
@@ -110,7 +110,7 @@ export default function AdvancedStatsDashboard({ className }: AdvancedStatsDashb
             change: `运行 ${Math.floor(dashboardData.uptimeSeconds / 86400)}天`,
             trend: dashboardData.systemStatus === '正常' ? 'up' : 'down',
             icon: PieChart,
-            color: 'text-indigo-600'
+            color: 'text-primary'
           }
         ];
         
@@ -157,11 +157,11 @@ export default function AdvancedStatsDashboard({ className }: AdvancedStatsDashb
   const getTrendColor = (trend: 'up' | 'down' | 'neutral') => {
     switch (trend) {
       case 'up':
-        return 'text-green-600';
+        return 'text-muted-foreground';
       case 'down':
-        return 'text-red-600';
+        return 'text-destructive';
       default:
-        return 'text-gray-600';
+        return 'text-muted-foreground';
     }
   };
 
@@ -184,7 +184,7 @@ export default function AdvancedStatsDashboard({ className }: AdvancedStatsDashb
           {Array.from({ length: 6 }).map((_, index) => (
             <Card key={index} className="animate-pulse">
               <CardContent className="p-4">
-                <div className="h-16 bg-gray-200 rounded"></div>
+                <div className="h-16 bg-muted rounded"></div>
               </CardContent>
             </Card>
           ))}
@@ -252,47 +252,47 @@ export default function AdvancedStatsDashboard({ className }: AdvancedStatsDashb
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                  <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
                     <span className="font-medium">API Keys状态</span>
                     <div className="flex space-x-4">
                       <span className="text-sm">
                         活跃: <span className="text-green-600 font-medium">{quickStats.find(s => s.title === '活跃API Keys')?.value || '0'}</span>
                       </span>
                       <span className="text-sm">
-                        总数: <span className="text-blue-600 font-medium">{quickStats.find(s => s.title.includes('请求'))?.change || '获取中'}</span>
+                        总数: <span className="text-primary font-medium">{quickStats.find(s => s.title.includes('请求'))?.change || '获取中'}</span>
                       </span>
                     </div>
                   </div>
-                  <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                  <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
                     <span className="font-medium">系统性能</span>
                     <div className="flex space-x-4">
                       <span className="text-sm">
-                        RPM: <span className="text-green-600 font-medium">{quickStats.find(s => s.title === '平均RPM')?.value || '0'}</span>
+                        RPM: <span className="text-foreground font-medium">{quickStats.find(s => s.title === '平均RPM')?.value || '0'}</span>
                       </span>
                       <span className="text-sm">
-                        状态: <span className="text-blue-600 font-medium">{quickStats.find(s => s.title === '系统状态')?.value || '正常'}</span>
+                        状态: <span className="text-primary font-medium">{quickStats.find(s => s.title === '系统状态')?.value || '正常'}</span>
                       </span>
                     </div>
                   </div>
-                  <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
+                  <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
                     <span className="font-medium">Token使用情况</span>
                     <div className="flex space-x-4">
                       <span className="text-sm">
-                        总量: <span className="text-purple-600 font-medium">{quickStats.find(s => s.title === 'Token使用量')?.value || '0'}</span>
+                        总量: <span className="text-foreground font-medium">{quickStats.find(s => s.title === 'Token使用量')?.value || '0'}</span>
                       </span>
                       <span className="text-sm">
-                        今日: <span className="text-blue-600 font-medium">{quickStats.find(s => s.title === 'Token使用量')?.change || '获取中'}</span>
+                        今日: <span className="text-primary font-medium">{quickStats.find(s => s.title === 'Token使用量')?.change || '获取中'}</span>
                       </span>
                     </div>
                   </div>
-                  <div className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
+                  <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
                     <span className="font-medium">费用统计</span>
                     <div className="flex space-x-4">
                       <span className="text-sm">
-                        总费用: <span className="text-yellow-600 font-medium">{quickStats.find(s => s.title === '总费用')?.value || '$0.00'}</span>
+                        总费用: <span className="text-foreground font-medium">{quickStats.find(s => s.title === '总费用')?.value || '$0.00'}</span>
                       </span>
                       <span className="text-sm">
-                        今日: <span className="text-blue-600 font-medium">{quickStats.find(s => s.title === '总费用')?.change || '获取中'}</span>
+                        今日: <span className="text-primary font-medium">{quickStats.find(s => s.title === '总费用')?.change || '获取中'}</span>
                       </span>
                     </div>
                   </div>
@@ -357,8 +357,8 @@ export default function AdvancedStatsDashboard({ className }: AdvancedStatsDashb
                       <span className="text-sm font-medium">API响应成功率</span>
                       <span className="text-sm">{quickStats.find(s => s.title === '系统状态')?.value === '正常' ? '99.5%' : '95.0%'}</span>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div className="h-2 rounded-full bg-green-500" style={{ width: quickStats.find(s => s.title === '系统状态')?.value === '正常' ? '99.5%' : '95%' }}></div>
+                    <div className="w-full bg-muted rounded-full h-2">
+                      <div className="h-2 rounded-full bg-primary" style={{ width: quickStats.find(s => s.title === '系统状态')?.value === '正常' ? '99.5%' : '95%' }}></div>
                     </div>
                   </div>
                   <div className="space-y-2">
@@ -366,8 +366,8 @@ export default function AdvancedStatsDashboard({ className }: AdvancedStatsDashb
                       <span className="text-sm font-medium">平均响应时间</span>
                       <span className="text-sm">300ms</span>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div className="h-2 rounded-full bg-blue-500" style={{ width: '75%' }}></div>
+                    <div className="w-full bg-muted rounded-full h-2">
+                      <div className="h-2 rounded-full bg-primary" style={{ width: '75%' }}></div>
                     </div>
                   </div>
                   <div className="space-y-2">
@@ -375,8 +375,8 @@ export default function AdvancedStatsDashboard({ className }: AdvancedStatsDashb
                       <span className="text-sm font-medium">活跃连接数</span>
                       <span className="text-sm">{quickStats.find(s => s.title === '活跃API Keys')?.value || '0'}</span>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div className="h-2 rounded-full bg-purple-500" style={{ width: '60%' }}></div>
+                    <div className="w-full bg-muted rounded-full h-2">
+                      <div className="h-2 rounded-full bg-primary" style={{ width: '60%' }}></div>
                     </div>
                   </div>
                   <div className="space-y-2">
@@ -384,8 +384,8 @@ export default function AdvancedStatsDashboard({ className }: AdvancedStatsDashb
                       <span className="text-sm font-medium">数据处理能力</span>
                       <span className="text-sm">{quickStats.find(s => s.title === '平均RPM')?.value || '0'} RPM</span>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div className="h-2 rounded-full bg-emerald-500" style={{ width: '80%' }}></div>
+                    <div className="w-full bg-muted rounded-full h-2">
+                      <div className="h-2 rounded-full bg-primary" style={{ width: '80%' }}></div>
                     </div>
                   </div>
                 </div>

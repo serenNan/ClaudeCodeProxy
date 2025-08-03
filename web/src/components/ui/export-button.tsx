@@ -96,7 +96,7 @@ export default function ExportButton({ data, filename = 'export', className }: E
         disabled={isExporting}
       >
         {isExporting ? (
-          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900"></div>
+          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
         ) : (
           <>
             {getFormatIcon()}

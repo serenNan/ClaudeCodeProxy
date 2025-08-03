@@ -51,6 +51,26 @@ public class ApiKey : Entity<Guid>
     public decimal DailyCostLimit { get; set; } = 0;
 
     /// <summary>
+    /// 月度费用限制（美元，0表示无限制）
+    /// </summary>
+    public decimal MonthlyCostLimit { get; set; } = 0;
+
+    /// <summary>
+    /// 总费用限制（美元，0表示无限制）
+    /// </summary>
+    public decimal TotalCostLimit { get; set; } = 0;
+
+    /// <summary>
+    /// 当日已使用费用（美元）
+    /// </summary>
+    public decimal DailyCostUsed { get; set; } = 0;
+
+    /// <summary>
+    /// 当月已使用费用（美元）
+    /// </summary>
+    public decimal MonthlyCostUsed { get; set; } = 0;
+
+    /// <summary>
     /// 过期时间
     /// </summary>
     public DateTime? ExpiresAt { get; set; }
@@ -178,4 +198,96 @@ public class ApiKey : Entity<Guid>
 
         return AllowedClients.Contains(clientId);
     }
+
+    /// <summary>
+    /// 检查是否超过费用限制
+    /// </summary>
+    /// <param name="additionalCost">计划增加的费用</param>
+    /// <returns>超过限制的类型，null表示没有超过限制</returns>
+    public string? CheckCostLimit(decimal additionalCost = 0)
+    {
+        // 检查每日费用限制
+        if (DailyCostLimit > 0 && (DailyCostUsed + additionalCost) > DailyCostLimit)
+        {
+            return "daily";
+        }
+
+        // 检查月度费用限制
+        if (MonthlyCostLimit > 0 && (MonthlyCostUsed + additionalCost) > MonthlyCostLimit)
+        {
+            return "monthly";
+        }
+
+        // 检查总费用限制
+        if (TotalCostLimit > 0 && (TotalCost + additionalCost) > TotalCostLimit)
+        {
+            return "total";
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// 检查是否接近费用限制（超过80%）
+    /// </summary>
+    /// <param name="threshold">警告阈值，默认0.8（80%）</param>
+    /// <returns>接近限制的类型，null表示没有接近限制</returns>
+    public string? CheckCostWarning(decimal threshold = 0.8m)
+    {
+        // 检查每日费用警告
+        if (DailyCostLimit > 0 && DailyCostUsed > (DailyCostLimit * threshold))
+        {
+            return "daily";
+        }
+
+        // 检查月度费用警告
+        if (MonthlyCostLimit > 0 && MonthlyCostUsed > (MonthlyCostLimit * threshold))
+        {
+            return "monthly";
+        }
+
+        // 检查总费用警告
+        if (TotalCostLimit > 0 && TotalCost > (TotalCostLimit * threshold))
+        {
+            return "total";
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// 获取费用使用率
+    /// </summary>
+    /// <returns>费用使用率信息</returns>
+    public CostUsageInfo GetCostUsage()
+    {
+        return new CostUsageInfo
+        {
+            DailyUsage = DailyCostLimit > 0 ? DailyCostUsed / DailyCostLimit : 0,
+            MonthlyUsage = MonthlyCostLimit > 0 ? MonthlyCostUsed / MonthlyCostLimit : 0,
+            TotalUsage = TotalCostLimit > 0 ? TotalCost / TotalCostLimit : 0,
+            DailyCostUsed = DailyCostUsed,
+            DailyCostLimit = DailyCostLimit,
+            MonthlyCostUsed = MonthlyCostUsed,
+            MonthlyCostLimit = MonthlyCostLimit,
+            TotalCostUsed = TotalCost,
+            TotalCostLimit = TotalCostLimit
+        };
+    }
+}
+
+/// <summary>
+/// 费用使用率信息
+/// </summary>
+public class CostUsageInfo
+{
+    public decimal DailyUsage { get; set; }
+    public decimal MonthlyUsage { get; set; }
+    public decimal TotalUsage { get; set; }
+    public decimal DailyCostUsed { get; set; }
+    public decimal DailyCostLimit { get; set; }
+    public decimal MonthlyCostUsed { get; set; }
+    public decimal MonthlyCostLimit { get; set; }
+    public decimal TotalCostUsed { get; set; }
+    public decimal TotalCostLimit { get; set; }
 }

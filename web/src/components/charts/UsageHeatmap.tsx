@@ -156,17 +156,17 @@ export default function UsageHeatmap({ className }: UsageHeatmapProps) {
     const maxValue = Math.max(...data.map(d => d.value));
     const intensity = value / maxValue;
     
-    if (intensity < 0.2) return 'bg-blue-100';
-    if (intensity < 0.4) return 'bg-blue-200';
-    if (intensity < 0.6) return 'bg-blue-300';
-    if (intensity < 0.8) return 'bg-blue-400';
-    return 'bg-blue-500';
+    if (intensity < 0.2) return 'bg-muted/20';
+    if (intensity < 0.4) return 'bg-muted/40';
+    if (intensity < 0.6) return 'bg-muted/60';
+    if (intensity < 0.8) return 'bg-muted/80';
+    return 'bg-primary';
   };
 
   const getTextColor = (value: number) => {
     const maxValue = Math.max(...data.map(d => d.value));
     const intensity = value / maxValue;
-    return intensity > 0.6 ? 'text-white' : 'text-gray-700';
+    return intensity > 0.6 ? 'text-white' : 'text-muted-foreground';
   };
 
   // 生成动态的天标签（过去7天）
@@ -214,7 +214,7 @@ export default function UsageHeatmap({ className }: UsageHeatmapProps) {
       <CardContent>
         {loading ? (
           <div className="h-64 flex items-center justify-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
           </div>
         ) : (
           <div className="space-y-4">
@@ -246,7 +246,7 @@ export default function UsageHeatmap({ className }: UsageHeatmapProps) {
                           key={hourIndex}
                           className={`w-8 h-6 mx-px rounded-sm ${getColorIntensity(value)} ${getTextColor(value)} 
                                      flex items-center justify-center text-xs font-medium cursor-pointer
-                                     hover:ring-2 hover:ring-blue-300 transition-all duration-200`}
+                                     hover:ring-2 hover:ring-ring transition-all duration-200`}
                           title={`${day} ${hours[hourIndex]}: ${cellData?.formatted || '0'}`}
                         >
                           {value > 50 ? Math.floor(value / 10) : ''}
@@ -263,7 +263,7 @@ export default function UsageHeatmap({ className }: UsageHeatmapProps) {
               <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                 <span>低</span>
                 <div className="flex space-x-1">
-                  {['bg-blue-100', 'bg-blue-200', 'bg-blue-300', 'bg-blue-400', 'bg-blue-500'].map((color, index) => (
+                  {['bg-muted/20', 'bg-muted/40', 'bg-muted/60', 'bg-muted/80', 'bg-primary'].map((color, index) => (
                     <div key={index} className={`w-4 h-4 ${color} rounded`}></div>
                   ))}
                 </div>
@@ -272,7 +272,7 @@ export default function UsageHeatmap({ className }: UsageHeatmapProps) {
               
               <div className="flex items-center space-x-4 text-sm">
                 <div className="flex items-center space-x-1">
-                  <TrendingUp className="h-4 w-4 text-green-600" />
+                  <TrendingUp className="h-4 w-4 text-primary" />
                   <span>峰值时段: 工作日 9:00-18:00</span>
                 </div>
               </div>
@@ -281,19 +281,19 @@ export default function UsageHeatmap({ className }: UsageHeatmapProps) {
             {/* 统计摘要 */}
             <div className="grid grid-cols-3 gap-4 pt-4 border-t">
               <div className="text-center">
-                <div className="text-2xl font-bold text-blue-600">
+                <div className="text-2xl font-bold text-primary">
                   {Math.max(...data.map(d => d.value))}
                 </div>
                 <div className="text-sm text-muted-foreground">峰值</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-green-600">
+                <div className="text-2xl font-bold text-primary">
                   {Math.floor(data.reduce((sum, d) => sum + d.value, 0) / data.length)}
                 </div>
                 <div className="text-sm text-muted-foreground">平均值</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-purple-600">
+                <div className="text-2xl font-bold text-foreground">
                   {data.reduce((sum, d) => sum + d.value, 0)}
                 </div>
                 <div className="text-sm text-muted-foreground">总计</div>

@@ -44,10 +44,28 @@ public class AnthropicChatService(ILogger<AnthropicChatService> logger) : IAnthr
         if (response.StatusCode >= HttpStatusCode.BadRequest)
         {
             var error = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-            logger.LogError("OpenAI对话异常 请求地址：{Address}, StatusCode: {StatusCode} Response: {Response}", options.Address,
+            logger.LogError("Claude对话异常 请求地址：{Address}, StatusCode: {StatusCode} Response: {Response}", options.Address,
                 response.StatusCode, error);
 
-            throw new Exception("OpenAI对话异常" + response.StatusCode.ToString());
+            // 特殊处理429限流错误
+            if (response.StatusCode == HttpStatusCode.TooManyRequests)
+            {
+                var retryAfter = response.Headers.RetryAfter?.Delta?.TotalSeconds ?? 60; // 默认60秒
+                var rateLimitInfo = new RateLimitInfo
+                {
+                    StatusCode = (int)response.StatusCode,
+                    ErrorMessage = error,
+                    RetryAfterSeconds = (int)retryAfter,
+                    Timestamp = DateTime.UtcNow
+                };
+                
+                logger.LogWarning("Claude账户达到限流，需要等待 {RetryAfter} 秒。错误信息：{Error}", 
+                    retryAfter, error);
+                
+                throw new RateLimitException("Claude账户达到限流", rateLimitInfo);
+            }
+
+            throw new Exception("Claude对话异常" + error);
         }
 
         var value =

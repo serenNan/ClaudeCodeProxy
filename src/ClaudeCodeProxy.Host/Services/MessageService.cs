@@ -4,6 +4,7 @@ using ClaudeCodeProxy.Core.AI;
 using ClaudeCodeProxy.Host.Env;
 using ClaudeCodeProxy.Host.Extensions;
 using ClaudeCodeProxy.Host.Helper;
+using ClaudeCodeProxy.Domain;
 using Making.AspNetCore;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -29,13 +30,25 @@ public partial class MessageService(
         var apiKey = httpContext.Request.Headers["x-api-key"].FirstOrDefault() ??
                      httpContext.Request.Headers["Authorization"].FirstOrDefault()?.Replace("Bearer ", string.Empty);
 
-        var apiKeyValue = await keyService.GetApiKeyAsync(apiKey, httpContext.RequestAborted);
-
         if (string.IsNullOrEmpty(apiKey))
         {
             httpContext.Response.StatusCode = 401; // Unauthorized
             await httpContext.Response.WriteAsync("Unauthorized API Key",
                 cancellationToken: httpContext.RequestAborted);
+            return;
+        }
+
+        var apiKeyValue = await keyService.GetApiKeyWithRefreshedUsageAsync(apiKey, httpContext.RequestAborted);
+
+
+        if (apiKeyValue == null)
+        {
+            httpContext.Response.StatusCode = 401; // Unauthorized
+            await httpContext.Response.WriteAsJsonAsync(new
+            {
+                message = "API Key不存在或已被禁用",
+                code = "401"
+            }, cancellationToken: httpContext.RequestAborted);
             return;
         }
 
@@ -68,6 +81,31 @@ public partial class MessageService(
             {
                 message = "当前API Key没有使用该模型的权限",
                 code = "403"
+            }, cancellationToken: httpContext.RequestAborted);
+            return;
+        }
+
+        // 检查费用限制
+        var costLimitType = apiKeyValue.CheckCostLimit();
+        if (costLimitType != null)
+        {
+            var limitMessage = costLimitType switch
+            {
+                "daily" => "API Key已达到每日费用限制",
+                "monthly" => "API Key已达到月度费用限制", 
+                "total" => "API Key已达到总费用限制",
+                _ => "API Key已达到费用限制"
+            };
+            
+            httpContext.Response.StatusCode = 429; // Too Many Requests
+            await httpContext.Response.WriteAsJsonAsync(new
+            {
+                error = new
+                {
+                    message = limitMessage,
+                    type = "rate_limit_error",
+                    code = "429"
+                }
             }, cancellationToken: httpContext.RequestAborted);
             return;
         }
@@ -259,6 +297,42 @@ public partial class MessageService(
                 status: "success",
                 httpStatusCode: 200,
                 cancellationToken: cancellationToken);
+        }
+        catch (RateLimitException rateLimitEx)
+        {
+            // 处理限流异常 - 自动设置账户限流状态
+            if (account != null)
+            {
+                var rateLimitedUntil = rateLimitEx.RateLimitInfo.RateLimitedUntil;
+                await accountsService.SetRateLimitAsync(account.Id, rateLimitedUntil, rateLimitEx.Message, cancellationToken);
+                
+                // 记录限流日志
+                var logger = httpContext.RequestServices.GetRequiredService<ILogger<MessageService>>();
+                logger.LogWarning("账户 {AccountName} (ID: {AccountId}) 达到限流，限流解除时间：{RateLimitedUntil}", 
+                    account.Name, account.Id, rateLimitedUntil);
+            }
+
+            // 完成请求日志记录（限流失败）
+            await statisticsService.CompleteRequestLogAsync(
+                requestLog.Id,
+                status: "rate_limited",
+                errorMessage: rateLimitEx.Message,
+                httpStatusCode: 429,
+                cancellationToken: cancellationToken);
+
+            // 返回429限流错误
+            httpContext.Response.StatusCode = 429;
+            httpContext.Response.Headers["Retry-After"] = rateLimitEx.RateLimitInfo.RetryAfterSeconds.ToString();
+            
+            await httpContext.Response.WriteAsJsonAsync(new
+            {
+                error = new
+                {
+                    message = rateLimitEx.Message,
+                    type = "rate_limit_error",
+                    code = "429"
+                }
+            }, cancellationToken: cancellationToken);
         }
         catch (Exception ex)
         {
@@ -539,6 +613,42 @@ public partial class MessageService(
                 status: "success",
                 httpStatusCode: 200,
                 cancellationToken: cancellationToken);
+        }
+        catch (RateLimitException rateLimitEx)
+        {
+            // 处理限流异常 - 自动设置账户限流状态
+            if (account != null)
+            {
+                var rateLimitedUntil = rateLimitEx.RateLimitInfo.RateLimitedUntil;
+                await accountsService.SetRateLimitAsync(account.Id, rateLimitedUntil, rateLimitEx.Message, cancellationToken);
+                
+                // 记录限流日志
+                var logger = httpContext.RequestServices.GetRequiredService<ILogger<MessageService>>();
+                logger.LogWarning("账户 {AccountName} (ID: {AccountId}) 达到限流，限流解除时间：{RateLimitedUntil}", 
+                    account.Name, account.Id, rateLimitedUntil);
+            }
+
+            // 完成请求日志记录（限流失败）
+            await statisticsService.CompleteRequestLogAsync(
+                requestLog.Id,
+                status: "rate_limited",
+                errorMessage: rateLimitEx.Message,
+                httpStatusCode: 429,
+                cancellationToken: cancellationToken);
+
+            // 返回429限流错误
+            httpContext.Response.StatusCode = 429;
+            httpContext.Response.Headers["Retry-After"] = rateLimitEx.RateLimitInfo.RetryAfterSeconds.ToString();
+            
+            await httpContext.Response.WriteAsJsonAsync(new
+            {
+                error = new
+                {
+                    message = rateLimitEx.Message,
+                    type = "rate_limit_error",
+                    code = "429"
+                }
+            }, cancellationToken: cancellationToken);
         }
         catch (Exception ex)
         {

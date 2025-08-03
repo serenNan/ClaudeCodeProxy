@@ -99,7 +99,7 @@ export default function AccountsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     );
   }
@@ -174,7 +174,7 @@ export default function AccountsPage() {
                       onClick={() => handleDelete(account)}
                     >
                       {deletingId === account.id ? (
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900" />
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary" />
                       ) : (
                         <Trash2 className="h-4 w-4" />
                       )}

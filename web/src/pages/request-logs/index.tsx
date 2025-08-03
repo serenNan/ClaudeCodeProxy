@@ -159,26 +159,26 @@ export default function RequestLogsPage() {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'success':
-        return <CheckCircle className="h-4 w-4 text-green-600" />;
+        return <CheckCircle className="h-4 w-4 text-primary" />;
       case 'error':
-        return <XCircle className="h-4 w-4 text-red-600" />;
+        return <XCircle className="h-4 w-4 text-destructive" />;
       case 'timeout':
-        return <Clock className="h-4 w-4 text-yellow-600" />;
+        return <Clock className="h-4 w-4 text-muted-foreground" />;
       default:
-        return <AlertCircle className="h-4 w-4 text-gray-600" />;
+        return <AlertCircle className="h-4 w-4 text-muted-foreground" />;
     }
   };
 
   const getStatusColor = (status: string): string => {
     switch (status) {
       case 'success':
-        return 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300';
+        return 'bg-primary/10 text-primary';
       case 'error':
-        return 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300';
+        return 'bg-destructive/10 text-destructive';
       case 'timeout':
-        return 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300';
+        return 'bg-muted/50 text-muted-foreground';
       default:
-        return 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300';
+        return 'bg-muted dark:bg-card text-foreground dark:text-card-foreground';
     }
   };
 
@@ -202,7 +202,7 @@ export default function RequestLogsPage() {
   if (loading && requestLogs.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-gray-100"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     );
   }
@@ -213,18 +213,18 @@ export default function RequestLogsPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-2">
           <FileText className="h-6 w-6" />
-          <h1 className="text-2xl font-bold dark:text-gray-100">请求日志管理</h1>
+          <h1 className="text-2xl font-bold dark:text-foreground">请求日志管理</h1>
         </div>
         <div className="flex items-center space-x-2">
           <button
             onClick={handleRefresh}
-            className="flex items-center space-x-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600 transition-colors"
+            className="flex items-center space-x-2 px-3 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 dark:bg-primary dark:hover:bg-primary transition-colors"
             disabled={loading}
           >
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             <span>刷新</span>
           </button>
-          <button className="flex items-center space-x-2 px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 dark:bg-gray-700 dark:hover:bg-gray-600 transition-colors">
+          <button className="flex items-center space-x-2 px-3 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 dark:bg-primary dark:hover:bg-primary transition-colors">
             <Download className="h-4 w-4" />
             <span>导出</span>
           </button>
@@ -240,14 +240,14 @@ export default function RequestLogsPage() {
                 {stat.status.toUpperCase()} 请求
               </CardTitle>
               <div className={`p-2 rounded-lg ${
-                stat.status === 'success' ? 'bg-green-50 dark:bg-green-900/30' :
-                stat.status === 'error' ? 'bg-red-50 dark:bg-red-900/30' : 'bg-yellow-50 dark:bg-yellow-900/30'
+                stat.status === 'success' ? 'bg-primary/10' :
+                stat.status === 'error' ? 'bg-destructive/10' : 'bg-muted/50'
               }`}>
                 {getStatusIcon(stat.status)}
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold dark:text-gray-100">{stat.count.toLocaleString()}</div>
+              <div className="text-2xl font-bold dark:text-foreground">{stat.count.toLocaleString()}</div>
               <p className="text-xs text-muted-foreground mt-1">
                 平均响应时间: {formatDuration(stat.averageDurationMs)}
               </p>
@@ -272,26 +272,26 @@ export default function RequestLogsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Search */}
             <div className="space-y-2">
-              <label className="text-sm font-medium dark:text-gray-300">搜索</label>
+              <label className="text-sm font-medium dark:text-card-foreground">搜索</label>
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground dark:text-muted-foreground" />
                 <input
                   type="text"
                   placeholder="搜索API Key、请求ID等..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 rounded-lg w-full focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="pl-10 pr-3 py-2 border border-border dark:border-border dark:bg-card dark:text-foreground rounded-lg w-full focus:ring-2 focus:ring-ring focus:border-transparent"
                 />
               </div>
             </div>
 
             {/* Status Filter */}
             <div className="space-y-2">
-              <label className="text-sm font-medium dark:text-gray-300">状态</label>
+              <label className="text-sm font-medium dark:text-card-foreground">状态</label>
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-border dark:border-border dark:bg-card dark:text-foreground rounded-lg focus:ring-2 focus:ring-ring focus:border-transparent"
               >
                 <option value="">全部状态</option>
                 <option value="success">成功</option>
@@ -302,23 +302,23 @@ export default function RequestLogsPage() {
 
             {/* Model Filter */}
             <div className="space-y-2">
-              <label className="text-sm font-medium dark:text-gray-300">模型</label>
+              <label className="text-sm font-medium dark:text-card-foreground">模型</label>
               <input
                 type="text"
                 placeholder="模型名称"
                 value={modelFilter}
                 onChange={(e) => setModelFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-border dark:border-border dark:bg-card dark:text-foreground rounded-lg focus:ring-2 focus:ring-ring focus:border-transparent"
               />
             </div>
 
             {/* Platform Filter */}
             <div className="space-y-2">
-              <label className="text-sm font-medium dark:text-gray-300">平台</label>
+              <label className="text-sm font-medium dark:text-card-foreground">平台</label>
               <select
                 value={platformFilter}
                 onChange={(e) => setPlatformFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-border dark:border-border dark:bg-card dark:text-foreground rounded-lg focus:ring-2 focus:ring-ring focus:border-transparent"
               >
                 <option value="">全部平台</option>
                 <option value="claude">Claude</option>
@@ -329,11 +329,11 @@ export default function RequestLogsPage() {
             
             {/* Date Filter */}
             <div className="space-y-2">
-              <label className="text-sm font-medium dark:text-gray-300">时间范围</label>
+              <label className="text-sm font-medium dark:text-card-foreground">时间范围</label>
               <select
                 value={dateFilter.preset || ''}
                 onChange={(e) => setDateFilter({ type: 'preset', preset: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-border dark:border-border dark:bg-card dark:text-foreground rounded-lg focus:ring-2 focus:ring-ring focus:border-transparent"
               >
                 <option value="today">今天</option>
                 <option value="yesterday">昨天</option>
@@ -344,11 +344,11 @@ export default function RequestLogsPage() {
 
             {/* Page Size */}
             <div className="space-y-2">
-              <label className="text-sm font-medium dark:text-gray-300">每页显示</label>
+              <label className="text-sm font-medium dark:text-card-foreground">每页显示</label>
               <select
                 value={pageSize}
                 onChange={(e) => setPageSize(Number(e.target.value))}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-border dark:border-border dark:bg-card dark:text-foreground rounded-lg focus:ring-2 focus:ring-ring focus:border-transparent"
               >
                 <option value={10}>10条</option>
                 <option value={20}>20条</option>
@@ -372,10 +372,10 @@ export default function RequestLogsPage() {
         </CardHeader>
         <CardContent>
           {error && (
-            <div className="mb-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg">
+            <div className="mb-4 p-4 bg-muted/50 border border-border rounded-lg">
               <div className="flex items-center space-x-2">
-                <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
-                <span className="text-yellow-800 dark:text-yellow-300">{error}</span>
+                <AlertCircle className="h-5 w-5 text-muted-foreground" />
+                <span className="text-muted-foreground">{error}</span>
               </div>
             </div>
           )}
@@ -383,11 +383,11 @@ export default function RequestLogsPage() {
           <div className="overflow-x-auto">
             <table className="min-w-full table-auto">
               <thead>
-                <tr className="border-b border-gray-200 dark:border-gray-700">
+                <tr className="border-b border-border dark:border-border">
                   <th className="px-4 py-3 text-left">
                     <button
                       onClick={() => handleSort('RequestStartTime')}
-                      className="flex items-center space-x-1 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
+                      className="flex items-center space-x-1 text-sm font-medium text-muted-foreground dark:text-muted-foreground hover:text-foreground dark:hover:text-foreground"
                     >
                       <span>请求时间</span>
                       {sortBy === 'RequestStartTime' && (
@@ -395,13 +395,13 @@ export default function RequestLogsPage() {
                       )}
                     </button>
                   </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-600 dark:text-gray-400">API Key</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-600 dark:text-gray-400">模型</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-600 dark:text-gray-400">状态</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground dark:text-muted-foreground">API Key</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground dark:text-muted-foreground">模型</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground dark:text-muted-foreground">状态</th>
                   <th className="px-4 py-3 text-left">
                     <button
                       onClick={() => handleSort('DurationMs')}
-                      className="flex items-center space-x-1 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
+                      className="flex items-center space-x-1 text-sm font-medium text-muted-foreground dark:text-muted-foreground hover:text-foreground dark:hover:text-foreground"
                     >
                       <span>响应时间</span>
                       {sortBy === 'DurationMs' && (
@@ -412,7 +412,7 @@ export default function RequestLogsPage() {
                   <th className="px-4 py-3 text-left">
                     <button
                       onClick={() => handleSort('TotalTokens')}
-                      className="flex items-center space-x-1 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
+                      className="flex items-center space-x-1 text-sm font-medium text-muted-foreground dark:text-muted-foreground hover:text-foreground dark:hover:text-foreground"
                     >
                       <span>Token</span>
                       {sortBy === 'TotalTokens' && (
@@ -423,7 +423,7 @@ export default function RequestLogsPage() {
                   <th className="px-4 py-3 text-left">
                     <button
                       onClick={() => handleSort('Cost')}
-                      className="flex items-center space-x-1 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
+                      className="flex items-center space-x-1 text-sm font-medium text-muted-foreground dark:text-muted-foreground hover:text-foreground dark:hover:text-foreground"
                     >
                       <span>费用</span>
                       {sortBy === 'Cost' && (
@@ -431,29 +431,29 @@ export default function RequestLogsPage() {
                       )}
                     </button>
                   </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-600 dark:text-gray-400">操作</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground dark:text-muted-foreground">操作</th>
                 </tr>
               </thead>
               <tbody>
                 {requestLogs.map((log) => (
-                  <tr key={log.id} className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
-                    <td className="px-4 py-3 text-sm dark:text-gray-200">
+                  <tr key={log.id} className="border-b border-muted dark:border-border hover:bg-muted dark:hover:bg-muted">
+                    <td className="px-4 py-3 text-sm dark:text-foreground">
                       <div>{formatTime(log.requestStartTime)}</div>
                       {log.requestId && (
-                        <div className="text-xs text-gray-500 truncate max-w-32">
+                        <div className="text-xs text-muted-foreground truncate max-w-32">
                           ID: {log.requestId}
                         </div>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-sm dark:text-gray-200">
-                      <div className="font-medium dark:text-gray-100">{log.apiKeyName}</div>
+                    <td className="px-4 py-3 text-sm dark:text-foreground">
+                      <div className="font-medium dark:text-foreground">{log.apiKeyName}</div>
                       {log.accountName && (
-                        <div className="text-xs text-gray-500 dark:text-gray-400">{log.accountName}</div>
+                        <div className="text-xs text-muted-foreground dark:text-muted-foreground">{log.accountName}</div>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-sm dark:text-gray-200">
-                      <div className="font-mono dark:text-gray-100">{log.model}</div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400 capitalize">{log.platform}</div>
+                    <td className="px-4 py-3 text-sm dark:text-foreground">
+                      <div className="font-mono dark:text-foreground">{log.model}</div>
+                      <div className="text-xs text-muted-foreground dark:text-muted-foreground capitalize">{log.platform}</div>
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center space-x-2">
@@ -463,27 +463,27 @@ export default function RequestLogsPage() {
                         </span>
                       </div>
                       {log.httpStatusCode && (
-                        <div className="text-xs text-gray-500 mt-1">
+                        <div className="text-xs text-muted-foreground mt-1">
                           HTTP {log.httpStatusCode}
                         </div>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-sm dark:text-gray-200">
+                    <td className="px-4 py-3 text-sm dark:text-foreground">
                       {formatDuration(log.durationMs)}
                     </td>
-                    <td className="px-4 py-3 text-sm dark:text-gray-200">
+                    <td className="px-4 py-3 text-sm dark:text-foreground">
                       <div>{log.totalTokens.toLocaleString()}</div>
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs text-muted-foreground">
                         输入: {log.inputTokens} / 输出: {log.outputTokens}
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-sm font-mono dark:text-gray-200">
+                    <td className="px-4 py-3 text-sm font-mono dark:text-foreground">
                       {formatCost(log.cost)}
                     </td>
                     <td className="px-4 py-3">
                       <button
                         onClick={() => setSelectedLogId(log.id)}
-                        className="flex items-center space-x-1 px-2 py-1 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors"
+                        className="flex items-center space-x-1 px-2 py-1 text-primary hover:text-primary/80 transition-colors"
                       >
                         <Eye className="h-4 w-4" />
                         <span className="text-sm">详情</span>
@@ -497,14 +497,14 @@ export default function RequestLogsPage() {
 
           {/* Pagination */}
           <div className="flex items-center justify-between mt-6">
-            <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
+            <div className="flex items-center space-x-2 text-sm text-muted-foreground dark:text-muted-foreground">
               <span>显示第 {((currentPage - 1) * pageSize) + 1} - {Math.min(currentPage * pageSize, totalCount)} 条，共 {totalCount} 条记录</span>
             </div>
             <div className="flex items-center space-x-2">
               <button
                 onClick={() => handlePageChange(currentPage - 1)}
                 disabled={currentPage <= 1}
-                className="px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-700"
+                className="px-3 py-2 border border-border dark:border-border dark:bg-card dark:text-foreground rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted dark:hover:bg-primary/90"
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
@@ -521,8 +521,8 @@ export default function RequestLogsPage() {
                     onClick={() => handlePageChange(pageNum)}
                     className={`px-3 py-2 border rounded-lg ${
                       pageNum === currentPage
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : 'border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700'
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'border-border dark:border-border dark:bg-card dark:text-foreground hover:bg-muted dark:hover:bg-primary/90'
                     }`}
                   >
                     {pageNum}
@@ -533,7 +533,7 @@ export default function RequestLogsPage() {
               <button
                 onClick={() => handlePageChange(currentPage + 1)}
                 disabled={currentPage >= totalPages}
-                className="px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-700"
+                className="px-3 py-2 border border-border dark:border-border dark:bg-card dark:text-foreground rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted dark:hover:bg-primary/90"
               >
                 <ChevronRight className="h-4 w-4" />
               </button>

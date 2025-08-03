@@ -75,25 +75,25 @@ export function Modal({
       <div className="absolute inset-0 bg-black/50 dark:bg-black/70 transition-opacity" />
       
       {/* Modal Content */}
-      <div className={`relative w-full ${sizeClasses[size]} mx-auto max-h-[90vh] overflow-y-auto bg-white dark:bg-gray-900 shadow-2xl border-0 dark:border-gray-700 rounded-xl transition-all`}>
+      <div className={`relative w-full ${sizeClasses[size]} mx-auto max-h-[90vh] overflow-y-auto bg-background shadow-2xl border border-border rounded-xl transition-all`}>
         {/* Header */}
         {(title || showCloseButton) && (
-          <div className="flex items-center justify-between p-6 pb-4 border-b border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-between p-6 pb-4 border-b border-border">
             <div className="flex items-center gap-4">
               {icon && (
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
+                <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center shadow-lg">
                   {icon}
                 </div>
               )}
               {(title || subtitle) && (
                 <div>
                   {title && (
-                    <h2 id="modal-title" className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                    <h2 id="modal-title" className="text-2xl font-bold text-foreground">
                       {title}
                     </h2>
                   )}
                   {subtitle && (
-                    <p id="modal-subtitle" className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                    <p id="modal-subtitle" className="text-sm text-muted-foreground mt-1">
                       {subtitle}
                     </p>
                   )}
@@ -105,7 +105,7 @@ export function Modal({
                 variant="ghost"
                 size="sm"
                 onClick={onClose}
-                className="hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full p-2"
+                className="hover:bg-muted rounded-full p-2"
                 aria-label="Close modal"
               >
                 <X className="w-5 h-5" />

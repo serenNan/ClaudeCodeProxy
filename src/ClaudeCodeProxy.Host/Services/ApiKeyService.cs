@@ -10,7 +10,7 @@ namespace ClaudeCodeProxy.Host.Services;
 
 public class ApiKeyService(IContext context)
 {
-    public async Task<ApiKey> GetApiKeyAsync(string key, CancellationToken cancellationToken = default)
+    public async Task<ApiKey?> GetApiKeyAsync(string key, CancellationToken cancellationToken = default)
     {
         var apiKey = await context.ApiKeys
             .AsNoTracking()
@@ -67,6 +67,8 @@ public class ApiKeyService(IContext context)
             RateLimitRequests = request.RateLimitRequests,
             ConcurrencyLimit = request.ConcurrencyLimit,
             DailyCostLimit = request.DailyCostLimit,
+            MonthlyCostLimit = request.MonthlyCostLimit,
+            TotalCostLimit = request.TotalCostLimit,
             ExpiresAt = request.ExpiresAt,
             Permissions = request.Permissions,
             ClaudeAccountId = request.ClaudeAccountId,
@@ -111,6 +113,57 @@ public class ApiKeyService(IContext context)
 
         if (request.IsEnabled.HasValue)
             apiKey.IsEnabled = request.IsEnabled.Value;
+
+        if (request.DailyCostLimit.HasValue)
+            apiKey.DailyCostLimit = request.DailyCostLimit.Value;
+
+        if (request.MonthlyCostLimit.HasValue)
+            apiKey.MonthlyCostLimit = request.MonthlyCostLimit.Value;
+
+        if (request.TotalCostLimit.HasValue)
+            apiKey.TotalCostLimit = request.TotalCostLimit.Value;
+
+        if (request.Tags != null)
+            apiKey.Tags = request.Tags;
+
+        if (request.TokenLimit.HasValue)
+            apiKey.TokenLimit = request.TokenLimit.Value;
+
+        if (request.RateLimitWindow.HasValue)
+            apiKey.RateLimitWindow = request.RateLimitWindow.Value;
+
+        if (request.RateLimitRequests.HasValue)
+            apiKey.RateLimitRequests = request.RateLimitRequests.Value;
+
+        if (request.ConcurrencyLimit.HasValue)
+            apiKey.ConcurrencyLimit = request.ConcurrencyLimit.Value;
+
+        if (!string.IsNullOrEmpty(request.Permissions))
+            apiKey.Permissions = request.Permissions;
+
+        if (request.ClaudeAccountId != null)
+            apiKey.ClaudeAccountId = request.ClaudeAccountId;
+
+        if (request.ClaudeConsoleAccountId != null)
+            apiKey.ClaudeConsoleAccountId = request.ClaudeConsoleAccountId;
+
+        if (request.GeminiAccountId != null)
+            apiKey.GeminiAccountId = request.GeminiAccountId;
+
+        if (request.EnableModelRestriction.HasValue)
+            apiKey.EnableModelRestriction = request.EnableModelRestriction.Value;
+
+        if (request.RestrictedModels != null)
+            apiKey.RestrictedModels = request.RestrictedModels;
+
+        if (request.EnableClientRestriction.HasValue)
+            apiKey.EnableClientRestriction = request.EnableClientRestriction.Value;
+
+        if (request.AllowedClients != null)
+            apiKey.AllowedClients = request.AllowedClients;
+
+        if (!string.IsNullOrEmpty(request.Service))
+            apiKey.Service = request.Service;
 
         apiKey.ModifiedAt = DateTime.UtcNow;
         apiKey.Model = request.Model;
@@ -199,6 +252,63 @@ public class ApiKeyService(IContext context)
             return false;
 
         return true;
+    }
+
+    /// <summary>
+    /// 获取API Key并刷新费用使用状态
+    /// </summary>
+    public async Task<ApiKey?> GetApiKeyWithRefreshedUsageAsync(string key, CancellationToken cancellationToken = default)
+    {
+        var apiKey = await context.ApiKeys
+            .FirstOrDefaultAsync(x => x.KeyValue == key, cancellationToken);
+
+        if (apiKey == null)
+            return null;
+
+        // 刷新使用状态（重置过期的每日/月度使用量）
+        await RefreshApiKeyUsageAsync(apiKey, cancellationToken);
+
+        // 更新最后使用时间
+        await context.ApiKeys
+            .Where(x => x.Id == apiKey.Id)
+            .ExecuteUpdateAsync(x => x.SetProperty(y => y.LastUsedAt, DateTime.UtcNow), cancellationToken);
+
+        return apiKey;
+    }
+
+    /// <summary>
+    /// 刷新API Key的使用状态
+    /// </summary>
+    private async Task RefreshApiKeyUsageAsync(ApiKey apiKey, CancellationToken cancellationToken = default)
+    {
+        var now = DateTime.UtcNow;
+        var today = now.Date;
+        var currentMonth = new DateTime(now.Year, now.Month, 1);
+        
+        bool needsUpdate = false;
+
+        // 检查是否需要重置每日使用量
+        var lastUsedDate = apiKey.LastUsedAt?.Date;
+        if (lastUsedDate.HasValue && lastUsedDate.Value < today && apiKey.DailyCostUsed > 0)
+        {
+            apiKey.DailyCostUsed = 0;
+            needsUpdate = true;
+        }
+
+        // 检查是否需要重置月度使用量
+        var lastUsedMonth = apiKey.LastUsedAt.HasValue ? 
+            new DateTime(apiKey.LastUsedAt.Value.Year, apiKey.LastUsedAt.Value.Month, 1) : 
+            DateTime.MinValue;
+        if (lastUsedMonth < currentMonth && apiKey.MonthlyCostUsed > 0)
+        {
+            apiKey.MonthlyCostUsed = 0;
+            needsUpdate = true;
+        }
+
+        if (needsUpdate)
+        {
+            await context.SaveAsync(cancellationToken);
+        }
     }
 
     /// <summary>

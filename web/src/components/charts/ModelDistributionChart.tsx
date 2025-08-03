@@ -145,7 +145,7 @@ export default function ModelDistributionChart({ className }: ModelDistributionC
       <CardContent>
         {loading ? (
           <div className="h-80 flex items-center justify-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
           </div>
         ) : chartData.length === 0 ? (
           <div className="h-80 flex items-center justify-center text-muted-foreground">
@@ -202,7 +202,7 @@ export default function ModelDistributionChart({ className }: ModelDistributionC
           <div className="mt-4 overflow-hidden">
             <div className="max-h-32 overflow-y-auto">
               <table className="w-full text-sm">
-                <thead className="sticky top-0 bg-gray-50">
+                <thead className="sticky top-0 bg-muted">
                   <tr>
                     <th className="text-left p-2">模型</th>
                     <th className="text-right p-2">数值</th>

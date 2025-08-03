@@ -54,10 +54,10 @@ export default function UsageTrendsChart({ className }: UsageTrendsChartProps) {
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-white dark:bg-gray-800 p-3 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg">
-          <p className="font-medium text-gray-900 dark:text-gray-100">{label}</p>
+        <div className="bg-white dark:bg-card p-3 border border-border dark:border-border rounded-lg shadow-lg">
+          <p className="font-medium text-foreground dark:text-foreground">{label}</p>
           {payload.map((entry: any, index: number) => (
-            <p key={index} style={{ color: entry.color }} className="text-gray-700 dark:text-gray-300">
+            <p key={index} style={{ color: entry.color }} className="text-muted-foreground">
               {entry.name}: {formatValue(entry.value)}
             </p>
           ))}
@@ -122,7 +122,7 @@ export default function UsageTrendsChart({ className }: UsageTrendsChartProps) {
       <CardContent>
         {loading ? (
           <div className="h-80 flex items-center justify-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-gray-100"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
           </div>
         ) : (
           <ResponsiveContainer width="100%" height={320}>

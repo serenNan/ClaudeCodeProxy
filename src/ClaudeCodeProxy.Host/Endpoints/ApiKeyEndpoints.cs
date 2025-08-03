@@ -80,6 +80,13 @@ public static class ApiKeyEndpoints
             .WithName("ValidateApiKey")
             .WithSummary("验证API Key")
             .Produces<ApiResponse<bool>>();
+
+        // 获取API Key费用使用情况
+        group.MapGet("/{id:guid}/usage", GetApiKeyUsage)
+            .WithName("GetApiKeyUsage")
+            .WithSummary("获取API Key费用使用情况")
+            .Produces<ApiResponse<CostUsageInfo>>()
+            .Produces<ApiResponse>(404);
     }
 
     /// <summary>
@@ -271,6 +278,30 @@ public static class ApiKeyEndpoints
         catch (Exception ex)
         {
             return TypedResults.NotFound($"切换API Key状态失败: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 获取API Key费用使用情况
+    /// </summary>
+    private static async Task<Results<Ok<CostUsageInfo>, NotFound<string>>> GetApiKeyUsage(
+        Guid id,
+        ApiKeyService apiKeyService)
+    {
+        try
+        {
+            var apiKey = await apiKeyService.GetApiKeyByIdAsync(id);
+            if (apiKey == null)
+            {
+                return TypedResults.NotFound($"未找到ID为 {id} 的API Key");
+            }
+
+            var costUsage = apiKey.GetCostUsage();
+            return TypedResults.Ok(costUsage);
+        }
+        catch (Exception ex)
+        {
+            return TypedResults.NotFound($"获取API Key使用情况失败: {ex.Message}");
         }
     }
 }

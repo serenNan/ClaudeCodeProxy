@@ -120,14 +120,36 @@ public class StatisticsService
             return;
         }
 
+        var now = DateTime.UtcNow;
+        var today = now.Date;
+        var currentMonth = new DateTime(now.Year, now.Month, 1);
+
+        // 检查是否需要重置每日使用量
+        var lastUsedDate = apiKey.LastUsedAt?.Date;
+        if (lastUsedDate.HasValue && lastUsedDate.Value < today)
+        {
+            apiKey.DailyCostUsed = 0;
+        }
+
+        // 检查是否需要重置月度使用量
+        var lastUsedMonth = apiKey.LastUsedAt.HasValue ? 
+            new DateTime(apiKey.LastUsedAt.Value.Year, apiKey.LastUsedAt.Value.Month, 1) : 
+            DateTime.MinValue;
+        if (lastUsedMonth < currentMonth)
+        {
+            apiKey.MonthlyCostUsed = 0;
+        }
+
         // 增加使用次数
         apiKey.TotalUsageCount++;
         
-        // 累加总费用
+        // 累加各种费用
         apiKey.TotalCost += cost;
+        apiKey.DailyCostUsed += cost;
+        apiKey.MonthlyCostUsed += cost;
         
         // 更新最后使用时间
-        apiKey.LastUsedAt = DateTime.UtcNow;
+        apiKey.LastUsedAt = now;
 
         // 注意：这里不调用 SaveAsync，因为会在 CompleteRequestLogAsync 中统一保存
     }

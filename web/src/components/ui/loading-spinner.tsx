@@ -13,6 +13,6 @@ const sizeClasses = {
 
 export default function LoadingSpinner({ className, size = 'md' }: LoadingSpinnerProps) {
   return (
-    <div className={cn("animate-spin rounded-full border-b-2 border-gray-900", sizeClasses[size], className)}></div>
+    <div className={cn("animate-spin rounded-full border-b-2 border-primary", sizeClasses[size], className)}></div>
   );
 }

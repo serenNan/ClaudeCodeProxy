@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { X, Plus } from 'lucide-react';
-import { apiService } from '@/services/api';
+import { apiService, type Account } from '@/services/api';
 
 interface CreateApiKeyFormProps {
   editingKey?: any;
@@ -67,8 +67,25 @@ export default function CreateApiKeyForm({ editingKey, onSuccess, onCancel }: Cr
   const [loading, setLoading] = useState(false);
   const [newTag, setNewTag] = useState('');
   const [newModel, setNewModel] = useState('');
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [loadingAccounts, setLoadingAccounts] = useState(true);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    const fetchAccounts = async () => {
+      try {
+        const accountsData = await apiService.getAccounts();
+        setAccounts(accountsData);
+      } catch (error) {
+        console.error('Failed to fetch accounts:', error);
+      } finally {
+        setLoadingAccounts(false);
+      }
+    };
+
+    fetchAccounts();
+  }, []);
 
   const [formData, setFormData] = useState<FormData>(() => {
     if (editingKey) {
@@ -124,6 +141,27 @@ export default function CreateApiKeyForm({ editingKey, onSuccess, onCancel }: Cr
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
     }
+  };
+
+  // 获取可用的Claude账户
+  const getClaudeAccounts = () => {
+    return accounts.filter(account => 
+      account.platform === 'claude' && account.isEnabled
+    );
+  };
+
+  // 获取可用的Claude Console账户
+  const getClaudeConsoleAccounts = () => {
+    return accounts.filter(account => 
+      account.platform === 'claude-console' && account.isEnabled
+    );
+  };
+
+  // 获取可用的Gemini账户
+  const getGeminiAccounts = () => {
+    return accounts.filter(account => 
+      account.platform === 'gemini' && account.isEnabled
+    );
   };
 
   const addTag = () => {
@@ -252,10 +290,10 @@ export default function CreateApiKeyForm({ editingKey, onSuccess, onCancel }: Cr
                 value={formData.name}
                 onChange={(e) => updateFormData('name', e.target.value)}
                 placeholder="为您的 API Key 取一个名称"
-                className={errors.name ? 'border-red-500' : ''}
+                className={errors.name ? 'border-destructive' : ''}
               />
-              {errors.name && <p className="text-red-500 text-xs">{errors.name}</p>}
-              <p className="text-xs text-gray-500">
+              {errors.name && <p className="text-destructive text-xs">{errors.name}</p>}
+              <p className="text-xs text-muted-foreground">
                 API Key 值将在创建时自动生成
               </p>
             </div>
@@ -363,9 +401,9 @@ export default function CreateApiKeyForm({ editingKey, onSuccess, onCancel }: Cr
                   value={formData.tokenLimit}
                   onChange={(e) => updateFormData('tokenLimit', e.target.value)}
                   placeholder="最大 Token 数"
-                  className={errors.tokenLimit ? 'border-red-500' : ''}
+                  className={errors.tokenLimit ? 'border-destructive' : ''}
                 />
-                {errors.tokenLimit && <p className="text-red-500 text-xs">{errors.tokenLimit}</p>}
+                {errors.tokenLimit && <p className="text-destructive text-xs">{errors.tokenLimit}</p>}
               </div>
 
               <div className="space-y-2">
@@ -376,9 +414,9 @@ export default function CreateApiKeyForm({ editingKey, onSuccess, onCancel }: Cr
                   value={formData.rateLimitWindow}
                   onChange={(e) => updateFormData('rateLimitWindow', e.target.value)}
                   placeholder="速率限制时间窗口"
-                  className={errors.rateLimitWindow ? 'border-red-500' : ''}
+                  className={errors.rateLimitWindow ? 'border-destructive' : ''}
                 />
-                {errors.rateLimitWindow && <p className="text-red-500 text-xs">{errors.rateLimitWindow}</p>}
+                {errors.rateLimitWindow && <p className="text-destructive text-xs">{errors.rateLimitWindow}</p>}
               </div>
 
               <div className="space-y-2">
@@ -389,9 +427,9 @@ export default function CreateApiKeyForm({ editingKey, onSuccess, onCancel }: Cr
                   value={formData.rateLimitRequests}
                   onChange={(e) => updateFormData('rateLimitRequests', e.target.value)}
                   placeholder="窗口内最大请求数"
-                  className={errors.rateLimitRequests ? 'border-red-500' : ''}
+                  className={errors.rateLimitRequests ? 'border-destructive' : ''}
                 />
-                {errors.rateLimitRequests && <p className="text-red-500 text-xs">{errors.rateLimitRequests}</p>}
+                {errors.rateLimitRequests && <p className="text-destructive text-xs">{errors.rateLimitRequests}</p>}
               </div>
             </div>
 
@@ -404,9 +442,9 @@ export default function CreateApiKeyForm({ editingKey, onSuccess, onCancel }: Cr
                   value={formData.concurrencyLimit}
                   onChange={(e) => updateFormData('concurrencyLimit', e.target.value)}
                   placeholder="同时处理的最大请求数 (0=无限制)"
-                  className={errors.concurrencyLimit ? 'border-red-500' : ''}
+                  className={errors.concurrencyLimit ? 'border-destructive' : ''}
                 />
-                {errors.concurrencyLimit && <p className="text-red-500 text-xs">{errors.concurrencyLimit}</p>}
+                {errors.concurrencyLimit && <p className="text-destructive text-xs">{errors.concurrencyLimit}</p>}
               </div>
 
               <div className="space-y-2">
@@ -418,9 +456,9 @@ export default function CreateApiKeyForm({ editingKey, onSuccess, onCancel }: Cr
                   value={formData.dailyCostLimit}
                   onChange={(e) => updateFormData('dailyCostLimit', e.target.value)}
                   placeholder="每日最大费用 (0=无限制)"
-                  className={errors.dailyCostLimit ? 'border-red-500' : ''}
+                  className={errors.dailyCostLimit ? 'border-destructive' : ''}
                 />
-                {errors.dailyCostLimit && <p className="text-red-500 text-xs">{errors.dailyCostLimit}</p>}
+                {errors.dailyCostLimit && <p className="text-destructive text-xs">{errors.dailyCostLimit}</p>}
               </div>
             </div>
 
@@ -432,43 +470,124 @@ export default function CreateApiKeyForm({ editingKey, onSuccess, onCancel }: Cr
                 value={formData.expiresAt}
                 onChange={(e) => updateFormData('expiresAt', e.target.value)}
               />
-              <p className="text-xs text-gray-500">留空表示永不过期</p>
+              <p className="text-xs text-muted-foreground">留空表示永不过期</p>
             </div>
           </div>
 
           {/* 账户绑定 */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">账户绑定</h3>
+            <p className="text-sm text-muted-foreground">
+              绑定对应平台的账户，系统将优先使用已绑定账户处理请求
+            </p>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="claudeAccountId">Claude OAuth 账户ID</Label>
-                <Input
-                  id="claudeAccountId"
-                  value={formData.claudeAccountId}
-                  onChange={(e) => updateFormData('claudeAccountId', e.target.value)}
-                  placeholder="Claude OAuth 账户ID"
-                />
+                <Label htmlFor="claudeAccountId">Claude OAuth 账户</Label>
+                {loadingAccounts ? (
+                  <div className="flex items-center justify-center h-9 border rounded-md">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                  </div>
+                ) : (
+                  <Select 
+                    value={formData.claudeAccountId} 
+                    onValueChange={(value) => updateFormData('claudeAccountId', value || '')}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="选择Claude OAuth账户" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">不绑定账户</SelectItem>
+                      {getClaudeAccounts().map(account => (
+                        <SelectItem key={account.id} value={account.id}>
+                          {account.name}
+                          {account.description && (
+                            <span className="text-muted-foreground ml-2">
+                              ({account.description})
+                            </span>
+                          )}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                {getClaudeAccounts().length === 0 && !loadingAccounts && (
+                  <p className="text-xs text-muted-foreground">
+                    暂无可用的Claude账户
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="claudeConsoleAccountId">Claude Console 账户ID</Label>
-                <Input
-                  id="claudeConsoleAccountId"
-                  value={formData.claudeConsoleAccountId}
-                  onChange={(e) => updateFormData('claudeConsoleAccountId', e.target.value)}
-                  placeholder="Claude Console 账户ID"
-                />
+                <Label htmlFor="claudeConsoleAccountId">Claude Console 账户</Label>
+                {loadingAccounts ? (
+                  <div className="flex items-center justify-center h-9 border rounded-md">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                  </div>
+                ) : (
+                  <Select 
+                    value={formData.claudeConsoleAccountId} 
+                    onValueChange={(value) => updateFormData('claudeConsoleAccountId', value || '')}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="选择Claude Console账户" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">不绑定账户</SelectItem>
+                      {getClaudeConsoleAccounts().map(account => (
+                        <SelectItem key={account.id} value={account.id}>
+                          {account.name}
+                          {account.description && (
+                            <span className="text-muted-foreground ml-2">
+                              ({account.description})
+                            </span>
+                          )}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                {getClaudeConsoleAccounts().length === 0 && !loadingAccounts && (
+                  <p className="text-xs text-muted-foreground">
+                    暂无可用的Claude Console账户
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="geminiAccountId">Gemini 账户ID</Label>
-                <Input
-                  id="geminiAccountId"
-                  value={formData.geminiAccountId}
-                  onChange={(e) => updateFormData('geminiAccountId', e.target.value)}
-                  placeholder="Gemini 账户ID"
-                />
+                <Label htmlFor="geminiAccountId">Gemini 账户</Label>
+                {loadingAccounts ? (
+                  <div className="flex items-center justify-center h-9 border rounded-md">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                  </div>
+                ) : (
+                  <Select 
+                    value={formData.geminiAccountId} 
+                    onValueChange={(value) => updateFormData('geminiAccountId', value || '')}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="选择Gemini账户" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">不绑定账户</SelectItem>
+                      {getGeminiAccounts().map(account => (
+                        <SelectItem key={account.id} value={account.id}>
+                          {account.name}
+                          {account.description && (
+                            <span className="text-muted-foreground ml-2">
+                              ({account.description})
+                            </span>
+                          )}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                {getGeminiAccounts().length === 0 && !loadingAccounts && (
+                  <p className="text-xs text-muted-foreground">
+                    暂无可用的Gemini账户
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -557,7 +676,7 @@ export default function CreateApiKeyForm({ editingKey, onSuccess, onCancel }: Cr
                         <Label htmlFor={`client_${client.id}`} className="font-medium">
                           {client.name}
                         </Label>
-                        <p className="text-xs text-gray-500">{client.description}</p>
+                        <p className="text-xs text-muted-foreground">{client.description}</p>
                       </div>
                     </div>
                   ))}

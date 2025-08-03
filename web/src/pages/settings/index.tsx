@@ -4,7 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Settings2, Save, Database, Shield, Bell, Palette } from 'lucide-react';
+import { UpdateCheckButton } from '@/components/ui/update-notification';
+import { Settings2, Save, Database, Shield, Bell, Palette, Download } from 'lucide-react';
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState({
@@ -243,6 +244,40 @@ export default function SettingsPage() {
                 checked={settings.darkMode}
                 onCheckedChange={(checked) => updateSetting('darkMode', checked)}
               />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* 版本管理 */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Download className="h-5 w-5" />
+              <span>版本管理</span>
+            </CardTitle>
+            <CardDescription>
+              检查和管理系统版本更新
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label>检查更新</Label>
+                <p className="text-sm text-muted-foreground">
+                  手动检查是否有新版本可用
+                </p>
+              </div>
+              <UpdateCheckButton />
+            </div>
+            
+            <div className="p-4 border rounded-lg bg-muted/50">
+              <h4 className="font-medium mb-2">版本说明</h4>
+              <ul className="text-sm text-muted-foreground space-y-1">
+                <li>• 系统会自动检查更新并在有新版本时通知</li>
+                <li>• 更新通知会显示在页面右上角</li>
+                <li>• 点击更新按钮将跳转到GitHub下载页面</li>
+                <li>• 建议定期检查更新以获取最新功能和安全修复</li>
+              </ul>
             </div>
           </CardContent>
         </Card>

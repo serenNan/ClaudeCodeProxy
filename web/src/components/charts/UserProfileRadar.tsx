@@ -14,7 +14,7 @@ interface UserProfileRadarProps {
   className?: string;
 }
 
-const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
+const COLORS = ['hsl(var(--primary))', 'hsl(var(--muted-foreground))', 'hsl(var(--foreground))', 'hsl(var(--destructive))', 'hsl(var(--accent))'];
 
 export default function UserProfileRadar({ className }: UserProfileRadarProps) {
   const [data, setData] = useState<RadarData[]>([]);
@@ -262,8 +262,8 @@ export default function UserProfileRadar({ className }: UserProfileRadarProps) {
                 key={apiKey}
                 onClick={() => handleApiKeyToggle(apiKey)}
                 className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${selectedApiKeys.includes(apiKey)
-                    ? `bg-blue-100 text-blue-800 border-2 border-blue-300`
-                    : 'bg-gray-100 text-gray-600 border-2 border-transparent hover:bg-gray-200'
+                    ? `bg-primary/10 text-primary border-2 border-primary/30`
+                    : 'bg-muted text-muted-foreground border-2 border-transparent hover:bg-muted'
                   }`}
                 style={{
                   backgroundColor: selectedApiKeys.includes(apiKey)
@@ -285,7 +285,7 @@ export default function UserProfileRadar({ className }: UserProfileRadarProps) {
 
         {loading ? (
           <div className="h-96 flex items-center justify-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
           </div>
         ) : selectedApiKeys.length === 0 ? (
           <div className="h-96 flex items-center justify-center text-muted-foreground">
@@ -348,9 +348,9 @@ export default function UserProfileRadar({ className }: UserProfileRadarProps) {
 
                     {/* 评分等级 */}
                     <div className="mt-2 text-center">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${score >= 80 ? 'bg-green-100 text-green-800' :
-                          score >= 60 ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-red-100 text-red-800'
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${score >= 80 ? 'bg-primary/10 text-primary' :
+                          score >= 60 ? 'bg-muted text-muted-foreground' :
+                            'bg-destructive/10 text-destructive'
                         }`}>
                         {score >= 80 ? '优秀' : score >= 60 ? '良好' : '待优化'}
                       </span>
@@ -361,9 +361,9 @@ export default function UserProfileRadar({ className }: UserProfileRadarProps) {
             </div>
 
             {/* 洞察建议 */}
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <h4 className="font-medium text-blue-900 mb-2">💡 分析洞察</h4>
-              <ul className="text-sm text-blue-800 space-y-1">
+            <div className="bg-muted p-4 rounded-lg">
+              <h4 className="font-medium text-foreground mb-2">💡 分析洞察</h4>
+              <ul className="text-sm text-muted-foreground space-y-1">
                 <li>• 请求频率和Token使用量呈正相关，高频API Key通常消耗更多Token</li>
                 <li>• 成功率普遍较高，说明系统稳定性良好</li>
                 <li>• 建议关注费用支出较高的API Key，优化使用策略</li>

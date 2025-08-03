@@ -25,6 +25,8 @@ interface FormData {
   rateLimitRequests: string;
   concurrencyLimit: string;
   dailyCostLimit: string;
+  monthlyCostLimit: string;
+  totalCostLimit: string;
   expiresAt: string;
   permissions: string;
   claudeAccountId: string;
@@ -63,6 +65,8 @@ export default function ApiKeyModal({ open, onClose, editingKey, onSuccess }: Ap
         rateLimitRequests: editingKey.rateLimitRequests?.toString() || '',
         concurrencyLimit: editingKey.concurrencyLimit?.toString() || '0',
         dailyCostLimit: editingKey.dailyCostLimit?.toString() || '0',
+        monthlyCostLimit: editingKey.monthlyCostLimit?.toString() || '0',
+        totalCostLimit: editingKey.totalCostLimit?.toString() || '0',
         expiresAt: editingKey.expiresAt ? new Date(editingKey.expiresAt).toISOString().slice(0, 16) : '',
         permissions: editingKey.permissions || 'all',
         claudeAccountId: editingKey.claudeAccountId || '',
@@ -74,7 +78,7 @@ export default function ApiKeyModal({ open, onClose, editingKey, onSuccess }: Ap
         allowedClients: editingKey.allowedClients || [],
         isEnabled: editingKey.isEnabled !== undefined ? editingKey.isEnabled : true,
         model: editingKey.model || '',
-        service: editingKey.service || 'claude'
+        service: editingKey.service || 'all'
       };
     }
     return {
@@ -86,6 +90,8 @@ export default function ApiKeyModal({ open, onClose, editingKey, onSuccess }: Ap
       rateLimitRequests: '',
       concurrencyLimit: '0',
       dailyCostLimit: '0',
+      monthlyCostLimit: '0',
+      totalCostLimit: '0',
       expiresAt: '',
       permissions: 'all',
       claudeAccountId: '',
@@ -97,7 +103,7 @@ export default function ApiKeyModal({ open, onClose, editingKey, onSuccess }: Ap
       allowedClients: [],
       isEnabled: true,
       model: '',
-      service: 'claude'
+      service: 'all'
     };
   };
 
@@ -152,7 +158,15 @@ export default function ApiKeyModal({ open, onClose, editingKey, onSuccess }: Ap
     }
 
     if (isNaN(Number(formData.dailyCostLimit))) {
-      newErrors.dailyCostLimit = '费用限制必须是数字';
+      newErrors.dailyCostLimit = '每日费用限制必须是数字';
+    }
+
+    if (isNaN(Number(formData.monthlyCostLimit))) {
+      newErrors.monthlyCostLimit = '月度费用限制必须是数字';
+    }
+
+    if (isNaN(Number(formData.totalCostLimit))) {
+      newErrors.totalCostLimit = '总费用限制必须是数字';
     }
 
     setErrors(newErrors);
@@ -177,6 +191,8 @@ export default function ApiKeyModal({ open, onClose, editingKey, onSuccess }: Ap
         rateLimitRequests: formData.rateLimitRequests ? Number(formData.rateLimitRequests) : null,
         concurrencyLimit: Number(formData.concurrencyLimit),
         dailyCostLimit: Number(formData.dailyCostLimit),
+        monthlyCostLimit: Number(formData.monthlyCostLimit),
+        totalCostLimit: Number(formData.totalCostLimit),
         expiresAt: formData.expiresAt || null,
         permissions: formData.permissions,
         claudeAccountId: formData.claudeAccountId || null,
@@ -225,9 +241,9 @@ export default function ApiKeyModal({ open, onClose, editingKey, onSuccess }: Ap
                   value={formData.name}
                   onChange={(e) => updateFormData('name', e.target.value)}
                   placeholder="为您的 API Key 取一个名称"
-                  className={errors.name ? 'border-red-500' : ''}
+                  className={errors.name ? 'border-destructive' : ''}
                 />
-                {errors.name && <p className="text-red-500 text-xs">{errors.name}</p>}
+                {errors.name && <p className="text-destructive text-xs">{errors.name}</p>}
               </div>
 
               <div className="space-y-2">
@@ -318,6 +334,71 @@ export default function ApiKeyModal({ open, onClose, editingKey, onSuccess }: Ap
                   />
                 </div>
               )}
+            </div>
+          </div>
+
+          {/* 费用限制 */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">费用限制</h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="dailyCostLimit">每日费用限制 (美元)</Label>
+                <Input
+                  id="dailyCostLimit"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={formData.dailyCostLimit}
+                  onChange={(e) => updateFormData('dailyCostLimit', e.target.value)}
+                  placeholder="0表示无限制"
+                  className={errors.dailyCostLimit ? 'border-destructive' : ''}
+                />
+                {errors.dailyCostLimit && <p className="text-destructive text-xs">{errors.dailyCostLimit}</p>}
+                <p className="text-xs text-muted-foreground">设置0表示不限制每日费用</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="monthlyCostLimit">月度费用限制 (美元)</Label>
+                <Input
+                  id="monthlyCostLimit"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={formData.monthlyCostLimit}
+                  onChange={(e) => updateFormData('monthlyCostLimit', e.target.value)}
+                  placeholder="0表示无限制"
+                  className={errors.monthlyCostLimit ? 'border-destructive' : ''}
+                />
+                {errors.monthlyCostLimit && <p className="text-destructive text-xs">{errors.monthlyCostLimit}</p>}
+                <p className="text-xs text-muted-foreground">设置0表示不限制月度费用</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="totalCostLimit">总费用限制 (美元)</Label>
+                <Input
+                  id="totalCostLimit"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={formData.totalCostLimit}
+                  onChange={(e) => updateFormData('totalCostLimit', e.target.value)}
+                  placeholder="0表示无限制"
+                  className={errors.totalCostLimit ? 'border-destructive' : ''}
+                />
+                {errors.totalCostLimit && <p className="text-destructive text-xs">{errors.totalCostLimit}</p>}
+                <p className="text-xs text-muted-foreground">设置0表示不限制总费用</p>
+              </div>
+            </div>
+
+            <div className="bg-muted p-4 rounded-lg">
+              <h4 className="font-medium text-foreground mb-2">💡 费用限制说明</h4>
+              <ul className="text-sm text-muted-foreground space-y-1">
+                <li>• 每日费用限制：每天重置，达到限制后当天无法继续使用</li>
+                <li>• 月度费用限制：每月重置，达到限制后当月无法继续使用</li>
+                <li>• 总费用限制：永不重置，达到限制后永久无法使用（除非修改限制）</li>
+                <li>• 费用实时计算，包含输入Token、输出Token和缓存费用</li>
+              </ul>
             </div>
           </div>
 

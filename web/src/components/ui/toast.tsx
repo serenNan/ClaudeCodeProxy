@@ -43,22 +43,22 @@ function ToastComponent({ toast, onRemove }: ToastProps) {
     switch (toast.type) {
       case 'success':
         return {
-          bgColor: 'bg-green-500',
+          bgColor: 'bg-primary',
           icon: <CheckCircle className="w-5 h-5" />
         };
       case 'error':
         return {
-          bgColor: 'bg-red-500',
+          bgColor: 'bg-destructive',
           icon: <XCircle className="w-5 h-5" />
         };
       case 'warning':
         return {
-          bgColor: 'bg-yellow-500',
+          bgColor: 'bg-muted',
           icon: <AlertTriangle className="w-5 h-5" />
         };
       default:
         return {
-          bgColor: 'bg-blue-500',
+          bgColor: 'bg-primary',
           icon: <Info className="w-5 h-5" />
         };
     }
@@ -83,7 +83,7 @@ function ToastComponent({ toast, onRemove }: ToastProps) {
         </span>
         <button
           onClick={handleRemove}
-          className="ml-3 text-white hover:text-gray-200 transition-colors flex-shrink-0"
+          className="ml-3 text-white hover:text-white/80 transition-colors flex-shrink-0"
         >
           <X className="w-4 h-4" />
         </button>

@@ -211,6 +211,7 @@ public static class Program
         services.AddScoped<AccountsService>();
         services.AddScoped<ClaudeProxyService>();
         services.AddScoped<StatisticsService>();
+        services.AddScoped<VersionService>();
 
         services.AddScoped<MessageService>();
 
@@ -275,6 +276,7 @@ public static class Program
         app.MapAuthEndpoints();
         app.MapClaudeProxyEndpoints();
         app.MapDashboardEndpoints();
+        app.MapVersionEndpoints();
 
         // 健康检查端点
         app.MapGet("/health", () => Results.Ok(new { Status = "Healthy", Timestamp = DateTime.UtcNow }))

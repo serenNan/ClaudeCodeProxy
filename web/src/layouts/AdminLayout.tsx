@@ -14,6 +14,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 import { ThemeToggle } from "@/components/ui/theme-toggle"
+import { UpdateNotification } from "@/components/ui/update-notification"
 import { Outlet } from "react-router-dom"
 
 export default function Page() {
@@ -49,6 +50,8 @@ export default function Page() {
         <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
             <Outlet />
         </div>
+        {/* 版本更新通知 */}
+        <UpdateNotification />
       </SidebarInset>
     </SidebarProvider>
   )

@@ -41,7 +41,7 @@ export default function ProxyConfigComponent({ value, onChange }: ProxyConfigPro
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h4 className="text-sm font-semibold text-gray-700">
+        <h4 className="text-sm font-semibold text-foreground">
           代理设置 (可选)
         </h4>
         <div className="flex items-center space-x-2">
@@ -54,17 +54,17 @@ export default function ProxyConfigComponent({ value, onChange }: ProxyConfigPro
       </div>
 
       {value.enabled && (
-        <Card className="border-gray-200">
+        <Card className="border-border">
           <CardContent className="p-4 space-y-4">
             <div className="flex items-start gap-3 mb-3">
-              <div className="w-8 h-8 bg-gray-500 rounded-lg flex items-center justify-center flex-shrink-0">
-                <Server className="w-4 h-4 text-white" />
+              <div className="w-8 h-8 bg-primary rounded-xl flex items-center justify-center flex-shrink-0">
+                <Server className="w-4 h-4 text-primary-foreground" />
               </div>
               <div className="flex-1">
-                <p className="text-sm text-gray-700">
+                <p className="text-sm text-foreground">
                   配置代理以访问受限的网络资源。支持 SOCKS5 和 HTTP 代理。
                 </p>
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-muted-foreground mt-1">
                   请确保代理服务器稳定可用，否则会影响账户的正常使用。
                 </p>
               </div>
@@ -138,7 +138,7 @@ export default function ProxyConfigComponent({ value, onChange }: ProxyConfigPro
                       />
                       <button
                         type="button"
-                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-muted-foreground hover:text-foreground"
                         onClick={() => setShowPassword(!showPassword)}
                       >
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -149,8 +149,8 @@ export default function ProxyConfigComponent({ value, onChange }: ProxyConfigPro
               )}
             </div>
 
-            <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
-              <p className="text-xs text-blue-700 flex items-start gap-2">
+            <div className="bg-muted p-3 rounded-xl border border-border">
+              <p className="text-xs text-muted-foreground flex items-start gap-2">
                 <Info className="w-4 h-4 mt-0.5 flex-shrink-0" />
                 <span>
                   <strong>提示：</strong>代理设置将用于所有与此账户相关的API请求。请确保代理服务器支持HTTPS流量转发。

@@ -140,7 +140,7 @@ export default function RealTimePerformanceChart({ className }: RealTimePerforma
           <div className="flex items-center space-x-2">
             <Activity className="h-5 w-5" />
             <CardTitle>实时性能监控</CardTitle>
-            <div className={`w-2 h-2 rounded-full ${isRunning ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`} />
+            <div className={`w-2 h-2 rounded-full ${isRunning ? 'bg-green-500 animate-pulse' : 'bg-muted'}`} />
           </div>
           <div className="flex items-center space-x-2">
             <Select
@@ -175,12 +175,12 @@ export default function RealTimePerformanceChart({ className }: RealTimePerforma
       <CardContent>
         {/* 实时指标卡片 */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="text-center p-3 bg-blue-50 rounded-lg">
+          <div className="text-center p-3 bg-muted rounded-lg">
             <div className="flex items-center justify-center space-x-1 mb-1">
-              <Activity className="h-4 w-4 text-blue-600" />
-              <span className="text-sm text-blue-600 font-medium">当前 RPM</span>
+              <Activity className="h-4 w-4 text-primary" />
+              <span className="text-sm text-primary font-medium">当前 RPM</span>
             </div>
-            <div className="text-2xl font-bold text-blue-700">{formatValue(currentRPM)}</div>
+            <div className="text-2xl font-bold text-foreground">{formatValue(currentRPM)}</div>
           </div>
 
           <div className="text-center p-3 bg-green-50 rounded-lg">

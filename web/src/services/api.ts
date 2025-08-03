@@ -122,6 +122,10 @@ interface ApiKey {
   rateLimitRequests?: number;
   concurrencyLimit: number;
   dailyCostLimit: number;
+  monthlyCostLimit: number;
+  totalCostLimit: number;
+  dailyCostUsed: number;
+  monthlyCostUsed: number;
   expiresAt?: string;
   permissions: string;
   claudeAccountId?: string;
@@ -139,6 +143,18 @@ interface ApiKey {
   service: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface CostUsageInfo {
+  dailyUsage: number;
+  monthlyUsage: number;
+  totalUsage: number;
+  dailyCostUsed: number;
+  dailyCostLimit: number;
+  monthlyCostUsed: number;
+  monthlyCostLimit: number;
+  totalCostUsed: number;
+  totalCostLimit: number;
 }
 
 interface ProxyConfig {
@@ -288,10 +304,15 @@ class ApiService {
           rateLimitRequests: 1000,
           concurrencyLimit: 10,
           dailyCostLimit: 100,
+          monthlyCostLimit: 3000,
+          totalCostLimit: 10000,
+          dailyCostUsed: 25.50,
+          monthlyCostUsed: 450.75,
           expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
           permissions: 'all',
           claudeAccountId: undefined,
           claudeConsoleAccountId: undefined,
+          geminiAccountId: undefined,
           enableModelRestriction: false,
           restrictedModels: [],
           enableClientRestriction: false,
@@ -316,10 +337,15 @@ class ApiService {
           rateLimitRequests: 500,
           concurrencyLimit: 5,
           dailyCostLimit: 50,
+          monthlyCostLimit: 1500,
+          totalCostLimit: 5000,
+          dailyCostUsed: 12.25,
+          monthlyCostUsed: 225.50,
           expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
           permissions: 'claude',
           claudeAccountId: undefined,
           claudeConsoleAccountId: undefined,
+          geminiAccountId: undefined,
           enableModelRestriction: false,
           restrictedModels: [],
           enableClientRestriction: false,
@@ -373,6 +399,10 @@ class ApiService {
     return this.request<void>(`/apikeys/${id}`, {
       method: 'DELETE',
     });
+  }
+
+  async getApiKeyUsage(id: string): Promise<CostUsageInfo> {
+    return this.request<CostUsageInfo>(`/apikeys/${id}/usage`);
   }
 
   // Accounts

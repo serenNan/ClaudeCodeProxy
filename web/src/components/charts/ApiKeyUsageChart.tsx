@@ -98,7 +98,7 @@ export default function ApiKeyUsageChart({ className }: ApiKeyUsageChartProps) {
               </p>
             ))}
           {payload.length > 9 && (
-            <p className="text-xs text-gray-500 mt-1">...</p>
+            <p className="text-xs text-muted-foreground mt-1">...</p>
           )}
         </div>
       );
@@ -172,7 +172,7 @@ export default function ApiKeyUsageChart({ className }: ApiKeyUsageChartProps) {
       <CardContent>
         {loading ? (
           <div className="h-80 flex items-center justify-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
           </div>
         ) : chartData.length === 0 ? (
           <div className="h-80 flex items-center justify-center text-muted-foreground">
@@ -241,7 +241,7 @@ export default function ApiKeyUsageChart({ className }: ApiKeyUsageChartProps) {
             <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="text-center">
                 <div className="flex items-center justify-center space-x-1">
-                  <Key className="h-4 w-4 text-blue-600" />
+                  <Key className="h-4 w-4 text-primary" />
                   <span className="text-sm text-muted-foreground">总API Keys</span>
                 </div>
                 <div className="text-lg font-semibold">{data?.totalApiKeys || 0}</div>
