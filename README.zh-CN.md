@@ -152,7 +152,7 @@ graph TB
 
 1. **克隆仓库**
    ```bash
-   git clone https://github.com/your-username/ClaudeCodeProxy.git
+   git clone https://github.com/AIDotNet/ClaudeCodeProxy.git
    cd ClaudeCodeProxy
    ```
 
