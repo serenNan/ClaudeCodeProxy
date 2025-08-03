@@ -8,6 +8,8 @@ import {
   LifeBuoy,
   Send,
   FileText,
+  Github,
+  ExternalLink,
 } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 
@@ -99,6 +101,23 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavSecondary items={navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
+        {/* GitHub 链接 */}
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild>
+              <a 
+                href="https://github.com/AIDotNet/ClaudeCodeProxy" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 hover:bg-accent transition-colors"
+              >
+                <Github className="size-4" />
+                <span className="flex-1">GitHub 仓库</span>
+                <ExternalLink className="size-3 opacity-50" />
+              </a>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
         <NavUser user={userData} />
       </SidebarFooter>
     </Sidebar>
