@@ -152,7 +152,7 @@ graph TB
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/your-username/ClaudeCodeProxy.git
+   git clone https://github.com/AIDotNet/ClaudeCodeProxy.git
    cd ClaudeCodeProxy
    ```
 
