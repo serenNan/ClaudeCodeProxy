@@ -15,6 +15,7 @@ const PLATFORMS = [
   { value: 'claude-console', label: 'Claude Console', icon: Server, color: 'bg-secondary' },
   { value: 'gemini', label: 'Gemini', icon: Globe, color: 'bg-muted' },
   { value: 'openai', label: 'OpenAI', icon: Zap, color: 'bg-slate-500' },
+  { value: 'thor', label: 'Thor', icon: Zap, color: 'bg-blue-500' },
 ];
 
 export default function AccountsPage() {

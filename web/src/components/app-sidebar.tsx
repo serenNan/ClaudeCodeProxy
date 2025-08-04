@@ -10,6 +10,7 @@ import {
   FileText,
   Github,
   ExternalLink,
+  DollarSign,
 } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 
@@ -42,6 +43,11 @@ const navMain = [
     title: "账号管理",
     url: "/accounts",
     icon: Users,
+  },
+  {
+    title: "价格管理",
+    url: "/pricing",
+    icon: DollarSign,
   },
   {
     title: "请求日志",

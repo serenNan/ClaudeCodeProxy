@@ -6,7 +6,7 @@
 public sealed class Accounts : Entity<string>
 {
     /// <summary>
-    /// 平台类型：claude, claude-console, gemini,openai
+    /// 平台类型：claude, claude-console, gemini, openai, thor
     /// </summary>
     public string Platform { get; set; } = string.Empty;
 
@@ -116,4 +116,6 @@ public sealed class Accounts : Entity<string>
     public bool IsClaude => Platform.Equals("claude", StringComparison.OrdinalIgnoreCase);
 
     public bool IsOpenAI => Platform.Equals("openai", StringComparison.OrdinalIgnoreCase);
+
+    public bool IsThor => Platform.Equals("thor", StringComparison.OrdinalIgnoreCase);
 }

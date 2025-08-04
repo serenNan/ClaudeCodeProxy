@@ -25,6 +25,11 @@ public sealed class OpenAIChatCompletionsService(ILogger<OpenAIChatCompletionsSe
         using var openai =
             Activity.Current?.Source.StartActivity("OpenAI 对话补全");
 
+        chatCompletionCreate.StreamOptions = new ThorStreamOptions()
+        {
+            IncludeUsage = true
+        };
+
         var response = await HttpClientFactory.GetHttpClient(options.Address, config).PostJsonAsync(
             options?.Address.TrimEnd('/') + "/chat/completions",
             chatCompletionCreate, options.ApiKey, headers).ConfigureAwait(false);
@@ -63,6 +68,11 @@ public sealed class OpenAIChatCompletionsService(ILogger<OpenAIChatCompletionsSe
     {
         using var openai =
             Activity.Current?.Source.StartActivity("OpenAI 对话流式补全");
+
+        chatCompletionCreate.StreamOptions = new ThorStreamOptions()
+        {
+            IncludeUsage = true
+        };
 
         var response = await HttpClientFactory.GetHttpClient(options.Address, config).HttpRequestRaw(
             options?.Address.TrimEnd('/') + "/chat/completions",

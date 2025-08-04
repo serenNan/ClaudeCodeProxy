@@ -126,6 +126,10 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
                 .Where(kvp => !string.IsNullOrEmpty(kvp.Key) && !string.IsNullOrEmpty(kvp.Value))
                 .Select(kvp => $"{kvp.Key}:{kvp.Value}")
                 .ToList();
+            
+            // 确保转换后的数据格式正确 - 这应该生成 ["key:value", "key2:value2"] 的List<string>
+            logger.LogDebug("SupportedModels转换结果: {SupportedModels}", 
+                string.Join(", ", account.SupportedModels.Select(x => $"\"{x}\"")));
         }
 
         account.ClaudeAiOauth = request.ClaudeAiOauth;
@@ -437,7 +441,7 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
         if (apiKey.IsClaude())
         {
             query = query.Where(x =>
-                x.Platform == "claude" || x.Platform == "claude-console" || x.Platform == "openai");
+                x.Platform == "claude" || x.Platform == "claude-console" || x.Platform == "openai" || x.Platform == "thor");
         }
         else if (apiKey.IsGemini())
         {
@@ -660,6 +664,14 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
             }
 
             if (account.Platform == "openai" && !string.IsNullOrEmpty(account.ApiKey))
+            {
+                // 更新最后使用时间
+                await UpdateAccountLastUsedAsync(account.Id, cancellationToken);
+                return account.ApiKey;
+            }
+
+            // 如果是Thor账户
+            if (account.Platform == "thor" && !string.IsNullOrEmpty(account.ApiKey))
             {
                 // 更新最后使用时间
                 await UpdateAccountLastUsedAsync(account.Id, cancellationToken);

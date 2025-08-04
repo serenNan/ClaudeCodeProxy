@@ -17,10 +17,8 @@ public static class ServiceExtensions
         IConfiguration configuration)
     {
         // Register the DbContext with SQLite provider
-        services.AddDbContext<MasterDbContext>(options =>
+        services.AddDbContext<IContext,SqliteDbContext>(options =>
             options.UseSqlite(configuration.GetConnectionString("DefaultConnection")));
-        
-        services.AddScoped<IContext>(provider => provider.GetRequiredService<MasterDbContext>());
 
         return services;
     }

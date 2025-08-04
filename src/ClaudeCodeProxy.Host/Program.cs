@@ -55,6 +55,7 @@ public static class Program
         ConfigureEndpoints(app);
 
         await MigrateDatabaseAsync(app);
+        await InitializeModelPricingAsync(app);
 
         // 如果是Windows且未安装服务，提示用户
         if (WindowsServiceHelper.IsWindows() && !await WindowsServiceHelper.IsServiceInstalledAsync())
@@ -149,6 +150,23 @@ public static class Program
         await dbContext.MigrateAsync();
     }
 
+    private static async Task InitializeModelPricingAsync(WebApplication app)
+    {
+        try
+        {
+            await using var scope = app.Services.CreateAsyncScope();
+            var initService = scope.ServiceProvider.GetRequiredService<ModelPricingInitService>();
+            
+            // 初始化模型定价数据
+            await initService.InitializeModelPricingAsync();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "初始化模型定价数据失败");
+            // 不抛出异常，允许应用程序继续启动
+        }
+    }
+
     private static void ConfigureSerilog(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSerilog();
@@ -199,11 +217,7 @@ public static class Program
 
         services.AddScoped<SessionHelper>();
 
-        // 添加Entity Framework Core with SQLite
-        services.AddDbContext<MasterDbContext>(options =>
-            options.UseSqlite(configuration.GetConnectionString("DefaultConnection")));
-
-        services.AddScoped<IContext>(provider => provider.GetRequiredService<MasterDbContext>());
+        services.AddEntityFrameworkCoreSqlite(configuration);
 
         // 注册服务
         services.AddScoped<ApiKeyService>();
@@ -212,6 +226,8 @@ public static class Program
         services.AddScoped<ClaudeProxyService>();
         services.AddScoped<StatisticsService>();
         services.AddScoped<VersionService>();
+        services.AddSingleton<PricingService>(); // 价格服务使用单例，因为价格配置相对稳定
+        services.AddScoped<ModelPricingInitService>(); // 模型定价初始化服务
 
         services.AddScoped<MessageService>();
 
@@ -276,6 +292,7 @@ public static class Program
         app.MapAuthEndpoints();
         app.MapClaudeProxyEndpoints();
         app.MapDashboardEndpoints();
+        app.MapPricingEndpoints();
         app.MapVersionEndpoints();
 
         // 健康检查端点

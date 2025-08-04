@@ -9,7 +9,7 @@ import { apiService, type ProxyConfig, type OAuthTokenInfo } from '@/services/ap
 import { showToast } from '@/utils/toast';
 
 interface OAuthFlowProps {
-  platform: 'claude' | 'gemini';
+  platform: 'claude' | 'gemini' | 'thor';
   proxy?: ProxyConfig;
   onSuccess: (tokenInfo: OAuthTokenInfo) => void;
   onBack: () => void;
@@ -22,8 +22,27 @@ export default function OAuthFlow({ platform, proxy, onSuccess, onBack }: OAuthF
   const [authCode, setAuthCode] = useState('');
   const [copied, setCopied] = useState(false);
   const [sessionId, setSessionId] = useState('');
+  const [thorToken, setThorToken] = useState('');
 
-  const canExchange = authUrl && authCode.trim();
+  // 检查URL中的token参数（Thor平台回调）
+  useEffect(() => {
+    if (platform === 'thor') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const token = urlParams.get('token');
+      
+      if (token) {
+        setThorToken(token);
+        showToast('成功获取Thor Token！', 'success');
+        // 清理URL参数
+        const url = new URL(window.location.href);
+        url.searchParams.delete('token');
+        url.searchParams.delete('platform');
+        window.history.replaceState({}, document.title, url.pathname + url.hash);
+      }
+    }
+  }, [platform]);
+
+  const canExchange = platform === 'thor' ? thorToken.trim() : (authUrl && authCode.trim());
 
   // 监听授权码输入，自动提取URL中的code参数
   useEffect(() => {
@@ -61,6 +80,20 @@ export default function OAuthFlow({ platform, proxy, onSuccess, onBack }: OAuthF
         } catch (error) {
           // 不是有效的URL，保持原值
         }
+      } else if (platform === 'thor' && trimmedValue.includes('?token=')) {
+        try {
+          const url = new URL(trimmedValue);
+          const token = url.searchParams.get('token');
+          
+          if (token) {
+            setThorToken(token);
+            showToast('成功提取Thor Token！', 'success');
+          } else {
+            showToast('URL 中未找到token参数，请检查链接是否正确', 'error');
+          }
+        } catch (error) {
+          showToast('链接格式错误，请检查是否为完整的 URL', 'error');
+        }
       } else {
         showToast('请粘贴以 http://localhost:45462 开头的链接', 'error');
       }
@@ -68,6 +101,14 @@ export default function OAuthFlow({ platform, proxy, onSuccess, onBack }: OAuthF
   }, [authCode, platform]);
 
   const generateAuthUrl = async () => {
+    if (platform === 'thor') {
+      // Thor平台直接打开授权页面
+      const currentUrl = window.location.origin + window.location.pathname;
+      const thorAuthUrl = `https://api.token-ai.cn/login?redirect_uri=${encodeURIComponent(currentUrl + '?platform=thor')}`;
+      window.open(thorAuthUrl, '_blank');
+      return;
+    }
+    
     setLoading(true);
     try {
       const proxyConfig = proxy?.enabled ? { proxy } : {};
@@ -131,6 +172,14 @@ export default function OAuthFlow({ platform, proxy, onSuccess, onBack }: OAuthF
           code: authCode.trim(),
           sessionId: sessionId
         };
+      } else if (platform === 'thor') {
+        // Thor平台直接使用token
+        const tokenInfo = {
+          apiKey: thorToken.trim(),
+          baseUrl: 'https://api.token-ai.cn/v1'
+        };
+        onSuccess(tokenInfo);
+        return;
       }
       
       if (proxy?.enabled) {
@@ -460,9 +509,128 @@ export default function OAuthFlow({ platform, proxy, onSuccess, onBack }: OAuthF
     </Card>
   );
 
+  const renderThorFlow = () => (
+    <Card className="border-border bg-card">
+      <CardContent className="p-6">
+        <div className="flex items-start gap-4">
+          <div className="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center flex-shrink-0">
+            <ExternalLink className="w-5 h-5 text-white" />
+          </div>
+          <div className="flex-1">
+            <h4 className="font-semibold text-foreground mb-3">
+              Thor 平台授权
+            </h4>
+            <p className="text-sm text-muted-foreground mb-4">
+              请按照以下步骤完成 Thor 平台的授权：
+            </p>
+            
+            <div className="space-y-4">
+              {/* 步骤1 */}
+              <Card className="bg-card/80 border-border">
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">
+                      1
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium text-foreground mb-2">
+                        点击下方按钮跳转到授权页面
+                      </p>
+                      <LoadingButton
+                        loading={loading}
+                        onClick={generateAuthUrl}
+                        size="sm"
+                        icon={<ExternalLink className="w-4 h-4" />}
+                        loadingText="跳转中..."
+                        className="bg-blue-500 hover:bg-blue-600 text-white"
+                      >
+                        获取授权
+                      </LoadingButton>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              {/* 步骤2 */}
+              <Card className="bg-card/80 border-border">
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">
+                      2
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium text-foreground mb-2">
+                        在授权页面完成登录
+                      </p>
+                      <p className="text-sm text-muted-foreground mb-3">
+                        在新打开的授权页面中完成登录，授权成功后页面会自动跳转回来并在URL中包含token参数。
+                      </p>
+                      <div className="bg-blue-50 dark:bg-blue-950 p-3 rounded-xl border border-blue-200 dark:border-blue-800">
+                        <p className="text-xs text-blue-700 dark:text-blue-300 flex items-start gap-2">
+                          <Lightbulb className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                          <span>
+                            <strong>说明：</strong>Thor平台使用OpenAI兼容格式，支持自动获取Token的快捷访问。
+                          </span>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              {/* 步骤3 */}
+              <Card className="bg-card/80 border-border">
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">
+                      3
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium text-foreground mb-2">
+                        复制包含token的链接
+                      </p>
+                      <p className="text-sm text-muted-foreground mb-3">
+                        授权完成后，复制浏览器地址栏中包含?token=参数的完整链接并粘贴到下方：
+                      </p>
+                      <div className="space-y-3">
+                        <div>
+                          <Label className="flex items-center gap-2 text-sm font-semibold text-foreground mb-2">
+                            <Key className="w-4 h-4 text-blue-500" />
+                            包含Token的链接
+                          </Label>
+                          <textarea 
+                            value={authCode}
+                            onChange={(e) => setAuthCode(e.target.value)}
+                            rows={3}
+                            className="w-full p-2 border border-input rounded-xl resize-none font-mono text-sm bg-background text-foreground"
+                            placeholder="粘贴包含?token=参数的完整链接..."
+                          />
+                        </div>
+                        {thorToken && (
+                          <div className="p-3 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-xl">
+                            <p className="text-xs text-green-700 dark:text-green-300 flex items-center gap-2">
+                              <Check className="w-4 h-4" />
+                              已成功提取Token: {thorToken.substring(0, 20)}...
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
   return (
     <div className="space-y-6">
-      {platform === 'claude' ? renderClaudeFlow() : renderGeminiFlow()}
+      {platform === 'claude' ? renderClaudeFlow() : 
+       platform === 'gemini' ? renderGeminiFlow() : 
+       renderThorFlow()}
       
       <div className="flex gap-3 pt-4">
         <Button 

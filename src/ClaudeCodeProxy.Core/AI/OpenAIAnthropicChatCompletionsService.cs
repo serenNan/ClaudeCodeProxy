@@ -92,6 +92,28 @@ public class OpenAIAnthropicChatCompletionsService
                 yield return ("message_start",JsonSerializer.Serialize(messageStartEvent,ThorJsonSerializer.DefaultOptions), messageStartEvent);
             }
 
+            // 更新使用情况统计
+            if (openAIResponse.Usage != null)
+            {
+                // 使用最新的token计数（OpenAI通常在最后的响应中提供完整的统计）
+                if (openAIResponse.Usage.PromptTokens.HasValue)
+                {
+                    accumulatedUsage.input_tokens = openAIResponse.Usage.PromptTokens.Value;
+                }
+                if (openAIResponse.Usage.CompletionTokens.HasValue)
+                {
+                    accumulatedUsage.output_tokens = (int)openAIResponse.Usage.CompletionTokens.Value;
+                }
+                if (openAIResponse.Usage.PromptTokensDetails?.CachedTokens.HasValue == true)
+                {
+                    accumulatedUsage.cache_read_input_tokens = openAIResponse.Usage.PromptTokensDetails.CachedTokens.Value;
+                }
+                
+                // 记录调试信息
+                _logger.LogDebug("OpenAI Usage更新: Input={InputTokens}, Output={OutputTokens}, CacheRead={CacheRead}", 
+                    accumulatedUsage.input_tokens, accumulatedUsage.output_tokens, accumulatedUsage.cache_read_input_tokens);
+            }
+            
             if (openAIResponse.Choices is { Count: > 0 })
             {
                 var choice = openAIResponse.Choices.First();
@@ -233,6 +255,11 @@ public class OpenAIAnthropicChatCompletionsService
                     // 发送message_delta事件
                     var messageDeltaEvent = CreateMessageDeltaEvent(
                         GetStopReasonByLastContentType(choice.FinishReason, lastContentBlockType), accumulatedUsage);
+                    
+                    // 记录最终Usage统计
+                    _logger.LogDebug("流式响应结束，最终Usage: Input={InputTokens}, Output={OutputTokens}, CacheRead={CacheRead}", 
+                        accumulatedUsage.input_tokens, accumulatedUsage.output_tokens, accumulatedUsage.cache_read_input_tokens);
+                    
                     yield return ("message_delta",JsonSerializer.Serialize(messageDeltaEvent,ThorJsonSerializer.DefaultOptions), messageDeltaEvent);
 
                     // 发送message_stop事件
@@ -241,15 +268,6 @@ public class OpenAIAnthropicChatCompletionsService
                 }
             }
 
-            // 更新使用情况统计
-            if (openAIResponse.Usage != null)
-            {
-                accumulatedUsage.input_tokens = openAIResponse.Usage.PromptTokens ?? accumulatedUsage.input_tokens;
-                accumulatedUsage.output_tokens =
-                    (int?)(openAIResponse.Usage.CompletionTokens ?? accumulatedUsage.output_tokens);
-                accumulatedUsage.cache_read_input_tokens = openAIResponse.Usage.PromptTokensDetails?.CachedTokens ??
-                                                           accumulatedUsage.cache_read_input_tokens;
-            }
         }
 
         // 确保流正确结束
@@ -629,16 +647,18 @@ public class OpenAIAnthropicChatCompletionsService
             claudeResponse.content = contents.ToArray();
         }
 
-        // 处理使用情况统计
-        if (openAIResponse.Usage != null)
+        // 处理使用情况统计 - 确保始终提供Usage信息
+        claudeResponse.Usage = new ClaudeChatCompletionDtoUsage
         {
-            claudeResponse.Usage = new ClaudeChatCompletionDtoUsage
-            {
-                input_tokens = openAIResponse.Usage.PromptTokens,
-                output_tokens = (int?)openAIResponse.Usage.CompletionTokens,
-                cache_read_input_tokens = openAIResponse.Usage.PromptTokensDetails?.CachedTokens
-            };
-        }
+            input_tokens = openAIResponse.Usage?.PromptTokens ?? 0,
+            output_tokens = (int?)(openAIResponse.Usage?.CompletionTokens ?? 0),
+            cache_creation_input_tokens = openAIResponse.Usage?.PromptTokensDetails?.CachedTokens ?? 0,
+            cache_read_input_tokens = openAIResponse.Usage?.PromptTokensDetails?.CachedTokens ?? 0
+        };
+
+        // 记录Usage统计日志
+        _logger.LogDebug("非流式响应Usage: Input={InputTokens}, Output={OutputTokens}, CacheRead={CacheRead}", 
+            claudeResponse.Usage.input_tokens, claudeResponse.Usage.output_tokens, claudeResponse.Usage.cache_read_input_tokens);
 
         return claudeResponse;
     }

@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Modal } from '@/components/ui/modal';
-import { UserCircle, ChevronRight, Plus, Trash2, Settings } from 'lucide-react';
+import { UserCircle, ChevronRight, Plus, Trash2, Settings, Zap } from 'lucide-react';
 import { apiService, type Account, type OAuthTokenInfo } from '@/services/api';
 import { showToast } from '@/utils/toast';
 import { useConfirm } from '@/hooks/useConfirm';
@@ -43,7 +43,7 @@ export default function AccountModal({ show, account, onClose, onSuccess }: Acco
   }
 
   const [form, setForm] = useState({
-    platform: 'claude' as 'claude' | 'claude-console' | 'gemini' | 'openai',
+    platform: 'claude' as 'claude' | 'claude-console' | 'gemini' | 'openai' | 'thor',
     addType: 'oauth' as 'oauth' | 'manual',
     name: '',
     description: '',
@@ -68,6 +68,12 @@ export default function AccountModal({ show, account, onClose, onSuccess }: Acco
 
   // 模型映射表
   const [modelMappings, setModelMappings] = useState<ModelMapping[]>([]);
+
+  // 默认的模型选项
+  const defaultModels = [
+    'claude-3-5-haiku-20241022',
+    'claude-sonnet-4-20250514'
+  ];
 
   // 表单验证错误
   const [errors, setErrors] = useState({
@@ -176,6 +182,12 @@ export default function AccountModal({ show, account, onClose, onSuccess }: Acco
         addType: 'manual',
         apiUrl: prev.apiUrl || 'https://api.openai.com/v1'
       }));
+    } else if (form.platform === 'thor') {
+      setForm(prev => ({ 
+        ...prev, 
+        addType: 'oauth',
+        apiUrl: prev.apiUrl || 'https://api.token-ai.cn/v1'
+      }));
     }
   }, [form.platform]);
 
@@ -243,13 +255,21 @@ export default function AccountModal({ show, account, onClose, onSuccess }: Acco
         if (form.projectId) {
           Object.assign(data, { projectId: form.projectId });
         }
+      } else if (form.platform === 'thor') {
+        Object.assign(data, {
+          apiKey: tokenInfo.apiKey,
+          apiUrl: tokenInfo.baseUrl || 'https://api.token-ai.cn/v1',
+          priority: form.priority || 50
+        });
       }
 
       let result;
       if (form.platform === 'claude') {
         result = await apiService.createClaudeAccount(data);
-      } else {
+      } else if (form.platform === 'gemini') {
         result = await apiService.createGeminiAccount(data);
+      } else if (form.platform === 'thor') {
+        result = await apiService.createAccount(data);
       }
 
       onSuccess(result);
@@ -362,6 +382,8 @@ export default function AccountModal({ show, account, onClose, onSuccess }: Acco
         result = await apiService.createClaudeConsoleAccount(data);
       } else if (form.platform === 'openai') {
         result = await apiService.createAccount(data);
+      } else if (form.platform === 'thor') {
+        result = await apiService.createAccount(data);
       } else {
         result = await apiService.createGeminiAccount(data);
       }
@@ -467,11 +489,26 @@ export default function AccountModal({ show, account, onClose, onSuccess }: Acco
         }
       }
 
+      if (account!.platform === 'thor') {
+        Object.assign(data, {
+          apiUrl: form.apiUrl || 'https://api.token-ai.cn/v1',
+          priority: form.priority || 50,
+          supportedModels: convertMappingsToObject() || {},
+          userAgent: form.userAgent || null,
+          rateLimitDuration: form.rateLimitDuration || 60
+        });
+        if (form.apiKey) {
+          Object.assign(data, { apiKey: form.apiKey });
+        }
+      }
+
       if (account!.platform === 'claude') {
         await apiService.updateClaudeAccount(account!.id, data);
       } else if (account!.platform === 'claude-console') {
         await apiService.updateClaudeConsoleAccount(account!.id, data);
       } else if (account!.platform === 'openai') {
+        await apiService.updateAccount(account!.id, data);
+      } else if (account!.platform === 'thor') {
         await apiService.updateAccount(account!.id, data);
       } else {
         await apiService.updateGeminiAccount(account!.id, data);
@@ -632,12 +669,23 @@ export default function AccountModal({ show, account, onClose, onSuccess }: Acco
                       />
                       <span className="text-sm text-foreground">OpenAI</span>
                     </label>
+                    <label className="flex items-center cursor-pointer">
+                      <input 
+                        type="radio" 
+                        name="platform"
+                        value="thor"
+                        checked={form.platform === 'thor'}
+                        onChange={(e) => updateForm('platform', e.target.value)}
+                        className="mr-2"
+                      />
+                      <span className="text-sm text-foreground">Thor</span>
+                    </label>
                   </div>
                 </div>
               )}
 
               {/* 添加方式 */}
-              {!isEdit && form.platform !== 'claude-console' && form.platform !== 'openai' && (
+              {!isEdit && form.platform !== 'claude-console' && form.platform !== 'openai' && form.platform !== 'thor' && (
                 <div className="space-y-2">
                   <Label className="text-sm font-semibold">添加方式</Label>
                   <div className="flex gap-4">
@@ -650,7 +698,7 @@ export default function AccountModal({ show, account, onClose, onSuccess }: Acco
                         onChange={(e) => updateForm('addType', e.target.value)}
                         className="mr-2"
                       />
-                      <span className="text-sm text-foreground">OAuth 授权 (推荐)</span>
+                      <span className="text-sm text-foreground">{(form.platform as any) === 'thor' ? 'Token 快捷获取 (推荐)' : 'OAuth 授权 (推荐)'}</span>
                     </label>
                     <label className="flex items-center cursor-pointer">
                       <input 
@@ -767,6 +815,26 @@ export default function AccountModal({ show, account, onClose, onSuccess }: Acco
                 </div>
               )}
 
+              {/* Thor 特定字段 */}
+              {form.platform === 'thor' && !isEdit && (
+                <div className="space-y-4">
+                  <div className="p-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
+                    <div className="flex items-start space-x-3">
+                      <Zap className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5" />
+                      <div>
+                        <h4 className="font-medium text-blue-900 dark:text-blue-100">Thor 平台说明</h4>
+                        <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
+                          Thor平台使用OpenAI兼容格式，支持自动获取Token的快捷访问。点击下一步后将跳转到授权页面获取Token。
+                        </p>
+                        <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
+                          Base URL: https://api.token-ai.cn/v1
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* OpenAI 特定字段 */}
               {form.platform === 'openai' && !isEdit && (
                 <div className="space-y-4">
@@ -821,7 +889,7 @@ export default function AccountModal({ show, account, onClose, onSuccess }: Acco
               )}
 
               {/* 优先级设置 */}
-              {(form.platform === 'claude' || form.platform === 'claude-console' || form.platform === 'openai') && (
+              {(form.platform === 'claude' || form.platform === 'claude-console' || form.platform === 'openai' || form.platform === 'thor') && (
                 <div className="space-y-2">
                   <Label>调度优先级 (1-100)</Label>
                   <Input
@@ -839,7 +907,7 @@ export default function AccountModal({ show, account, onClose, onSuccess }: Acco
               )}
 
               {/* 手动输入 Token 字段 */}
-              {form.addType === 'manual' && form.platform !== 'claude-console' && form.platform !== 'openai' && (
+              {form.addType === 'manual' && form.platform !== 'claude-console' && form.platform !== 'openai' && form.platform !== 'thor' && (
                 <Card className="border-border bg-card/50">
                   <CardContent className="p-4 space-y-4">
                     <div className="space-y-2">
@@ -881,7 +949,7 @@ export default function AccountModal({ show, account, onClose, onSuccess }: Acco
           {/* 步骤2: OAuth授权 */}
           {oauthStep === 2 && form.addType === 'oauth' && (
             <OAuthFlow
-              platform={form.platform as 'claude' | 'gemini'}
+              platform={form.platform as 'claude' | 'gemini' | 'thor'}
               proxy={form.proxy}
               onSuccess={handleOAuthSuccess}
               onBack={() => setOauthStep(1)}
@@ -907,7 +975,8 @@ export default function AccountModal({ show, account, onClose, onSuccess }: Acco
                       <p className="text-sm text-muted-foreground">
                         {form.platform === 'claude' ? 'Claude AI官方账户' :
                          form.platform === 'claude-console' ? 'Claude Console API' :
-                         form.platform === 'openai' ? 'OpenAI API' : 'Google Gemini'}
+                         form.platform === 'openai' ? 'OpenAI API' :
+                         form.platform === 'thor' ? 'Thor平台 (OpenAI兼容)' : 'Google Gemini'}
                       </p>
                     </div>
                   </div>
@@ -1064,20 +1133,45 @@ export default function AccountModal({ show, account, onClose, onSuccess }: Acco
                       <div className="flex items-center justify-between">
                         <div>
                           <Label className="text-sm font-medium text-foreground">模型映射 (可选)</Label>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            将请求中的模型名映射为实际调用的模型名
-                          </p>
+                          <div className="mt-1 space-y-1">
+                            <p className="text-xs text-muted-foreground">
+                              将请求中的模型名映射为实际调用的模型名
+                            </p>
+                            <p className="text-xs text-blue-600 dark:text-blue-400">
+                              常用映射：claude-3-5-haiku-20241022 → 实际支持的模型名
+                            </p>
+                          </div>
                         </div>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setModelMappings([...modelMappings, { from: '', to: '' }])}
-                          className="border-border text-muted-foreground hover:bg-muted"
-                        >
-                          <Plus className="w-4 h-4 mr-1" />
-                          添加映射
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setModelMappings([...modelMappings, { from: '', to: '' }])}
+                            className="border-border text-muted-foreground hover:bg-muted"
+                          >
+                            <Plus className="w-4 h-4 mr-1" />
+                            添加映射
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setModelMappings([...modelMappings, { from: 'claude-3-5-haiku-20241022', to: '' }])}
+                            className="border-border text-muted-foreground hover:bg-muted text-xs"
+                          >
+                            快速添加 Haiku
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setModelMappings([...modelMappings, { from: 'claude-sonnet-4-20250514', to: '' }])}
+                            className="border-border text-muted-foreground hover:bg-muted text-xs"
+                          >
+                            快速添加 Sonnet-4
+                          </Button>
+                        </div>
                       </div>
                       
                       {modelMappings.length === 0 && (
@@ -1093,31 +1187,47 @@ export default function AccountModal({ show, account, onClose, onSuccess }: Acco
                       {modelMappings.map((mapping, index) => (
                         <div key={index} className="flex gap-3 items-center p-3 bg-card rounded-xl border border-border">
                           <div className="flex-1">
-                            <Input
-                              placeholder="原模型名 (如: gpt-4)"
-                              value={mapping.from}
-                              onChange={(e) => {
-                                const newMappings = [...modelMappings];
-                                newMappings[index] = { ...mapping, from: e.target.value };
-                                setModelMappings(newMappings);
-                              }}
-                              className="border-input bg-background text-foreground focus:border-ring focus:ring-ring"
-                            />
+                            <div className="relative">
+                              <Input
+                                list={`from-models-${index}`}
+                                placeholder="原模型名 (如: gpt-4)"
+                                value={mapping.from}
+                                onChange={(e) => {
+                                  const newMappings = [...modelMappings];
+                                  newMappings[index] = { ...mapping, from: e.target.value };
+                                  setModelMappings(newMappings);
+                                }}
+                                className="border-input bg-background text-foreground focus:border-ring focus:ring-ring"
+                              />
+                              <datalist id={`from-models-${index}`}>
+                                {defaultModels.map(model => (
+                                  <option key={model} value={model} />
+                                ))}
+                              </datalist>
+                            </div>
                           </div>
                           <div className="flex items-center justify-center w-8">
                             <ChevronRight className="w-4 h-4 text-muted-foreground" />
                           </div>
                           <div className="flex-1">
-                            <Input
-                              placeholder="目标模型名 (如: claude-3-sonnet)"
-                              value={mapping.to}
-                              onChange={(e) => {
-                                const newMappings = [...modelMappings];
-                                newMappings[index] = { ...mapping, to: e.target.value };
-                                setModelMappings(newMappings);
-                              }}
-                              className="border-input bg-background text-foreground focus:border-ring focus:ring-ring"
-                            />
+                            <div className="relative">
+                              <Input
+                                list={`to-models-${index}`}
+                                placeholder="目标模型名 (如: claude-3-sonnet)"
+                                value={mapping.to}
+                                onChange={(e) => {
+                                  const newMappings = [...modelMappings];
+                                  newMappings[index] = { ...mapping, to: e.target.value };
+                                  setModelMappings(newMappings);
+                                }}
+                                className="border-input bg-background text-foreground focus:border-ring focus:ring-ring"
+                              />
+                              <datalist id={`to-models-${index}`}>
+                                {defaultModels.map(model => (
+                                  <option key={model} value={model} />
+                                ))}
+                              </datalist>
+                            </div>
                           </div>
                           <Button
                             type="button"
@@ -1200,20 +1310,45 @@ export default function AccountModal({ show, account, onClose, onSuccess }: Acco
                        <div className="flex items-center justify-between">
                          <div>
                            <Label className="text-sm font-medium text-foreground">模型映射 (可选)</Label>
-                           <p className="text-xs text-muted-foreground mt-1">
-                             将请求中的模型名映射为实际调用的模型名
-                           </p>
+                           <div className="mt-1 space-y-1">
+                             <p className="text-xs text-muted-foreground">
+                               将请求中的模型名映射为实际调用的模型名
+                             </p>
+                             <p className="text-xs text-blue-600 dark:text-blue-400">
+                               常用映射：claude-sonnet-4-20250514 → 实际支持的模型名
+                             </p>
+                           </div>
                          </div>
-                         <Button
-                           type="button"
-                           variant="outline"
-                           size="sm"
-                           onClick={() => setModelMappings([...modelMappings, { from: '', to: '' }])}
-                           className="border-border text-muted-foreground hover:bg-muted"
-                         >
-                           <Plus className="w-4 h-4 mr-1" />
-                           添加映射
-                         </Button>
+                         <div className="flex gap-2">
+                           <Button
+                             type="button"
+                             variant="outline"
+                             size="sm"
+                             onClick={() => setModelMappings([...modelMappings, { from: '', to: '' }])}
+                             className="border-border text-muted-foreground hover:bg-muted"
+                           >
+                             <Plus className="w-4 h-4 mr-1" />
+                             添加映射
+                           </Button>
+                           <Button
+                             type="button"
+                             variant="outline"
+                             size="sm"
+                             onClick={() => setModelMappings([...modelMappings, { from: 'claude-3-5-haiku-20241022', to: '' }])}
+                             className="border-border text-muted-foreground hover:bg-muted text-xs"
+                           >
+                             快速添加 Haiku
+                           </Button>
+                           <Button
+                             type="button"
+                             variant="outline"
+                             size="sm"
+                             onClick={() => setModelMappings([...modelMappings, { from: 'claude-sonnet-4-20250514', to: '' }])}
+                             className="border-border text-muted-foreground hover:bg-muted text-xs"
+                           >
+                             快速添加 Sonnet-4
+                           </Button>
+                         </div>
                        </div>
                        
                        {modelMappings.length === 0 && (
@@ -1229,31 +1364,224 @@ export default function AccountModal({ show, account, onClose, onSuccess }: Acco
                        {modelMappings.map((mapping, index) => (
                          <div key={index} className="flex gap-3 items-center p-3 bg-card rounded-xl border border-border">
                            <div className="flex-1">
-                             <Input
-                               placeholder="原模型名 (如: gpt-4)"
-                               value={mapping.from}
-                               onChange={(e) => {
-                                 const newMappings = [...modelMappings];
-                                 newMappings[index] = { ...mapping, from: e.target.value };
-                                 setModelMappings(newMappings);
-                               }}
-                               className="border-input bg-background text-foreground focus:border-ring focus:ring-ring"
-                             />
+                             <div className="relative">
+                               <Input
+                                 list={`from-models-openai-${index}`}
+                                 placeholder="原模型名 (如: gpt-4)"
+                                 value={mapping.from}
+                                 onChange={(e) => {
+                                   const newMappings = [...modelMappings];
+                                   newMappings[index] = { ...mapping, from: e.target.value };
+                                   setModelMappings(newMappings);
+                                 }}
+                                 className="border-input bg-background text-foreground focus:border-ring focus:ring-ring"
+                               />
+                               <datalist id={`from-models-openai-${index}`}>
+                                 {defaultModels.map(model => (
+                                   <option key={model} value={model} />
+                                 ))}
+                               </datalist>
+                             </div>
                            </div>
                            <div className="flex items-center justify-center w-8">
                              <ChevronRight className="w-4 h-4 text-muted-foreground" />
                            </div>
                            <div className="flex-1">
-                             <Input
-                               placeholder="目标模型名 (如: gpt-4-turbo)"
-                               value={mapping.to}
-                               onChange={(e) => {
-                                 const newMappings = [...modelMappings];
-                                 newMappings[index] = { ...mapping, to: e.target.value };
-                                 setModelMappings(newMappings);
-                               }}
-                               className="border-input bg-background text-foreground focus:border-ring focus:ring-ring"
-                             />
+                             <div className="relative">
+                               <Input
+                                 list={`to-models-openai-${index}`}
+                                 placeholder="目标模型名 (如: gpt-4-turbo)"
+                                 value={mapping.to}
+                                 onChange={(e) => {
+                                   const newMappings = [...modelMappings];
+                                   newMappings[index] = { ...mapping, to: e.target.value };
+                                   setModelMappings(newMappings);
+                                 }}
+                                 className="border-input bg-background text-foreground focus:border-ring focus:ring-ring"
+                               />
+                               <datalist id={`to-models-openai-${index}`}>
+                                 {defaultModels.map(model => (
+                                   <option key={model} value={model} />
+                                 ))}
+                               </datalist>
+                             </div>
+                           </div>
+                           <Button
+                             type="button"
+                             variant="ghost"
+                             size="sm"
+                             onClick={() => {
+                               const newMappings = modelMappings.filter((_, i) => i !== index);
+                               setModelMappings(newMappings);
+                             }}
+                             className="text-destructive hover:text-destructive/80 hover:bg-destructive/10 rounded-full"
+                           >
+                             <Trash2 className="w-4 h-4" />
+                           </Button>
+                         </div>
+                       ))}
+                     </div>
+                   </CardContent>
+                 </Card>
+               )}
+
+              {/* Thor 特定配置 */}
+              {form.platform === 'thor' && (
+                <Card className="border border-border bg-card/50">
+                  <CardContent className="p-6">
+                    <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                      Thor 配置
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium text-foreground">Base URL</Label>
+                        <Input
+                          value={form.apiUrl}
+                          onChange={(e) => updateForm('apiUrl', e.target.value)}
+                          placeholder="例如：https://api.token-ai.cn/v1"
+                          className="border-input bg-background text-foreground focus:border-ring focus:ring-ring"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Thor平台地址：https://api.token-ai.cn/v1
+                        </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium text-foreground">API Key</Label>
+                        <Input
+                          type="password"
+                          value={form.apiKey}
+                          onChange={(e) => updateForm('apiKey', e.target.value)}
+                          placeholder="留空表示不更新..."
+                          className="border-input bg-background text-foreground focus:border-ring focus:ring-ring"
+                        />
+                        <p className="text-xs text-muted-foreground">留空表示保持当前API Key不变</p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium text-foreground">User Agent (可选)</Label>
+                        <Input
+                          value={form.userAgent}
+                          onChange={(e) => updateForm('userAgent', e.target.value)}
+                          placeholder="自定义User Agent"
+                          className="border-input bg-background text-foreground focus:border-ring focus:ring-ring"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium text-foreground">请求间隔 (秒)</Label>
+                        <Input
+                          type="number"
+                          min="1"
+                          value={form.rateLimitDuration}
+                          onChange={(e) => updateForm('rateLimitDuration', parseInt(e.target.value) || 60)}
+                          placeholder="默认60秒"
+                          className="border-input bg-background text-foreground focus:border-ring focus:ring-ring"
+                        />
+                      </div>
+                    </div>
+
+                     {/* 模型映射表 */}
+                     <div className="mt-6 space-y-4">
+                       <div className="flex items-center justify-between">
+                         <div>
+                           <Label className="text-sm font-medium text-foreground">模型映射 (可选)</Label>
+                           <div className="mt-1 space-y-1">
+                             <p className="text-xs text-muted-foreground">
+                               将请求中的模型名映射为实际调用的模型名
+                             </p>
+                             <p className="text-xs text-blue-600 dark:text-blue-400">
+                               常用映射：claude-sonnet-4-20250514 → 实际支持的模型名
+                             </p>
+                           </div>
+                         </div>
+                         <div className="flex gap-2">
+                           <Button
+                             type="button"
+                             variant="outline"
+                             size="sm"
+                             onClick={() => setModelMappings([...modelMappings, { from: '', to: '' }])}
+                             className="border-border text-muted-foreground hover:bg-muted"
+                           >
+                             <Plus className="w-4 h-4 mr-1" />
+                             添加映射
+                           </Button>
+                           <Button
+                             type="button"
+                             variant="outline"
+                             size="sm"
+                             onClick={() => setModelMappings([...modelMappings, { from: 'claude-3-5-haiku-20241022', to: '' }])}
+                             className="border-border text-muted-foreground hover:bg-muted text-xs"
+                           >
+                             快速添加 Haiku
+                           </Button>
+                           <Button
+                             type="button"
+                             variant="outline"
+                             size="sm"
+                             onClick={() => setModelMappings([...modelMappings, { from: 'claude-sonnet-4-20250514', to: '' }])}
+                             className="border-border text-muted-foreground hover:bg-muted text-xs"
+                           >
+                             快速添加 Sonnet-4
+                           </Button>
+                         </div>
+                       </div>
+                       
+                       {modelMappings.length === 0 && (
+                         <div className="text-center py-8 text-muted-foreground">
+                           <div className="w-12 h-12 mx-auto mb-3 bg-muted rounded-full flex items-center justify-center">
+                             <Settings className="w-6 h-6" />
+                           </div>
+                           <p className="text-sm">暂无模型映射配置</p>
+                           <p className="text-xs">点击上方按钮添加模型映射规则</p>
+                         </div>
+                       )}
+                       
+                       {modelMappings.map((mapping, index) => (
+                         <div key={index} className="flex gap-3 items-center p-3 bg-card rounded-xl border border-border">
+                           <div className="flex-1">
+                             <div className="relative">
+                               <Input
+                                 list={`from-models-thor-${index}`}
+                                 placeholder="原模型名 (如: gpt-4)"
+                                 value={mapping.from}
+                                 onChange={(e) => {
+                                   const newMappings = [...modelMappings];
+                                   newMappings[index] = { ...mapping, from: e.target.value };
+                                   setModelMappings(newMappings);
+                                 }}
+                                 className="border-input bg-background text-foreground focus:border-ring focus:ring-ring"
+                               />
+                               <datalist id={`from-models-thor-${index}`}>
+                                 {defaultModels.map(model => (
+                                   <option key={model} value={model} />
+                                 ))}
+                               </datalist>
+                             </div>
+                           </div>
+                           <div className="flex items-center justify-center w-8">
+                             <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                           </div>
+                           <div className="flex-1">
+                             <div className="relative">
+                               <Input
+                                 list={`to-models-thor-${index}`}
+                                 placeholder="目标模型名 (如: gpt-4-turbo)"
+                                 value={mapping.to}
+                                 onChange={(e) => {
+                                   const newMappings = [...modelMappings];
+                                   newMappings[index] = { ...mapping, to: e.target.value };
+                                   setModelMappings(newMappings);
+                                 }}
+                                 className="border-input bg-background text-foreground focus:border-ring focus:ring-ring"
+                               />
+                               <datalist id={`to-models-thor-${index}`}>
+                                 {defaultModels.map(model => (
+                                   <option key={model} value={model} />
+                                 ))}
+                               </datalist>
+                             </div>
                            </div>
                            <Button
                              type="button"
@@ -1275,7 +1603,7 @@ export default function AccountModal({ show, account, onClose, onSuccess }: Acco
                )}
 
               {/* 平台特定配置卡片 */}
-              {(form.platform === 'claude' || form.platform === 'claude-console' || form.platform === 'openai') && (
+              {(form.platform === 'claude' || form.platform === 'claude-console' || form.platform === 'openai' || form.platform === 'thor') && (
                 <Card className="border border-border bg-card/50">
                   <CardContent className="p-6">
                     <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
@@ -1301,7 +1629,7 @@ export default function AccountModal({ show, account, onClose, onSuccess }: Acco
               )}
 
               {/* Token 更新 */}
-              {form.platform !== 'claude-console' && (
+              {form.platform !== 'claude-console' && form.platform !== 'openai' && form.platform !== 'thor' && (
                 <Card className="border border-border bg-card/50">
                   <CardContent className="p-6">
                     <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">

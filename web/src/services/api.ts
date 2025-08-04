@@ -169,7 +169,7 @@ interface ProxyConfig {
 interface Account {
   id: string;
   name: string;
-  platform: 'claude' | 'claude-console' | 'gemini' | 'openai';
+  platform: 'claude' | 'claude-console' | 'gemini' | 'openai' | 'thor';
   sessionKey?: string;
   isEnabled: boolean;
   lastUsedAt?: string;
@@ -209,6 +209,9 @@ interface OAuthTokenInfo {
     expiry_date: number;
   };
   tokens?: any;
+  // Thor platform support
+  apiKey?: string;
+  baseUrl?: string;
 }
 
 interface AuthUrlResponse {
@@ -642,6 +645,43 @@ class ApiService {
       body: JSON.stringify(dateFilter || {}),
     });
   }
+
+  // Pricing APIs
+  async getModelPricing(): Promise<ModelPricing[]> {
+    const response = await this.request<{ data: ModelPricing[] }>('/pricing/models');
+    return response.data;
+  }
+
+  async updateModelPricing(pricing: ModelPricing): Promise<void> {
+    await this.request<void>('/pricing/models', {
+      method: 'PUT',
+      body: JSON.stringify(pricing),
+    });
+  }
+
+  async getExchangeRates(): Promise<ExchangeRate[]> {
+    const response = await this.request<{ data: ExchangeRate[] }>('/pricing/exchange-rates');
+    return response.data;
+  }
+
+  async updateExchangeRate(fromCurrency: string, toCurrency: string, rate: number): Promise<void> {
+    await this.request<void>('/pricing/exchange-rates', {
+      method: 'PUT',
+      body: JSON.stringify({
+        fromCurrency,
+        toCurrency,
+        rate
+      }),
+    });
+  }
+
+  async calculateCost(request: CalculateCostRequest): Promise<PricingResult> {
+    const response = await this.request<{ data: PricingResult }>('/pricing/calculate', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+    return response.data;
+  }
 }
 
 // Dashboard Response Types
@@ -858,6 +898,45 @@ export interface ApiKeyModelFlowData {
   requests: number;
   tokens: number;
   cost: number;
+}
+
+// Pricing Types
+export interface ModelPricing {
+  model: string;
+  inputPrice: number;
+  outputPrice: number;
+  cacheWritePrice: number;
+  cacheReadPrice: number;
+  currency: string;
+  description?: string;
+}
+
+export interface ExchangeRate {
+  fromCurrency: string;
+  toCurrency: string;
+  rate: number;
+  updatedAt: string;
+}
+
+export interface CalculateCostRequest {
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+  cacheCreateTokens: number;
+  cacheReadTokens: number;
+  targetCurrency?: string;
+}
+
+export interface PricingResult {
+  model: string;
+  currency: string;
+  inputCost: number;
+  outputCost: number;
+  cacheCreateCost: number;
+  cacheReadCost: number;
+  totalCost: number;
+  weightedTokens: number;
+  unitPrice: number;
 }
 
 export const apiService = new ApiService();

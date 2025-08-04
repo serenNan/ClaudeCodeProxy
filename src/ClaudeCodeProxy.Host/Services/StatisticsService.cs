@@ -12,11 +12,11 @@ namespace ClaudeCodeProxy.Host.Services;
 /// </summary>
 public class StatisticsService
 {
-    private readonly MasterDbContext _context;
+    private readonly IContext _context;
     private readonly ILogger<StatisticsService> _logger;
     private static readonly DateTime _systemStartTime = DateTime.UtcNow;
 
-    public StatisticsService(MasterDbContext context, ILogger<StatisticsService> logger)
+    public StatisticsService(IContext context, ILogger<StatisticsService> logger)
     {
         _context = context;
         _logger = logger;

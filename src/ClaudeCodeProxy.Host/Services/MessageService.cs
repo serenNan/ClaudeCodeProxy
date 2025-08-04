@@ -4,6 +4,7 @@ using ClaudeCodeProxy.Core.AI;
 using ClaudeCodeProxy.Host.Env;
 using ClaudeCodeProxy.Host.Extensions;
 using ClaudeCodeProxy.Host.Helper;
+using ClaudeCodeProxy.Host.Models;
 using ClaudeCodeProxy.Domain;
 using Making.AspNetCore;
 using Microsoft.AspNetCore.Authorization;
@@ -121,7 +122,16 @@ public partial class MessageService(
             await accountsService.SelectAccountForApiKey(apiKeyValue, sessionHash, request.Model,
                 httpContext.RequestAborted);
 
-        // 获取
+        // 实现模型映射功能
+        var mappedModel = MapRequestedModel(request.Model, account);
+        if (!string.IsNullOrEmpty(mappedModel) && mappedModel != request.Model)
+        {
+            // 记录模型映射日志
+            var logger = httpContext.RequestServices.GetRequiredService<ILogger<MessageService>>();
+            logger.LogInformation("🔄 模型映射: {OriginalModel} -> {MappedModel} for account {AccountName}", 
+                request.Model, mappedModel, account?.Name);
+            request.Model = mappedModel;
+        }
 
         // 寻找对应的账号
         if (account is { IsClaude: true })
@@ -275,12 +285,27 @@ public partial class MessageService(
                         Address = account.ApiUrl,
                     },
                     cancellationToken);
+                    
+                // 从非流式响应中提取Usage信息
+                if (response?.Usage != null)
+                {
+                    inputTokens = response.Usage.input_tokens ?? 0;
+                    outputTokens = response.Usage.output_tokens ?? 0;
+                    cacheCreateTokens = response.Usage.cache_creation_input_tokens ?? 0;
+                    cacheReadTokens = response.Usage.cache_read_input_tokens ?? 0;
+                    
+                    // 记录Usage提取日志
+                    var logger = httpContext.RequestServices.GetRequiredService<ILogger<MessageService>>();
+                    logger.LogDebug("非流式响应Usage提取: Input={InputTokens}, Output={OutputTokens}, CacheCreate={CacheCreate}, CacheRead={CacheRead}", 
+                        inputTokens, outputTokens, cacheCreateTokens, cacheReadTokens);
+                }
+                
                 await httpContext.Response.WriteAsJsonAsync(response, cancellationToken: cancellationToken);
             }
 
             // 计算费用（这里需要根据实际的定价模型来计算）
             var cost = CalculateTokenCost(request.Model, inputTokens, outputTokens, cacheCreateTokens,
-                cacheReadTokens);
+                cacheReadTokens, httpContext);
 
             // 注意：我们不能直接修改实体然后保存，需要通过服务方法来更新
             // 这里只是增加使用计数，具体的更新逻辑应该在服务层处理
@@ -591,12 +616,27 @@ public partial class MessageService(
                         Address = account.ApiUrl,
                     },
                     cancellationToken);
+                    
+                // 从非流式响应中提取Usage信息
+                if (response?.Usage != null)
+                {
+                    inputTokens = response.Usage.input_tokens ?? 0;
+                    outputTokens = response.Usage.output_tokens ?? 0;
+                    cacheCreateTokens = response.Usage.cache_creation_input_tokens ?? 0;
+                    cacheReadTokens = response.Usage.cache_read_input_tokens ?? 0;
+                    
+                    // 记录Usage提取日志
+                    var logger = httpContext.RequestServices.GetRequiredService<ILogger<MessageService>>();
+                    logger.LogDebug("非流式响应Usage提取: Input={InputTokens}, Output={OutputTokens}, CacheCreate={CacheCreate}, CacheRead={CacheRead}", 
+                        inputTokens, outputTokens, cacheCreateTokens, cacheReadTokens);
+                }
+                
                 await httpContext.Response.WriteAsJsonAsync(response, cancellationToken: cancellationToken);
             }
 
             // 计算费用（这里需要根据实际的定价模型来计算）
             var cost = CalculateTokenCost(request.Model, inputTokens, outputTokens, cacheCreateTokens,
-                cacheReadTokens);
+                cacheReadTokens, httpContext);
 
             // 注意：我们不能直接修改实体然后保存，需要通过服务方法来更新
             // 这里只是增加使用计数，具体的更新逻辑应该在服务层处理
@@ -677,32 +717,21 @@ public partial class MessageService(
     /// <summary>
     /// 计算Token费用
     /// </summary>
-    private static decimal CalculateTokenCost(string model, int inputTokens, int outputTokens,
-        int cacheCreateTokens,
-        int cacheReadTokens)
+    private decimal CalculateTokenCost(string model, int inputTokens, int outputTokens,
+        int cacheCreateTokens, int cacheReadTokens, HttpContext httpContext)
     {
-        // 根据不同模型的定价来计算费用
-        // 这里是示例定价，实际应该从配置中读取
-        var pricing = model switch
-        {
-            "claude-3-5-sonnet-20241022" => new
-                { Input = 0.000003m, Output = 0.000015m, CacheWrite = 0.00000375m, CacheRead = 0.0000003m },
-            "claude-3-5-haiku-20241022" => new
-                { Input = 0.000001m, Output = 0.000005m, CacheWrite = 0.00000125m, CacheRead = 0.0000001m },
-            "claude-3-opus-20240229" => new
-                { Input = 0.000015m, Output = 0.000075m, CacheWrite = 0.00001875m, CacheRead = 0.0000015m },
-            _ => new
-            {
-                Input = 0.000003m, Output = 0.000015m, CacheWrite = 0.00000375m, CacheRead = 0.0000003m
-            } // 默认使用sonnet定价
-        };
+        // 获取价格服务
+        var pricingService = httpContext.RequestServices.GetRequiredService<PricingService>();
+        
+        // 计算费用
+        var cost = pricingService.CalculateTokenCost(
+            model, inputTokens, outputTokens, cacheCreateTokens, cacheReadTokens);
 
-        var inputCost = inputTokens * pricing.Input;
-        var outputCost = outputTokens * pricing.Output;
-        var cacheCreateCost = cacheCreateTokens * pricing.CacheWrite;
-        var cacheReadCost = cacheReadTokens * pricing.CacheRead;
+        // 记录费用计算日志
+        var logger = httpContext.RequestServices.GetRequiredService<ILogger<MessageService>>();
+        logger.LogInformation("费用计算结果: 模型={Model}, 总计=${TotalCost:F6}", model, cost);
 
-        return inputCost + outputCost + cacheCreateCost + cacheReadCost;
+        return cost;
     }
 
     /// <summary>
@@ -715,5 +744,48 @@ public partial class MessageService(
         // 这里可以根据实际情况调整
         return httpContext.Request.Headers.UserAgent.ToString()
             .Contains("claude-cli", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// 根据账户配置映射请求的模型
+    /// </summary>
+    /// <param name="requestedModel">请求的原始模型</param>
+    /// <param name="account">使用的账户</param>
+    /// <returns>映射后的模型名称，如果没有映射则返回原始模型</returns>
+    private string MapRequestedModel(string requestedModel, Domain.Accounts? account)
+    {
+        // 如果账户为空或没有配置模型映射，返回原始模型
+        if (account?.SupportedModels == null || account.SupportedModels.Count == 0)
+        {
+            return requestedModel;
+        }
+
+        try
+        {
+            // 查找模型映射：格式为 "sourceModel:targetModel"
+            foreach (var mapping in account.SupportedModels)
+            {
+                var parts = mapping.Split(':', 2);
+                if (parts.Length == 2)
+                {
+                    var sourceModel = parts[0].Trim();
+                    var targetModel = parts[1].Trim();
+                    
+                    // 如果找到匹配的源模型，返回目标模型
+                    if (string.Equals(sourceModel, requestedModel, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return targetModel;
+                    }
+                }
+            }
+
+            // 如果没有找到映射，返回原始模型
+            return requestedModel;
+        }
+        catch
+        {
+            // 解析失败时，返回原始模型
+            return requestedModel;
+        }
     }
 }

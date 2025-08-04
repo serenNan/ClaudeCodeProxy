@@ -5,12 +5,13 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ClaudeCodeProxy.Core;
 
-public class MasterDbContext(DbContextOptions<MasterDbContext> options) : DbContext(options), IContext
+public class MasterDbContext<TDbContext>(DbContextOptions<TDbContext> options) : DbContext(options), IContext where TDbContext : DbContext
 {
     public DbSet<Accounts> Accounts { get; set; }
     public DbSet<ApiKey> ApiKeys { get; set; }
     public DbSet<RequestLog> RequestLogs { get; set; }
     public DbSet<StatisticsSnapshot> StatisticsSnapshots { get; set; }
+    public DbSet<ModelPricing> ModelPricings { get; set; }
 
     public async Task SaveAsync(CancellationToken cancellationToken = default)
     {
@@ -188,8 +189,8 @@ public class MasterDbContext(DbContextOptions<MasterDbContext> options) : DbCont
             // JSON 配置字段
             entity.Property(e => e.SupportedModels)
                 .HasConversion(
-                    v => v == null ? null : string.Join(',', v),
-                    v => v == null ? null : v.Split(',', StringSplitOptions.RemoveEmptyEntries).ToList())
+                    v => v == null || v.Count == 0 ? null : JsonSerializer.Serialize(v, new JsonSerializerOptions { WriteIndented = false }),
+                    v => string.IsNullOrEmpty(v) ? null : JsonSerializer.Deserialize<List<string>>(v, new JsonSerializerOptions()))
                 .HasColumnType("TEXT");
 
             entity.Property(e => e.ClaudeAiOauth)
@@ -460,6 +461,66 @@ public class MasterDbContext(DbContextOptions<MasterDbContext> options) : DbCont
 
             entity.HasIndex(e => new { e.SnapshotType, e.SnapshotDate, e.Model })
                 .HasDatabaseName("IX_StatisticsSnapshots_SnapshotType_SnapshotDate_Model");
+        });
+
+        // 配置 ModelPricing 实体
+        modelBuilder.Entity<ModelPricing>(entity =>
+        {
+            entity.ToTable("ModelPricings");
+            entity.HasKey(e => e.Id);
+
+            // 基本属性配置
+            entity.Property(e => e.Model)
+                .IsRequired()
+                .HasMaxLength(100);
+
+            entity.Property(e => e.InputPrice)
+                .HasColumnType("decimal(18,9)")
+                .IsRequired();
+
+            entity.Property(e => e.OutputPrice)
+                .HasColumnType("decimal(18,9)")
+                .IsRequired();
+
+            entity.Property(e => e.CacheWritePrice)
+                .HasColumnType("decimal(18,9)")
+                .HasDefaultValue(0m);
+
+            entity.Property(e => e.CacheReadPrice)
+                .HasColumnType("decimal(18,9)")
+                .HasDefaultValue(0m);
+
+            entity.Property(e => e.Currency)
+                .IsRequired()
+                .HasMaxLength(10)
+                .HasDefaultValue("USD");
+
+            entity.Property(e => e.Description)
+                .HasMaxLength(500);
+
+            entity.Property(e => e.IsEnabled)
+                .HasDefaultValue(true);
+
+            // 审计字段配置
+            entity.Property(e => e.CreatedAt)
+                .IsRequired();
+
+            entity.Property(e => e.CreatedBy)
+                .HasMaxLength(100);
+
+            entity.Property(e => e.ModifiedBy)
+                .HasMaxLength(100);
+
+            // 索引配置
+            entity.HasIndex(e => e.Model)
+                .IsUnique()
+                .HasDatabaseName("IX_ModelPricings_Model");
+
+            entity.HasIndex(e => e.IsEnabled)
+                .HasDatabaseName("IX_ModelPricings_IsEnabled");
+
+            entity.HasIndex(e => e.Currency)
+                .HasDatabaseName("IX_ModelPricings_Currency");
         });
     }
 

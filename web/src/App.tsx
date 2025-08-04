@@ -8,6 +8,7 @@ import LoginPage from '@/pages/login';
 import DashboardPage from '@/pages/dashboard';
 import ApiKeysPage from '@/pages/apikeys';
 import AccountsPage from '@/pages/accounts';
+import PricingPage from '@/pages/pricing';
 import SettingsPage from '@/pages/settings';
 import AdvancedStatsPage from '@/pages/advanced-stats';
 import RequestLogsPage from '@/pages/request-logs';
@@ -29,6 +30,7 @@ const router = createBrowserRouter([
       { index: true, element: <DashboardPage /> },
       { path: 'apikeys', element: <ApiKeysPage /> },
       { path: 'accounts', element: <AccountsPage /> },
+      { path: 'pricing', element: <PricingPage /> },
       { path: 'request-logs', element: <RequestLogsPage /> },
       { path: 'settings', element: <SettingsPage /> },
       { path: 'advanced-stats', element: <AdvancedStatsPage /> },

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using ClaudeCodeProxy.Core;
 using ClaudeCodeProxy.Domain;
 using ClaudeCodeProxy.Host.Models;
@@ -239,7 +240,7 @@ public static class DashboardEndpoints
     /// </summary>
     private static Ok<UptimeResponse> GetSystemUptime()
     {
-        var uptime = DateTime.UtcNow - System.Diagnostics.Process.GetCurrentProcess().StartTime.ToUniversalTime();
+        var uptime = DateTime.UtcNow - Process.GetCurrentProcess().StartTime.ToUniversalTime();
         
         var days = (int)uptime.TotalDays;
         var hours = uptime.Hours;
@@ -256,7 +257,7 @@ public static class DashboardEndpoints
         {
             UptimeSeconds = (long)uptime.TotalSeconds,
             UptimeText = uptimeText.Trim(),
-            StartTime = System.Diagnostics.Process.GetCurrentProcess().StartTime.ToUniversalTime()
+            StartTime = Process.GetCurrentProcess().StartTime.ToUniversalTime()
         });
     }
 
@@ -265,7 +266,7 @@ public static class DashboardEndpoints
     /// </summary>
     private static async Task<Results<Ok<RequestLogsResponse>, BadRequest<string>>> GetRequestLogs(
         [FromServices] StatisticsService statisticsService,
-        [FromServices] MasterDbContext context,
+        [FromServices] IContext context,
         [FromBody] RequestLogsRequest request,
         CancellationToken cancellationToken = default)
     {
@@ -381,7 +382,7 @@ public static class DashboardEndpoints
     /// 获取请求日志详情
     /// </summary>
     private static async Task<Results<Ok<RequestLog>, NotFound<string>, BadRequest<string>>> GetRequestLogDetail(
-        [FromServices] MasterDbContext context,
+        [FromServices] IContext context,
         Guid id,
         CancellationToken cancellationToken = default)
     {
@@ -407,7 +408,7 @@ public static class DashboardEndpoints
     /// 获取请求状态统计
     /// </summary>
     private static async Task<Results<Ok<List<RequestStatusStat>>, BadRequest<string>>> GetRequestStatusStats(
-        [FromServices] MasterDbContext context,
+        [FromServices] IContext context,
         [FromBody] DateFilterRequest? dateFilter = null,
         CancellationToken cancellationToken = default)
     {
@@ -446,7 +447,7 @@ public static class DashboardEndpoints
     /// 获取实时请求监控数据
     /// </summary>
     private static async Task<Results<Ok<RealtimeRequestsResponse>, BadRequest<string>>> GetRealtimeRequests(
-        [FromServices] MasterDbContext context,
+        [FromServices] IContext context,
         int minutes = 10,
         CancellationToken cancellationToken = default)
     {
