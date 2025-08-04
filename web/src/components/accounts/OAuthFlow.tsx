@@ -80,7 +80,7 @@ export default function OAuthFlow({ platform, proxy, onSuccess, onBack }: OAuthF
         } catch (error) {
           // 不是有效的URL，保持原值
         }
-      } else if (platform === 'thor' && trimmedValue.includes('?token=')) {
+      } else if (platform === 'thor') {
         try {
           const url = new URL(trimmedValue);
           const token = url.searchParams.get('token');
@@ -590,7 +590,7 @@ export default function OAuthFlow({ platform, proxy, onSuccess, onBack }: OAuthF
                         复制包含token的链接
                       </p>
                       <p className="text-sm text-muted-foreground mb-3">
-                        授权完成后，复制浏览器地址栏中包含?token=参数的完整链接并粘贴到下方：
+                        授权完成后，复制浏览器地址栏中包含token参数的完整链接并粘贴到下方（支持 ?token=xxx 或 ?a=b&token=xxx 等格式）：
                       </p>
                       <div className="space-y-3">
                         <div>
@@ -603,7 +603,7 @@ export default function OAuthFlow({ platform, proxy, onSuccess, onBack }: OAuthF
                             onChange={(e) => setAuthCode(e.target.value)}
                             rows={3}
                             className="w-full p-2 border border-input rounded-xl resize-none font-mono text-sm bg-background text-foreground"
-                            placeholder="粘贴包含?token=参数的完整链接..."
+                            placeholder="粘贴包含token参数的完整链接（如：https://example.com?token=xxx 或 https://example.com?a=b&token=xxx）..."
                           />
                         </div>
                         {thorToken && (
