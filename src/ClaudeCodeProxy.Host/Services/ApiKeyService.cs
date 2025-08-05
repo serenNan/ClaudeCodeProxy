@@ -20,7 +20,7 @@ public class ApiKeyService(IContext context)
         {
             await context.ApiKeys
                 .Where(x => x.Id == apiKey.Id)
-                .ExecuteUpdateAsync(x => x.SetProperty(y => y.LastUsedAt, DateTime.UtcNow), cancellationToken);
+                .ExecuteUpdateAsync(x => x.SetProperty(y => y.LastUsedAt, DateTime.Now), cancellationToken);
         }
 
         return apiKey;
@@ -81,7 +81,7 @@ public class ApiKeyService(IContext context)
             IsEnabled = request.IsEnabled,
             Model = request.Model,
             Service = request.Service,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.Now
         };
 
         context.ApiKeys.Add(apiKey);
@@ -165,7 +165,7 @@ public class ApiKeyService(IContext context)
         if (!string.IsNullOrEmpty(request.Service))
             apiKey.Service = request.Service;
 
-        apiKey.ModifiedAt = DateTime.UtcNow;
+        apiKey.ModifiedAt = DateTime.Now;
         apiKey.Model = request.Model;
 
         await context.SaveAsync(cancellationToken);
@@ -195,7 +195,7 @@ public class ApiKeyService(IContext context)
     {
         await context.ApiKeys.Where(x => x.Id == id)
             .ExecuteUpdateAsync(x => x.SetProperty(a => a.IsEnabled, true)
-                .SetProperty(a => a.ModifiedAt, DateTime.UtcNow), cancellationToken);
+                .SetProperty(a => a.ModifiedAt, DateTime.Now), cancellationToken);
 
         // 检查是否有记录被更新
         var apiKey = await context.ApiKeys.AsNoTracking()
@@ -211,7 +211,7 @@ public class ApiKeyService(IContext context)
     {
         await context.ApiKeys.Where(x => x.Id == id)
             .ExecuteUpdateAsync(x => x.SetProperty(a => a.IsEnabled, false)
-                .SetProperty(a => a.ModifiedAt, DateTime.UtcNow), cancellationToken);
+                .SetProperty(a => a.ModifiedAt, DateTime.Now), cancellationToken);
 
         // 检查是否有记录被更新
         var apiKey = await context.ApiKeys.AsNoTracking()
@@ -232,7 +232,7 @@ public class ApiKeyService(IContext context)
         }
 
         apiKey.IsEnabled = !apiKey.IsEnabled;
-        apiKey.ModifiedAt = DateTime.UtcNow;
+        apiKey.ModifiedAt = DateTime.Now;
 
         await context.SaveAsync(cancellationToken);
         return true;
@@ -248,7 +248,7 @@ public class ApiKeyService(IContext context)
         if (apiKey == null || !apiKey.IsEnabled)
             return false;
 
-        if (apiKey.ExpiresAt.HasValue && apiKey.ExpiresAt.Value < DateTime.UtcNow)
+        if (apiKey.ExpiresAt.HasValue && apiKey.ExpiresAt.Value < DateTime.Now)
             return false;
 
         return true;
@@ -271,7 +271,7 @@ public class ApiKeyService(IContext context)
         // 更新最后使用时间
         await context.ApiKeys
             .Where(x => x.Id == apiKey.Id)
-            .ExecuteUpdateAsync(x => x.SetProperty(y => y.LastUsedAt, DateTime.UtcNow), cancellationToken);
+            .ExecuteUpdateAsync(x => x.SetProperty(y => y.LastUsedAt, DateTime.Now), cancellationToken);
 
         return apiKey;
     }
@@ -281,7 +281,7 @@ public class ApiKeyService(IContext context)
     /// </summary>
     private async Task RefreshApiKeyUsageAsync(ApiKey apiKey, CancellationToken cancellationToken = default)
     {
-        var now = DateTime.UtcNow;
+        var now = DateTime.Now;
         var today = now.Date;
         var currentMonth = new DateTime(now.Year, now.Month, 1);
         

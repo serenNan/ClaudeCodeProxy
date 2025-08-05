@@ -56,7 +56,7 @@ public class AnthropicChatService(ILogger<AnthropicChatService> logger) : IAnthr
                     StatusCode = (int)response.StatusCode,
                     ErrorMessage = error,
                     RetryAfterSeconds = (int)retryAfter,
-                    Timestamp = DateTime.UtcNow
+                    Timestamp = DateTime.Now
                 };
                 
                 logger.LogWarning("Claude账户达到限流，需要等待 {RetryAfter} 秒。错误信息：{Error}", 

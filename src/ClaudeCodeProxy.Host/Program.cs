@@ -296,7 +296,7 @@ public static class Program
         app.MapVersionEndpoints();
 
         // 健康检查端点
-        app.MapGet("/health", () => Results.Ok(new { Status = "Healthy", Timestamp = DateTime.UtcNow }))
+        app.MapGet("/health", () => Results.Ok(new { Status = "Healthy", Timestamp = DateTime.Now }))
             .WithName("HealthCheck")
             .WithSummary("健康检查")
             .WithTags("System");
@@ -315,7 +315,7 @@ public static class Program
                     WorkingDirectory = Environment.CurrentDirectory,
                     MachineName = Environment.MachineName,
                     UserName = Environment.UserName,
-                    Timestamp = DateTime.UtcNow
+                    Timestamp = DateTime.Now
                 };
                 return Results.Ok(info);
             })

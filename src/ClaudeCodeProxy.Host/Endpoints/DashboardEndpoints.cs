@@ -240,7 +240,7 @@ public static class DashboardEndpoints
     /// </summary>
     private static Ok<UptimeResponse> GetSystemUptime()
     {
-        var uptime = DateTime.UtcNow - Process.GetCurrentProcess().StartTime.ToUniversalTime();
+        var uptime = DateTime.Now - Process.GetCurrentProcess().StartTime.ToUniversalTime();
         
         var days = (int)uptime.TotalDays;
         var hours = uptime.Hours;
@@ -453,7 +453,7 @@ public static class DashboardEndpoints
     {
         try
         {
-            var cutoffTime = DateTime.UtcNow.AddMinutes(-minutes);
+            var cutoffTime = DateTime.Now.AddMinutes(-minutes);
 
             var recentRequests = await context.RequestLogs
                 .Where(x => x.RequestStartTime >= cutoffTime)

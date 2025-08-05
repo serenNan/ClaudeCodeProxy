@@ -166,7 +166,7 @@ public class ApiKey : Entity<Guid>
     /// </summary>
     public bool IsValid()
     {
-        return IsEnabled && (ExpiresAt == null || ExpiresAt > DateTime.UtcNow);
+        return IsEnabled && (ExpiresAt == null || ExpiresAt > DateTime.Now);
     }
 
     /// <summary>

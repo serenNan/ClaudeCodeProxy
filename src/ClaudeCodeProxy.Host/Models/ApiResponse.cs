@@ -29,7 +29,7 @@ public class ApiResponse<T>
     /// <summary>
     /// 时间戳
     /// </summary>
-    public long Timestamp { get; set; } = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+    public long Timestamp { get; set; } = DateTimeOffset.Now.ToUnixTimeSeconds();
 
     /// <summary>
     /// 创建成功响应

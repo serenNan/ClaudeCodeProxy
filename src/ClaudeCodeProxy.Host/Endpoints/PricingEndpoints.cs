@@ -204,7 +204,7 @@ public static class PricingEndpoints
             ConvertedAmount = convertedAmount,
             ToCurrency = request.ToCurrency,
             ExchangeRate = exchangeRate?.Rate ?? 1.0m,
-            UpdatedAt = exchangeRate?.UpdatedAt ?? DateTime.UtcNow
+            UpdatedAt = exchangeRate?.UpdatedAt ?? DateTime.Now
         };
 
         return Results.Ok(new ApiResponse<CurrencyConversionResult>

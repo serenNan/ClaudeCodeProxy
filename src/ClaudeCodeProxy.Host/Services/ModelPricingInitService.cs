@@ -93,7 +93,7 @@ public class ModelPricingInitService
             Currency = modelPricing.Currency,
             Description = modelPricing.Description,
             IsEnabled = true,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.Now
         };
     }
 }

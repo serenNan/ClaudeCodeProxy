@@ -62,7 +62,7 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
             Name = request.Name,
             Description = request.Description,
             IsEnabled = true,
-            CreatedAt = DateTime.UtcNow,
+            CreatedAt = DateTime.Now,
             ApiKey = request.ApiKey,
             ApiUrl = request.ApiUrl,
             Proxy = request.Proxy,
@@ -126,9 +126,9 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
                 .Where(kvp => !string.IsNullOrEmpty(kvp.Key) && !string.IsNullOrEmpty(kvp.Value))
                 .Select(kvp => $"{kvp.Key}:{kvp.Value}")
                 .ToList();
-            
+
             // 确保转换后的数据格式正确 - 这应该生成 ["key:value", "key2:value2"] 的List<string>
-            logger.LogDebug("SupportedModels转换结果: {SupportedModels}", 
+            logger.LogDebug("SupportedModels转换结果: {SupportedModels}",
                 string.Join(", ", account.SupportedModels.Select(x => $"\"{x}\"")));
         }
 
@@ -149,7 +149,7 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
 
         account.Proxy = request.Proxy;
 
-        account.ModifiedAt = DateTime.UtcNow;
+        account.ModifiedAt = DateTime.Now;
 
         await context.SaveAsync(cancellationToken);
         return account;
@@ -184,7 +184,7 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
         }
 
         account.Status = status;
-        account.ModifiedAt = DateTime.UtcNow;
+        account.ModifiedAt = DateTime.Now;
 
         await context.SaveAsync(cancellationToken);
         return true;
@@ -197,7 +197,7 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
     {
         await context.Accounts.Where(x => x.Id == id)
             .ExecuteUpdateAsync(x => x.SetProperty(a => a.IsEnabled, true)
-                .SetProperty(a => a.ModifiedAt, DateTime.UtcNow), cancellationToken);
+                .SetProperty(a => a.ModifiedAt, DateTime.Now), cancellationToken);
 
         // 检查是否有记录被更新
         var account = await context.Accounts.AsNoTracking()
@@ -213,7 +213,7 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
     {
         await context.Accounts.Where(x => x.Id == id)
             .ExecuteUpdateAsync(x => x.SetProperty(a => a.IsEnabled, false)
-                .SetProperty(a => a.ModifiedAt, DateTime.UtcNow), cancellationToken);
+                .SetProperty(a => a.ModifiedAt, DateTime.Now), cancellationToken);
 
         // 检查是否有记录被更新
         var account = await context.Accounts.AsNoTracking()
@@ -234,7 +234,7 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
         }
 
         account.IsEnabled = !account.IsEnabled;
-        account.ModifiedAt = DateTime.UtcNow;
+        account.ModifiedAt = DateTime.Now;
 
         await context.SaveAsync(cancellationToken);
         return true;
@@ -262,7 +262,7 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
             .ExecuteUpdateAsync(x => x.SetProperty(a => a.Status, "rate_limited")
                 .SetProperty(a => a.RateLimitedUntil, rateLimitedUntil)
                 .SetProperty(a => a.LastError, error)
-                .SetProperty(a => a.ModifiedAt, DateTime.UtcNow), cancellationToken);
+                .SetProperty(a => a.ModifiedAt, DateTime.Now), cancellationToken);
 
         return true;
     }
@@ -277,7 +277,7 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
             .AsNoTracking()
             .Where(x => x.IsEnabled &&
                         x.Status == "active" &&
-                        (x.RateLimitedUntil == null || x.RateLimitedUntil < DateTime.UtcNow));
+                        (x.RateLimitedUntil == null || x.RateLimitedUntil < DateTime.Now));
 
         if (!string.IsNullOrEmpty(platform))
         {
@@ -422,7 +422,7 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
 
         return latestAccount.IsEnabled &&
                latestAccount.Status == "active" &&
-               (latestAccount.RateLimitedUntil == null || latestAccount.RateLimitedUntil < DateTime.UtcNow);
+               (latestAccount.RateLimitedUntil == null || latestAccount.RateLimitedUntil < DateTime.Now);
     }
 
     /// <summary>
@@ -434,14 +434,14 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
         var query = context.Accounts
             .AsNoTracking()
             .Where(x => x.IsEnabled &&
-                        x.Status == "active" &&
-                        (x.RateLimitedUntil == null || x.RateLimitedUntil < DateTime.UtcNow));
+                x.Status == "active" || x.Status == "rate_limited");
 
         // 根据API Key的服务类型过滤
         if (apiKey.IsClaude())
         {
             query = query.Where(x =>
-                x.Platform == "claude" || x.Platform == "claude-console" || x.Platform == "openai" || x.Platform == "thor");
+                x.Platform == "claude" || x.Platform == "claude-console" || x.Platform == "openai" ||
+                x.Platform == "thor");
         }
         else if (apiKey.IsGemini())
         {
@@ -449,6 +449,9 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
         }
 
         var accounts = await query.ToListAsync(cancellationToken);
+
+        accounts = accounts.Where(x =>
+            (x.RateLimitedUntil == null || x.RateLimitedUntil < DateTime.Now)).ToList();
 
         // 如果指定了模型，进一步过滤支持该模型的账户
         if (!string.IsNullOrEmpty(requestedModel))
@@ -503,7 +506,7 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
 
     private List<Accounts> SortAccountsByPriority(List<Accounts> accounts)
     {
-        var now = DateTime.UtcNow;
+        var now = DateTime.Now;
 
         return accounts
             .Select(account => new
@@ -738,12 +741,12 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
                     // 更新数据库中的OAuth信息
                     account.ClaudeAiOauth.AccessToken = newAccessToken;
                     account.ClaudeAiOauth.RefreshToken = newRefreshToken;
-                    account.ClaudeAiOauth.ExpiresAt = DateTimeOffset.UtcNow.AddSeconds(expiresIn).ToUnixTimeSeconds();
+                    account.ClaudeAiOauth.ExpiresAt = DateTimeOffset.Now.AddSeconds(expiresIn).ToUnixTimeSeconds();
 
                     context.Accounts.Where(x => x.Id == account.Id)
                         .ExecuteUpdateAsync(x => x.SetProperty(a => a.ClaudeAiOauth, account.ClaudeAiOauth)
-                                .SetProperty(x => x.ModifiedAt, DateTime.UtcNow)
-                                .SetProperty(x => x.LastUsedAt, DateTime.UtcNow)
+                                .SetProperty(x => x.ModifiedAt, DateTime.Now)
+                                .SetProperty(x => x.LastUsedAt, DateTime.Now)
                                 .SetProperty(x => x.ClaudeAiOauth, account.ClaudeAiOauth)
                                 .SetProperty(x => x.UsageCount, x => x.UsageCount + 1),
                             cancellationToken);
@@ -775,8 +778,8 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
     private async Task UpdateAccountLastUsedAsync(string accountId, CancellationToken cancellationToken = default)
     {
         await context.Accounts.Where(x => x.Id == accountId)
-            .ExecuteUpdateAsync(x => x.SetProperty(a => a.LastUsedAt, DateTime.UtcNow)
+            .ExecuteUpdateAsync(x => x.SetProperty(a => a.LastUsedAt, DateTime.Now)
                 .SetProperty(a => a.UsageCount, a => a.UsageCount + 1)
-                .SetProperty(a => a.ModifiedAt, DateTime.UtcNow), cancellationToken);
+                .SetProperty(a => a.ModifiedAt, DateTime.Now), cancellationToken);
     }
 }

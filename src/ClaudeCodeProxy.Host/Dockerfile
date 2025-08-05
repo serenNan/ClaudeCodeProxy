@@ -1,5 +1,7 @@
 ﻿FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS base
-USER $APP_UID
+USER root
+RUN ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
+RUN echo "Asia/Shanghai" > /etc/timezone
 WORKDIR /app
 EXPOSE 8080
 EXPOSE 8081
@@ -24,6 +26,5 @@ RUN dotnet publish "./ClaudeCodeProxy.Host.csproj" -c $BUILD_CONFIGURATION -o /a
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
-# Copy pre-built frontend files from web/dist directory
 COPY web/dist ./wwwroot
 ENTRYPOINT ["dotnet", "ClaudeCodeProxy.Host.dll"]

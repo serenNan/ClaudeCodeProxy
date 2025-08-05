@@ -51,7 +51,7 @@ public static class VersionEndpoints
         return TypedResults.Ok(new VersionInfo
         {
             Version = currentVersion,
-            Timestamp = DateTime.UtcNow
+            Timestamp = DateTime.Now
         });
     }
 

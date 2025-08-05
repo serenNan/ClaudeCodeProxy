@@ -21,8 +21,8 @@ public class ClaudeProxyService(IMemoryCache memory, OAuthHelper oAuthHelper)
             State = oauthParams.State,
             CodeChallenge = oauthParams.CodeChallenge,
             Proxy = input.Proxy,
-            CreatedAt = DateTime.UtcNow,
-            ExpiresAt = DateTime.UtcNow.AddMinutes(10)
+            CreatedAt = DateTime.Now,
+            ExpiresAt = DateTime.Now.AddMinutes(10)
         };
 
         memory.Set(sessionId, cacheEntry, TimeSpan.FromMinutes(10));
@@ -58,7 +58,7 @@ public class ClaudeProxyService(IMemoryCache memory, OAuthHelper oAuthHelper)
         }
 
         // 检查会话是否过期
-        if (DateTime.UtcNow > oauthSession.ExpiresAt)
+        if (DateTime.Now > oauthSession.ExpiresAt)
         {
             memory.Remove(input.SessionId);
             throw new InvalidOperationException("OAuth session has expired, please generate a new authorization URL");

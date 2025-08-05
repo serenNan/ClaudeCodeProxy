@@ -40,10 +40,10 @@ public class PricingService
         // 默认汇率（这些应该定期更新）
         var rates = new[]
         {
-            new ExchangeRate { FromCurrency = "CNY", ToCurrency = "USD", Rate = 0.1389m, UpdatedAt = DateTime.UtcNow },
-            new ExchangeRate { FromCurrency = "USD", ToCurrency = "CNY", Rate = 7.20m, UpdatedAt = DateTime.UtcNow },
-            new ExchangeRate { FromCurrency = "USD", ToCurrency = "USD", Rate = 1.00m, UpdatedAt = DateTime.UtcNow },
-            new ExchangeRate { FromCurrency = "CNY", ToCurrency = "CNY", Rate = 1.00m, UpdatedAt = DateTime.UtcNow }
+            new ExchangeRate { FromCurrency = "CNY", ToCurrency = "USD", Rate = 0.1389m, UpdatedAt = DateTime.Now },
+            new ExchangeRate { FromCurrency = "USD", ToCurrency = "CNY", Rate = 7.20m, UpdatedAt = DateTime.Now },
+            new ExchangeRate { FromCurrency = "USD", ToCurrency = "USD", Rate = 1.00m, UpdatedAt = DateTime.Now },
+            new ExchangeRate { FromCurrency = "CNY", ToCurrency = "CNY", Rate = 1.00m, UpdatedAt = DateTime.Now }
         };
 
         foreach (var rate in rates)
@@ -160,7 +160,7 @@ public class PricingService
             FromCurrency = fromCurrency,
             ToCurrency = toCurrency,
             Rate = rate,
-            UpdatedAt = DateTime.UtcNow
+            UpdatedAt = DateTime.Now
         };
         
         _exchangeRates[key] = exchangeRate;

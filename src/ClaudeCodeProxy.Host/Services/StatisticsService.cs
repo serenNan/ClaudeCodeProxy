@@ -14,7 +14,7 @@ public class StatisticsService
 {
     private readonly IContext _context;
     private readonly ILogger<StatisticsService> _logger;
-    private static readonly DateTime _systemStartTime = DateTime.UtcNow;
+    private static readonly DateTime _systemStartTime = DateTime.Now;
 
     public StatisticsService(IContext context, ILogger<StatisticsService> logger)
     {
@@ -51,8 +51,8 @@ public class StatisticsService
             RequestId = requestId,
             ClientIp = clientIp,
             UserAgent = userAgent,
-            RequestStartTime = DateTime.UtcNow,
-            CreatedAt = DateTime.UtcNow
+            RequestStartTime = DateTime.Now,
+            CreatedAt = DateTime.Now
         };
 
         requestLog.InitializeTimeFields();
@@ -94,7 +94,7 @@ public class StatisticsService
         requestLog.Cost = cost;
         requestLog.HttpStatusCode = httpStatusCode;
         requestLog.CalculateTotalTokens();
-        requestLog.CompleteRequest(DateTime.UtcNow, status, errorMessage);
+        requestLog.CompleteRequest(DateTime.Now, status, errorMessage);
 
         // 同时更新 API Key 统计信息
         // 无论成功还是失败都要增加使用次数，但只有成功才累加费用
@@ -120,7 +120,7 @@ public class StatisticsService
             return;
         }
 
-        var now = DateTime.UtcNow;
+        var now = DateTime.Now;
         var today = now.Date;
         var currentMonth = new DateTime(now.Year, now.Month, 1);
 
@@ -159,12 +159,12 @@ public class StatisticsService
     /// </summary>
     public async Task<DashboardResponse> GetDashboardDataAsync(CancellationToken cancellationToken = default)
     {
-        var today = DateTime.UtcNow.Date;
-        var now = DateTime.UtcNow;
+        var today = DateTime.Now.Date;
+        var now = DateTime.Now;
 
         // 并行查询提高性能
         var totalApiKeysTask = _context.ApiKeys.CountAsync(cancellationToken);
-        var activeApiKeysTask = _context.ApiKeys.CountAsync(x => x.IsEnabled && (x.ExpiresAt == null || x.ExpiresAt > DateTime.UtcNow), cancellationToken);
+        var activeApiKeysTask = _context.ApiKeys.CountAsync(x => x.IsEnabled && (x.ExpiresAt == null || x.ExpiresAt > DateTime.Now), cancellationToken);
         var totalAccountsTask = _context.Accounts.CountAsync(cancellationToken);
         var activeAccountsTask = _context.Accounts.CountAsync(x => x.IsEnabled && x.Status == "active", cancellationToken);
         var rateLimitedAccountsTask = _context.Accounts.CountAsync(x => x.Status == "rate_limited", cancellationToken);
@@ -220,7 +220,7 @@ public class StatisticsService
     /// </summary>
     public async Task<CostDataResponse> GetCostDataAsync(CancellationToken cancellationToken = default)
     {
-        var today = DateTime.UtcNow.Date;
+        var today = DateTime.Now.Date;
 
         var todayCost = await _context.RequestLogs
             .Where(x => x.RequestDate == today)
@@ -299,8 +299,8 @@ public class StatisticsService
         DateTime? endDate = null,
         CancellationToken cancellationToken = default)
     {
-        var defaultStartDate = DateTime.UtcNow.AddDays(-7).Date;
-        var defaultEndDate = DateTime.UtcNow.Date;
+        var defaultStartDate = DateTime.Now.AddDays(-7).Date;
+        var defaultEndDate = DateTime.Now.Date;
 
         startDate ??= defaultStartDate;
         endDate ??= defaultEndDate;
@@ -325,8 +325,8 @@ public class StatisticsService
         DateTime? endDate = null,
         CancellationToken cancellationToken = default)
     {
-        var defaultStartDate = DateTime.UtcNow.AddDays(-7).Date;
-        var defaultEndDate = DateTime.UtcNow.Date;
+        var defaultStartDate = DateTime.Now.AddDays(-7).Date;
+        var defaultEndDate = DateTime.Now.Date;
 
         startDate ??= defaultStartDate;
         endDate ??= defaultEndDate;
@@ -382,8 +382,8 @@ public class StatisticsService
         int windowMinutes,
         CancellationToken cancellationToken = default)
     {
-        var windowStart = DateTime.UtcNow.AddMinutes(-windowMinutes);
-        var windowEnd = DateTime.UtcNow;
+        var windowStart = DateTime.Now.AddMinutes(-windowMinutes);
+        var windowEnd = DateTime.Now;
 
         var recentRequests = await _context.RequestLogs
             .Where(x => x.RequestStartTime >= windowStart && x.RequestStartTime <= windowEnd)
@@ -396,7 +396,7 @@ public class StatisticsService
             return (0, 0, hasHistoricalData);
         }
 
-        var actualWindowMinutes = (DateTime.UtcNow - recentRequests.Min(x => x.RequestStartTime)).TotalMinutes;
+        var actualWindowMinutes = (DateTime.Now - recentRequests.Min(x => x.RequestStartTime)).TotalMinutes;
         if (actualWindowMinutes < 1) actualWindowMinutes = 1; // 至少1分钟
 
         var requestCount = recentRequests.Count;
@@ -602,7 +602,7 @@ public class StatisticsService
     /// </summary>
     public static (DateTime startDate, DateTime endDate) ParseDateFilter(DateFilterRequest filter)
     {
-        var now = DateTime.UtcNow;
+        var now = DateTime.Now;
         var today = now.Date;
 
         if (filter.Type == "custom" && filter.StartTime.HasValue && filter.EndTime.HasValue)
@@ -628,8 +628,8 @@ public class StatisticsService
         DateTime? endDate = null,
         CancellationToken cancellationToken = default)
     {
-        startDate ??= DateTime.UtcNow.AddDays(-7).Date;
-        endDate ??= DateTime.UtcNow.Date.AddDays(1);
+        startDate ??= DateTime.Now.AddDays(-7).Date;
+        endDate ??= DateTime.Now.Date.AddDays(1);
 
         var groupedData = await _context.RequestLogs
             .Where(x => x.RequestStartTime >= startDate && x.RequestStartTime < endDate)

@@ -143,7 +143,7 @@ public sealed class StatisticsSnapshot : Entity<Guid>
             Id = Guid.NewGuid(),
             SnapshotType = "daily",
             SnapshotDate = date.Date,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.Now
         };
     }
 
@@ -158,7 +158,7 @@ public sealed class StatisticsSnapshot : Entity<Guid>
             SnapshotType = "hourly",
             SnapshotDate = dateTime.Date,
             SnapshotHour = dateTime.Hour,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.Now
         };
     }
 
@@ -167,7 +167,7 @@ public sealed class StatisticsSnapshot : Entity<Guid>
     /// </summary>
     public static StatisticsSnapshot CreateRealtimeSnapshot()
     {
-        var now = DateTime.UtcNow;
+        var now = DateTime.Now;
         return new StatisticsSnapshot
         {
             Id = Guid.NewGuid(),
