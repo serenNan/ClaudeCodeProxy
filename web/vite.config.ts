@@ -7,7 +7,7 @@ import { defineConfig } from "vite"
 export default defineConfig(({ mode }) => {
   // 根据构建模式决定输出目录
   // 生产构建时输出到wwwroot，CI/CD构建时输出到dist
-  const outDir = process.env.VITE_OUT_DIR || (mode === 'production' ? '../src/ClaudeCodeProxy.Host/wwwroot' : 'dist')
+  const outDir = process.env.VITE_OUT_DIR || (mode === 'production' ? 'dist' : 'dist')
   
   return {
     plugins: [react(), tailwindcss()],

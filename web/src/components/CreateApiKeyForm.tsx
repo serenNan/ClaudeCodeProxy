@@ -38,13 +38,6 @@ interface FormData {
   service: string;
 }
 
-const AVAILABLE_SERVICES = [
-  { value: 'claude', label: 'Claude' },
-  { value: 'gemini', label: 'Gemini' },
-  { value: 'openai', label: 'OpenAI' },
-  { value: 'all', label: '全部服务' }
-];
-
 const AVAILABLE_MODELS = [
   'claude-3-5-sonnet-20241022',
   'claude-3-5-haiku-20241022',
@@ -343,22 +336,6 @@ export default function CreateApiKeyForm({ editingKey, onSuccess, onCancel }: Cr
             <h3 className="text-lg font-semibold">服务配置</h3>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="service">服务类型</Label>
-                <Select value={formData.service} onValueChange={(value) => updateFormData('service', value)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {AVAILABLE_SERVICES.map(service => (
-                      <SelectItem key={service.value} value={service.value}>
-                        {service.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
               <div className="space-y-2">
                 <Label htmlFor="permissions">服务权限</Label>
                 <Select value={formData.permissions} onValueChange={(value) => updateFormData('permissions', value)}>

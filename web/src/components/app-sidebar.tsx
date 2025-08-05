@@ -3,6 +3,7 @@ import {
   BarChart3,
   Key,
   Users,
+  UserCog,
   Settings2,
   Command,
   LifeBuoy,
@@ -11,6 +12,8 @@ import {
   Github,
   ExternalLink,
   DollarSign,
+  User,
+  Gift,
 } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 
@@ -27,44 +30,91 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 
-const navMain = [
-  {
+// 根据用户权限动态生成导航菜单
+const generateNavMain = (hasPermission: (permission: string) => boolean, user: any) => {
+  const navItems = [];
+
+  // 数据面板 - 所有用户都可以访问
+  navItems.push({
     title: "数据面板",
     url: "/",
     icon: BarChart3,
     isActive: true,
-  },
-  {
+  });
+
+  // 个人中心 - 所有用户都可以访问
+  navItems.push({
+    title: "个人中心",
+    url: "/personal-dashboard",
+    icon: User,
+  });
+
+  // API Key管理 - 所有用户都可以管理自己的API Key
+  navItems.push({
     title: "API Key管理",
     url: "/apikeys",
     icon: Key,
-  },
-  {
-    title: "账号管理",
-    url: "/accounts",
-    icon: Users,
-  },
-  {
-    title: "价格管理",
-    url: "/pricing",
-    icon: DollarSign,
-  },
-  {
+  });
+
+  // 账号管理 - 需要相应权限或管理员角色
+  if (hasPermission('account.view') || hasPermission('account.management') || hasPermission('account:manage') || user?.roleName === 'Admin') {
+    navItems.push({
+      title: "账号管理",
+      url: "/accounts",
+      icon: Users,
+    });
+  }
+
+  // 用户管理 - 需要相应权限或管理员角色
+  if (hasPermission('user.view') || hasPermission('user.management') || hasPermission('user:manage') || user?.roleName === 'Admin') {
+    navItems.push({
+      title: "用户管理",
+      url: "/users",
+      icon: UserCog,
+    });
+  }
+
+  // 兑换码管理 - 管理员功能
+  if (user?.roleName === 'Admin') {
+    navItems.push({
+      title: "兑换码管理",
+      url: "/redeem-codes",
+      icon: Gift,
+    });
+  }
+
+  // 价格管理 - 需要系统设置权限或管理员角色
+  if (hasPermission('system.settings') || hasPermission('pricing:manage') || user?.roleName === 'Admin') {
+    navItems.push({
+      title: "价格管理",
+      url: "/pricing",
+      icon: DollarSign,
+    });
+  }
+
+  // 请求日志 - 所有用户都可以查看自己的请求日志
+  navItems.push({
     title: "请求日志",
     url: "/request-logs",
     icon: FileText,
-  },
-  {
-    title: "系统设置",
-    url: "/settings",
-    icon: Settings2,
-  },
-];
+  });
+
+  // 系统设置 - 需要系统设置权限或管理员角色
+  if (hasPermission('system.settings') || hasPermission('system:config') || user?.roleName === 'Admin') {
+    navItems.push({
+      title: "系统设置",
+      url: "/settings",
+      icon: Settings2,
+    });
+  }
+
+  return navItems;
+};
 
 const navSecondary = [
   {
-    title: "帮助支持",
-    url: "#",
+    title: "邀请好友",
+    url: "/invite-friends",
     icon: LifeBuoy,
   },
   {
@@ -75,13 +125,17 @@ const navSecondary = [
 ];
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
   
   const userData = {
-    name: user?.username || "管理员",
-    email: "admin@claude-proxy.com",
-    avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80",
+    name: user?.firstName && user?.lastName 
+      ? `${user.firstName} ${user.lastName}` 
+      : user?.username || "管理员",
+    email: user?.email || "admin@claude-proxy.com",
+    avatar: user?.avatar || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80",
   };
+
+  const navMain = generateNavMain(hasPermission, user);
 
   return (
     <Sidebar variant="inset" {...props}>

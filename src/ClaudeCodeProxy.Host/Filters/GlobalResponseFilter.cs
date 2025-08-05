@@ -7,14 +7,8 @@ namespace ClaudeCodeProxy.Host.Filters;
 /// <summary>
 /// 全局响应过滤器
 /// </summary>
-public class GlobalResponseFilter : IEndpointFilter
+public class GlobalResponseFilter(ILogger<GlobalResponseFilter> logger) : IEndpointFilter
 {
-    private readonly ILogger<GlobalResponseFilter> _logger;
-
-    public GlobalResponseFilter(ILogger<GlobalResponseFilter> logger)
-    {
-        _logger = logger;
-    }
 
     public async ValueTask<object?> InvokeAsync(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
     {

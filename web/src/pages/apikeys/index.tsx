@@ -290,15 +290,6 @@ export default function ApiKeysPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label className="text-sm text-muted-foreground flex items-center gap-1">
-                      <Server className="h-3 w-3" />
-                      服务类型
-                    </Label>
-                    <Badge variant="outline" className="mt-1">
-                      {apiKey.service?.toUpperCase() || 'CLAUDE'}
-                    </Badge>
-                  </div>
-                  <div>
-                    <Label className="text-sm text-muted-foreground flex items-center gap-1">
                       <Shield className="h-3 w-3" />
                       权限范围
                     </Label>

@@ -25,6 +25,8 @@ public partial class MessageService(
     public async Task HandleAsync(
         HttpContext httpContext,
         [FromServices] ApiKeyService keyService,
+        [FromServices] RequestLogService requestLogService,
+        [FromServices] WalletService walletService,
         [FromBody] AnthropicInput request,
         [FromServices] IAnthropicChatCompletionsService chatCompletionsService)
     {
@@ -40,7 +42,6 @@ public partial class MessageService(
         }
 
         var apiKeyValue = await keyService.GetApiKeyWithRefreshedUsageAsync(apiKey, httpContext.RequestAborted);
-
 
         if (apiKeyValue == null)
         {
@@ -82,6 +83,39 @@ public partial class MessageService(
             {
                 message = "当前API Key没有使用该模型的权限",
                 code = "403"
+            }, cancellationToken: httpContext.RequestAborted);
+            return;
+        }
+
+        // 获取用户信息
+        var userId = apiKeyValue.UserId;
+        var userName = apiKeyValue.User?.Username ?? "Unknown";
+
+        // 预估请求费用
+        var estimatedCost = EstimateRequestCost(request, httpContext);
+        
+        // 获取用户当前余额信息
+        var walletDto = await walletService.GetOrCreateWalletAsync(userId);
+        
+        // 检查用户钱包余额（使用预估费用）
+        var hasSufficientBalance = await walletService.CheckSufficientBalanceAsync(userId, estimatedCost);
+        if (!hasSufficientBalance)
+        {
+            httpContext.Response.StatusCode = 402; // Payment Required
+            await httpContext.Response.WriteAsJsonAsync(new
+            {
+                error = new
+                {
+                    message = $"钱包余额不足，请充值后重试。当前余额: ${walletDto.Balance:F4}, 预估费用: ${estimatedCost:F4}",
+                    type = "insufficient_balance",
+                    code = "402",
+                    details = new
+                    {
+                        current_balance = walletDto.Balance,
+                        estimated_cost = estimatedCost,
+                        currency = "USD"
+                    }
+                }
             }, cancellationToken: httpContext.RequestAborted);
             return;
         }
@@ -133,22 +167,45 @@ public partial class MessageService(
             request.Model = mappedModel;
         }
 
+        // 创建请求日志
+        var requestStartTime = DateTime.Now;
+        var requestLog = await requestLogService.CreateRequestLogAsync(
+            userId,
+            apiKeyValue.Id,
+            apiKeyValue.Name,
+            request.Model,
+            requestStartTime,
+            "claude",
+            httpContext.Connection.RemoteIpAddress?.ToString(),
+            httpContext.Request.Headers["User-Agent"].FirstOrDefault(),
+            Guid.NewGuid().ToString(),
+            account?.Id,
+            account?.Name,
+            request.Stream,
+            new Dictionary<string, object>
+            {
+                ["user_id"] = userId,
+                ["user_name"] = userName,
+                ["api_key_name"] = apiKeyValue.Name
+            },
+            httpContext.RequestAborted);
+
         // 寻找对应的账号
         if (account is { IsClaude: true })
         {
             await HandleClaudeAsync(httpContext, request, chatCompletionsService, apiKeyValue,
-                account,
+                account, requestLog.Id, requestLogService,
                 httpContext.RequestAborted);
         }
         else if (account is { IsClaudeConsole: true })
         {
             await HandleClaudeAsync(httpContext, request, chatCompletionsService, apiKeyValue,
-                account,
+                account, requestLog.Id, requestLogService,
                 httpContext.RequestAborted);
         }
         else if (account?.IsOpenAI == true)
         {
-            await HandleOpenAIAsync(httpContext, request, apiKeyValue, account,
+            await HandleOpenAIAsync(httpContext, request, apiKeyValue, account, requestLog.Id, requestLogService,
                 httpContext.RequestAborted);
         }
         else
@@ -168,27 +225,12 @@ public partial class MessageService(
         AnthropicInput request,
         Domain.ApiKey apiKeyValue,
         Domain.Accounts? account,
+        Guid requestLogId,
+        RequestLogService requestLogService,
         CancellationToken cancellationToken = default)
     {
-        // 获取统计服务
-        var statisticsService = httpContext.RequestServices.GetRequiredService<StatisticsService>();
-
         var chatCompletionsService =
             httpContext.RequestServices.GetRequiredService<OpenAIAnthropicChatCompletionsService>();
-
-        // 开始记录请求统计
-        var requestLog = await statisticsService.LogRequestAsync(
-            apiKeyValue.Id,
-            apiKeyValue.Name,
-            account?.Id,
-            account?.Name,
-            request.Model,
-            "claude",
-            request.Stream,
-            Guid.NewGuid().ToString(),
-            httpContext.Connection.RemoteIpAddress?.ToString(),
-            httpContext.Request.Headers["User-Agent"].FirstOrDefault(),
-            cancellationToken);
 
         var accessToken = await accountsService.GetValidAccessTokenAsync(account, cancellationToken);
 
@@ -312,8 +354,8 @@ public partial class MessageService(
             // 可以考虑创建专门的方法来更新使用统计
 
             // 完成请求日志记录（成功）
-            await statisticsService.CompleteRequestLogAsync(
-                requestLog.Id,
+            await requestLogService.CompleteRequestLogAsync(
+                requestLogId,
                 inputTokens: inputTokens,
                 outputTokens: outputTokens,
                 cacheCreateTokens: cacheCreateTokens,
@@ -338,8 +380,8 @@ public partial class MessageService(
             }
 
             // 完成请求日志记录（限流失败）
-            await statisticsService.CompleteRequestLogAsync(
-                requestLog.Id,
+            await requestLogService.CompleteRequestLogAsync(
+                requestLogId,
                 status: "rate_limited",
                 errorMessage: rateLimitEx.Message,
                 httpStatusCode: 429,
@@ -362,8 +404,8 @@ public partial class MessageService(
         catch (Exception ex)
         {
             // 完成请求日志记录（失败）
-            await statisticsService.CompleteRequestLogAsync(
-                requestLog.Id,
+            await requestLogService.CompleteRequestLogAsync(
+                requestLogId,
                 status: "error",
                 errorMessage: ex.Message,
                 httpStatusCode: 500,
@@ -476,24 +518,11 @@ public partial class MessageService(
         IAnthropicChatCompletionsService chatCompletionsService,
         Domain.ApiKey apiKeyValue,
         Domain.Accounts? account,
+        Guid requestLogId,
+        RequestLogService requestLogService,
         CancellationToken cancellationToken = default)
     {
-        // 获取统计服务
-        var statisticsService = httpContext.RequestServices.GetRequiredService<StatisticsService>();
-
-        // 开始记录请求统计
-        var requestLog = await statisticsService.LogRequestAsync(
-            apiKeyValue.Id,
-            apiKeyValue.Name,
-            account?.Id,
-            account?.Name,
-            request.Model,
-            "claude",
-            request.Stream,
-            Guid.NewGuid().ToString(),
-            httpContext.Connection.RemoteIpAddress?.ToString(),
-            httpContext.Request.Headers["User-Agent"].FirstOrDefault(),
-            cancellationToken);
+        // 注意：请求日志已在主方法中创建，这里直接使用传入的requestLogId
 
         var accessToken = await accountsService.GetValidAccessTokenAsync(account, cancellationToken);
 
@@ -643,8 +672,8 @@ public partial class MessageService(
             // 可以考虑创建专门的方法来更新使用统计
 
             // 完成请求日志记录（成功）
-            await statisticsService.CompleteRequestLogAsync(
-                requestLog.Id,
+            await requestLogService.CompleteRequestLogAsync(
+                requestLogId,
                 inputTokens: inputTokens,
                 outputTokens: outputTokens,
                 cacheCreateTokens: cacheCreateTokens,
@@ -669,8 +698,8 @@ public partial class MessageService(
             }
 
             // 完成请求日志记录（限流失败）
-            await statisticsService.CompleteRequestLogAsync(
-                requestLog.Id,
+            await requestLogService.CompleteRequestLogAsync(
+                requestLogId,
                 status: "rate_limited",
                 errorMessage: rateLimitEx.Message,
                 httpStatusCode: 429,
@@ -693,8 +722,8 @@ public partial class MessageService(
         catch (Exception ex)
         {
             // 完成请求日志记录（失败）
-            await statisticsService.CompleteRequestLogAsync(
-                requestLog.Id,
+            await requestLogService.CompleteRequestLogAsync(
+                requestLogId,
                 status: "error",
                 errorMessage: ex.Message,
                 httpStatusCode: 500,
@@ -732,6 +761,57 @@ public partial class MessageService(
         logger.LogInformation("费用计算结果: 模型={Model}, 总计=${TotalCost:F6}", model, cost);
 
         return cost;
+    }
+
+    /// <summary>
+    /// 预估请求费用（基于输入内容的粗略估算）
+    /// </summary>
+    private decimal EstimateRequestCost(AnthropicInput request, HttpContext httpContext)
+    {
+        try
+        {
+            // 粗略估算输入token数量（按字符数 / 4 估算，这是一个简化的方法）
+            var estimatedInputTokens = 0;
+            
+            if (request.Messages != null)
+            {
+                foreach (var message in request.Messages)
+                {
+                    if (message.Content is string textContent)
+                    {
+                        estimatedInputTokens += textContent.Length / 4; // 粗略估算
+                    }
+                    else if (message.Content is not string && message.Content is not null)
+                    {
+                        // 假设是对象数组，尝试转换为字符串计算
+                        var contentString = message.Content.ToString();
+                        if (!string.IsNullOrEmpty(contentString))
+                        {
+                            estimatedInputTokens += contentString.Length / 4;
+                        }
+                    }
+                }
+            }
+
+            // 估算输出token数量（按最大输出的30%估算，避免过高预估）
+            var maxTokens = request.MaxTokens ?? 4096;
+            var estimatedOutputTokens = Math.Min(maxTokens * 0.3m, 1000); // 最多按1000个输出token估算
+
+            // 使用PricingService计算费用
+            var pricingService = httpContext.RequestServices.GetRequiredService<PricingService>();
+            var estimatedCost = pricingService.CalculateTokenCost(
+                request.Model, 
+                estimatedInputTokens, 
+                (int)estimatedOutputTokens);
+
+            // 添加20%的安全余量
+            return estimatedCost * 1.2m;
+        }
+        catch (Exception)
+        {
+            // 如果估算失败，返回一个保守的估算值
+            return 0.1m; // 0.1美元作为默认预估
+        }
     }
 
     /// <summary>

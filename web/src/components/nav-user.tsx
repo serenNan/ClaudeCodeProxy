@@ -91,7 +91,7 @@ export function NavUser({
                 <Settings />
                 系统设置
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate("/profile")}>
                 <BadgeCheck />
                 个人资料
               </DropdownMenuItem>
