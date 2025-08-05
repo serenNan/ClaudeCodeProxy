@@ -13,6 +13,7 @@ public class ApiKeyService(IContext context)
     public async Task<ApiKey?> GetApiKeyAsync(string key, CancellationToken cancellationToken = default)
     {
         var apiKey = await context.ApiKeys
+            .Include(x => x.User)
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.KeyValue == key, cancellationToken);
 
@@ -32,6 +33,20 @@ public class ApiKeyService(IContext context)
     public async Task<List<ApiKey>> GetAllApiKeysAsync(CancellationToken cancellationToken = default)
     {
         return await context.ApiKeys
+            .Include(x => x.User)
+            .AsNoTracking()
+            .OrderByDescending(x => x.CreatedAt)
+            .ToListAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// 获取指定用户的API Keys
+    /// </summary>
+    public async Task<List<ApiKey>> GetUserApiKeysAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        return await context.ApiKeys
+            .Include(x => x.User)
+            .Where(x => x.UserId == userId)
             .AsNoTracking()
             .OrderByDescending(x => x.CreatedAt)
             .ToListAsync(cancellationToken);
@@ -43,6 +58,7 @@ public class ApiKeyService(IContext context)
     public async Task<ApiKey?> GetApiKeyByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         return await context.ApiKeys
+            .Include(x => x.User)
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
     }
@@ -50,7 +66,7 @@ public class ApiKeyService(IContext context)
     /// <summary>
     /// 创建新的API Key
     /// </summary>
-    public async Task<ApiKey> CreateApiKeyAsync(CreateApiKeyRequest request,
+    public async Task<ApiKey> CreateApiKeyAsync(CreateApiKeyRequest request, Guid userId,
         CancellationToken cancellationToken = default)
     {
         var keyValue = GenerateApiKey();
@@ -58,6 +74,7 @@ public class ApiKeyService(IContext context)
         var apiKey = new ApiKey
         {
             Id = Guid.NewGuid(),
+            UserId = request.UserId ?? userId, // 使用请求中的UserId或当前用户ID
             Name = request.Name,
             KeyValue = keyValue,
             Description = request.Description,
@@ -260,6 +277,7 @@ public class ApiKeyService(IContext context)
     public async Task<ApiKey?> GetApiKeyWithRefreshedUsageAsync(string key, CancellationToken cancellationToken = default)
     {
         var apiKey = await context.ApiKeys
+            .Include(x => x.User)
             .FirstOrDefaultAsync(x => x.KeyValue == key, cancellationToken);
 
         if (apiKey == null)

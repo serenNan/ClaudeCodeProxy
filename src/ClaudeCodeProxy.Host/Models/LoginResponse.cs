@@ -29,4 +29,9 @@ public class LoginResponse
     /// 用户名
     /// </summary>
     public string Username { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 用户信息
+    /// </summary>
+    public UserDto? User { get; set; }
 }

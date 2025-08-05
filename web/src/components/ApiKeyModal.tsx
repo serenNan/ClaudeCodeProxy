@@ -41,13 +41,6 @@ interface FormData {
   service: string;
 }
 
-const AVAILABLE_SERVICES = [
-  { value: 'claude', label: 'Claude' },
-  { value: 'gemini', label: 'Gemini' },
-  { value: 'openai', label: 'OpenAI' },
-  { value: 'all', label: '全部服务' }
-];
-
 
 export default function ApiKeyModal({ open, onClose, editingKey, onSuccess }: ApiKeyModalProps) {
   const [loading, setLoading] = useState(false);
@@ -291,22 +284,7 @@ export default function ApiKeyModal({ open, onClose, editingKey, onSuccess }: Ap
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">服务配置</h3>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="service">服务类型</Label>
-                <Select value={formData.service} onValueChange={(value) => updateFormData('service', value)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {AVAILABLE_SERVICES.map(service => (
-                      <SelectItem key={service.value} value={service.value}>
-                        {service.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
 
               <div className="space-y-2">
                 <Label htmlFor="permissions">服务权限</Label>

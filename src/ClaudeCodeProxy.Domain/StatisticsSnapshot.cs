@@ -22,6 +22,11 @@ public sealed class StatisticsSnapshot : Entity<Guid>
     public int? SnapshotHour { get; set; }
 
     /// <summary>
+    /// 用户ID（如果是特定用户的统计）
+    /// </summary>
+    public Guid? UserId { get; set; }
+
+    /// <summary>
     /// API Key ID（如果是特定API Key的统计）
     /// </summary>
     public Guid? ApiKeyId { get; set; }
@@ -115,6 +120,16 @@ public sealed class StatisticsSnapshot : Entity<Guid>
     /// 数据版本（用于并发控制）
     /// </summary>
     public long Version { get; set; } = 1;
+
+    /// <summary>
+    /// 导航属性 - 关联用户
+    /// </summary>
+    public User? User { get; set; }
+
+    /// <summary>
+    /// 导航属性 - 关联API Key
+    /// </summary>
+    public ApiKey? ApiKey { get; set; }
 
     /// <summary>
     /// 计算总Token数量

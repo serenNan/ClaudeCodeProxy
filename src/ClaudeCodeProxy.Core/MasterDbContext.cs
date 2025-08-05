@@ -5,13 +5,22 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ClaudeCodeProxy.Core;
 
-public class MasterDbContext<TDbContext>(DbContextOptions<TDbContext> options) : DbContext(options), IContext where TDbContext : DbContext
+public class MasterDbContext<TDbContext>(DbContextOptions<TDbContext> options)
+    : DbContext(options), IContext where TDbContext : DbContext
 {
     public DbSet<Accounts> Accounts { get; set; }
     public DbSet<ApiKey> ApiKeys { get; set; }
     public DbSet<RequestLog> RequestLogs { get; set; }
     public DbSet<StatisticsSnapshot> StatisticsSnapshots { get; set; }
     public DbSet<ModelPricing> ModelPricings { get; set; }
+    public DbSet<User> Users { get; set; }
+    public DbSet<Role> Roles { get; set; }
+    public DbSet<UserLoginHistory> UserLoginHistories { get; set; }
+    public DbSet<Wallet> Wallets { get; set; }
+    public DbSet<WalletTransaction> WalletTransactions { get; set; }
+    public DbSet<RedeemCode> RedeemCodes { get; set; }
+    public DbSet<InvitationRecord> InvitationRecords { get; set; }
+    public DbSet<InvitationSettings> InvitationSettings { get; set; }
 
     public async Task SaveAsync(CancellationToken cancellationToken = default)
     {
@@ -30,6 +39,9 @@ public class MasterDbContext<TDbContext>(DbContextOptions<TDbContext> options) :
             entity.HasKey(e => e.Id);
 
             // 基本属性配置
+            entity.Property(e => e.UserId)
+                .IsRequired();
+
             entity.Property(e => e.Name)
                 .IsRequired()
                 .HasMaxLength(200);
@@ -118,7 +130,22 @@ public class MasterDbContext<TDbContext>(DbContextOptions<TDbContext> options) :
             entity.Property(e => e.ModifiedBy)
                 .HasMaxLength(100);
 
+            // 外键关系配置
+            entity.HasOne(e => e.User)
+                .WithMany(u => u.ApiKeys)
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // 与请求日志的一对多关系
+            entity.HasMany(e => e.RequestLogs)
+                .WithOne(r => r.ApiKey)
+                .HasForeignKey(r => r.ApiKeyId)
+                .OnDelete(DeleteBehavior.Cascade);
+
             // 索引配置
+            entity.HasIndex(e => e.UserId)
+                .HasDatabaseName("IX_ApiKeys_UserId");
+
             entity.HasIndex(e => e.Name)
                 .HasDatabaseName("IX_ApiKeys_Name");
 
@@ -189,8 +216,12 @@ public class MasterDbContext<TDbContext>(DbContextOptions<TDbContext> options) :
             // JSON 配置字段
             entity.Property(e => e.SupportedModels)
                 .HasConversion(
-                    v => v == null || v.Count == 0 ? null : JsonSerializer.Serialize(v, new JsonSerializerOptions { WriteIndented = false }),
-                    v => string.IsNullOrEmpty(v) ? null : JsonSerializer.Deserialize<List<string>>(v, new JsonSerializerOptions()))
+                    v => v == null || v.Count == 0
+                        ? null
+                        : JsonSerializer.Serialize(v, new JsonSerializerOptions { WriteIndented = false }),
+                    v => string.IsNullOrEmpty(v)
+                        ? null
+                        : JsonSerializer.Deserialize<List<string>>(v, new JsonSerializerOptions()))
                 .HasColumnType("TEXT");
 
             entity.Property(e => e.ClaudeAiOauth)
@@ -269,6 +300,9 @@ public class MasterDbContext<TDbContext>(DbContextOptions<TDbContext> options) :
             entity.HasKey(e => e.Id);
 
             // 基本属性配置
+            entity.Property(e => e.UserId)
+                .IsRequired();
+
             entity.Property(e => e.ApiKeyId)
                 .IsRequired();
 
@@ -347,7 +381,21 @@ public class MasterDbContext<TDbContext>(DbContextOptions<TDbContext> options) :
             entity.Property(e => e.ModifiedBy)
                 .HasMaxLength(100);
 
+            // 外键关系配置
+            entity.HasOne(e => e.User)
+                .WithMany(u => u.RequestLogs)
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.ApiKey)
+                .WithMany(a => a.RequestLogs)
+                .HasForeignKey(e => e.ApiKeyId)
+                .OnDelete(DeleteBehavior.Cascade);
+
             // 索引配置
+            entity.HasIndex(e => e.UserId)
+                .HasDatabaseName("IX_RequestLogs_UserId");
+
             entity.HasIndex(e => e.ApiKeyId)
                 .HasDatabaseName("IX_RequestLogs_ApiKeyId");
 
@@ -367,6 +415,9 @@ public class MasterDbContext<TDbContext>(DbContextOptions<TDbContext> options) :
                 .HasDatabaseName("IX_RequestLogs_Platform");
 
             // 复合索引（用于性能优化）
+            entity.HasIndex(e => new { e.RequestDate, e.UserId })
+                .HasDatabaseName("IX_RequestLogs_RequestDate_UserId");
+
             entity.HasIndex(e => new { e.RequestDate, e.ApiKeyId })
                 .HasDatabaseName("IX_RequestLogs_RequestDate_ApiKeyId");
 
@@ -436,7 +487,21 @@ public class MasterDbContext<TDbContext>(DbContextOptions<TDbContext> options) :
             entity.Property(e => e.ModifiedBy)
                 .HasMaxLength(100);
 
+            // 外键关系配置
+            entity.HasOne(e => e.User)
+                .WithMany(u => u.StatisticsSnapshots)
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(e => e.ApiKey)
+                .WithMany()
+                .HasForeignKey(e => e.ApiKeyId)
+                .OnDelete(DeleteBehavior.SetNull);
+
             // 索引配置
+            entity.HasIndex(e => e.UserId)
+                .HasDatabaseName("IX_StatisticsSnapshots_UserId");
+
             entity.HasIndex(e => e.SnapshotType)
                 .HasDatabaseName("IX_StatisticsSnapshots_SnapshotType");
 
@@ -450,6 +515,9 @@ public class MasterDbContext<TDbContext>(DbContextOptions<TDbContext> options) :
                 .HasDatabaseName("IX_StatisticsSnapshots_Model");
 
             // 复合索引（用于性能优化）
+            entity.HasIndex(e => new { e.SnapshotType, e.SnapshotDate, e.UserId })
+                .HasDatabaseName("IX_StatisticsSnapshots_SnapshotType_SnapshotDate_UserId");
+
             entity.HasIndex(e => new { e.SnapshotType, e.SnapshotDate })
                 .HasDatabaseName("IX_StatisticsSnapshots_SnapshotType_SnapshotDate");
 
@@ -522,11 +590,558 @@ public class MasterDbContext<TDbContext>(DbContextOptions<TDbContext> options) :
             entity.HasIndex(e => e.Currency)
                 .HasDatabaseName("IX_ModelPricings_Currency");
         });
+
+        // 配置 Role 实体
+        modelBuilder.Entity<Role>(entity =>
+        {
+            entity.ToTable("Roles");
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Name)
+                .IsRequired()
+                .HasMaxLength(50);
+
+            entity.Property(e => e.Description)
+                .HasMaxLength(200);
+
+            entity.Property(e => e.IsSystem)
+                .HasDefaultValue(false);
+
+            entity.Property(e => e.Permissions)
+                .IsRequired()
+                .HasConversion(
+                    v => v == null
+                        ? "[]"
+                        : JsonSerializer.Serialize(v, JsonSerializerOptions.Web),
+                    v => string.IsNullOrEmpty(v)
+                        ? new List<string>()
+                        : JsonSerializer.Deserialize<List<string>>(v,JsonSerializerOptions.Web))
+                .HasColumnType("TEXT");
+
+            // 审计字段配置
+            entity.Property(e => e.CreatedAt)
+                .IsRequired();
+
+            entity.Property(e => e.CreatedBy)
+                .HasMaxLength(100);
+
+            entity.Property(e => e.ModifiedBy)
+                .HasMaxLength(100);
+
+            // 索引配置
+            entity.HasIndex(e => e.Name)
+                .IsUnique()
+                .HasDatabaseName("IX_Roles_Name");
+
+            entity.HasIndex(e => e.IsSystem)
+                .HasDatabaseName("IX_Roles_IsSystem");
+        });
+
+        // 配置 User 实体
+        modelBuilder.Entity<User>(entity =>
+        {
+            entity.ToTable("Users");
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Username)
+                .IsRequired()
+                .HasMaxLength(50);
+
+            entity.Property(e => e.Email)
+                .IsRequired()
+                .HasMaxLength(100);
+
+            entity.Property(e => e.PasswordHash)
+                .HasMaxLength(255);
+
+            entity.Property(e => e.FirstName)
+                .HasMaxLength(50);
+
+            entity.Property(e => e.LastName)
+                .HasMaxLength(50);
+
+            entity.Property(e => e.Avatar)
+                .HasMaxLength(200);
+
+            entity.Property(e => e.IsActive)
+                .HasDefaultValue(true);
+
+            entity.Property(e => e.EmailConfirmed)
+                .HasDefaultValue(false);
+
+            entity.Property(e => e.Provider)
+                .HasMaxLength(50);
+
+            entity.Property(e => e.ProviderId)
+                .HasMaxLength(100);
+
+            // 邀请系统相关字段
+            entity.Property(e => e.InvitationCode)
+                .IsRequired()
+                .HasMaxLength(8);
+
+            // 审计字段配置
+            entity.Property(e => e.CreatedAt)
+                .IsRequired();
+
+            entity.Property(e => e.CreatedBy)
+                .HasMaxLength(100);
+
+            entity.Property(e => e.ModifiedBy)
+                .HasMaxLength(100);
+
+            // 外键关系配置
+            entity.HasOne(e => e.Role)
+                .WithMany(r => r.Users)
+                .HasForeignKey(e => e.RoleId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // 与钱包的一对一关系
+            entity.HasOne(e => e.Wallet)
+                .WithOne(w => w.User)
+                .HasForeignKey<Wallet>(w => w.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // 与API Key的一对多关系
+            entity.HasMany(e => e.ApiKeys)
+                .WithOne(a => a.User)
+                .HasForeignKey(a => a.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // 与请求日志的一对多关系
+            entity.HasMany(e => e.RequestLogs)
+                .WithOne(r => r.User)
+                .HasForeignKey(r => r.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // 与统计快照的一对多关系
+            entity.HasMany(e => e.StatisticsSnapshots)
+                .WithOne(s => s.User)
+                .HasForeignKey(s => s.UserId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            // 邀请关系配置
+            entity.HasOne(e => e.InvitedByUser)
+                .WithMany(u => u.InvitedUsers)
+                .HasForeignKey(e => e.InvitedByUserId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            // 索引配置
+            entity.HasIndex(e => e.Username)
+                .IsUnique()
+                .HasDatabaseName("IX_Users_Username");
+
+            entity.HasIndex(e => e.Email)
+                .IsUnique()
+                .HasDatabaseName("IX_Users_Email");
+
+            entity.HasIndex(e => new { e.Provider, e.ProviderId })
+                .HasDatabaseName("IX_Users_Provider_ProviderId");
+
+            entity.HasIndex(e => e.RoleId)
+                .HasDatabaseName("IX_Users_RoleId");
+
+            entity.HasIndex(e => e.IsActive)
+                .HasDatabaseName("IX_Users_IsActive");
+
+            entity.HasIndex(e => e.InvitationCode)
+                .IsUnique()
+                .HasDatabaseName("IX_Users_InvitationCode");
+
+            entity.HasIndex(e => e.InvitedByUserId)
+                .HasDatabaseName("IX_Users_InvitedByUserId");
+        });
+
+        // 配置 UserLoginHistory 实体
+        modelBuilder.Entity<UserLoginHistory>(entity =>
+        {
+            entity.ToTable("UserLoginHistories");
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.LoginType)
+                .HasMaxLength(50);
+
+            entity.Property(e => e.IpAddress)
+                .HasMaxLength(45);
+
+            entity.Property(e => e.UserAgent)
+                .HasMaxLength(500);
+
+            entity.Property(e => e.City)
+                .HasMaxLength(50);
+
+            entity.Property(e => e.Country)
+                .HasMaxLength(50);
+
+            entity.Property(e => e.Success)
+                .HasDefaultValue(true);
+
+            entity.Property(e => e.FailureReason)
+                .HasMaxLength(200);
+
+            // 审计字段配置
+            entity.Property(e => e.CreatedAt)
+                .IsRequired();
+
+            entity.Property(e => e.CreatedBy)
+                .HasMaxLength(100);
+
+            entity.Property(e => e.ModifiedBy)
+                .HasMaxLength(100);
+
+            // 外键关系配置
+            entity.HasOne(e => e.User)
+                .WithMany(u => u.LoginHistories)
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // 索引配置
+            entity.HasIndex(e => e.UserId)
+                .HasDatabaseName("IX_UserLoginHistories_UserId");
+
+            entity.HasIndex(e => e.CreatedAt)
+                .HasDatabaseName("IX_UserLoginHistories_CreatedAt");
+
+            entity.HasIndex(e => new { e.UserId, e.CreatedAt })
+                .HasDatabaseName("IX_UserLoginHistories_UserId_CreatedAt");
+        });
+
+        // 配置 Wallet 实体
+        modelBuilder.Entity<Wallet>(entity =>
+        {
+            entity.ToTable("Wallets");
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.UserId)
+                .IsRequired();
+
+            entity.Property(e => e.Balance)
+                .HasColumnType("decimal(18,4)")
+                .HasDefaultValue(0m);
+
+            entity.Property(e => e.TotalUsed)
+                .HasColumnType("decimal(18,4)")
+                .HasDefaultValue(0m);
+
+            entity.Property(e => e.TotalRecharged)
+                .HasColumnType("decimal(18,4)")
+                .HasDefaultValue(0m);
+
+            entity.Property(e => e.Status)
+                .IsRequired()
+                .HasMaxLength(20)
+                .HasDefaultValue("active");
+
+            // 审计字段配置
+            entity.Property(e => e.CreatedAt)
+                .IsRequired();
+
+            entity.Property(e => e.CreatedBy)
+                .HasMaxLength(100);
+
+            entity.Property(e => e.ModifiedBy)
+                .HasMaxLength(100);
+
+            // 外键关系配置
+            entity.HasOne(e => e.User)
+                .WithOne(u => u.Wallet)
+                .HasForeignKey<Wallet>(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // 与钱包交易的一对多关系
+            entity.HasMany(e => e.Transactions)
+                .WithOne(t => t.Wallet)
+                .HasForeignKey(t => t.WalletId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // 索引配置
+            entity.HasIndex(e => e.UserId)
+                .IsUnique()
+                .HasDatabaseName("IX_Wallets_UserId");
+
+            entity.HasIndex(e => e.Status)
+                .HasDatabaseName("IX_Wallets_Status");
+
+            entity.HasIndex(e => e.LastUsedAt)
+                .HasDatabaseName("IX_Wallets_LastUsedAt");
+        });
+
+        // 配置 WalletTransaction 实体
+        modelBuilder.Entity<WalletTransaction>(entity =>
+        {
+            entity.ToTable("WalletTransactions");
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.WalletId)
+                .IsRequired();
+
+            entity.Property(e => e.TransactionType)
+                .IsRequired()
+                .HasMaxLength(20);
+
+            entity.Property(e => e.Amount)
+                .HasColumnType("decimal(18,4)")
+                .IsRequired();
+
+            entity.Property(e => e.BalanceBefore)
+                .HasColumnType("decimal(18,4)")
+                .IsRequired();
+
+            entity.Property(e => e.BalanceAfter)
+                .HasColumnType("decimal(18,4)")
+                .IsRequired();
+
+            entity.Property(e => e.Description)
+                .IsRequired()
+                .HasMaxLength(500);
+
+            entity.Property(e => e.Status)
+                .IsRequired()
+                .HasMaxLength(20)
+                .HasDefaultValue("completed");
+
+            entity.Property(e => e.PaymentMethod)
+                .HasMaxLength(50);
+
+            entity.Property(e => e.ExternalTransactionId)
+                .HasMaxLength(100);
+
+            // 审计字段配置
+            entity.Property(e => e.CreatedAt)
+                .IsRequired();
+
+            entity.Property(e => e.CreatedBy)
+                .HasMaxLength(100);
+
+            entity.Property(e => e.ModifiedBy)
+                .HasMaxLength(100);
+
+            // 外键关系配置
+            entity.HasOne(e => e.Wallet)
+                .WithMany(w => w.Transactions)
+                .HasForeignKey(e => e.WalletId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.RequestLog)
+                .WithOne(r => r.WalletTransaction)
+                .HasForeignKey<WalletTransaction>(e => e.RequestLogId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            // 索引配置
+            entity.HasIndex(e => e.WalletId)
+                .HasDatabaseName("IX_WalletTransactions_WalletId");
+
+            entity.HasIndex(e => e.TransactionType)
+                .HasDatabaseName("IX_WalletTransactions_TransactionType");
+
+            entity.HasIndex(e => e.Status)
+                .HasDatabaseName("IX_WalletTransactions_Status");
+
+            entity.HasIndex(e => e.CreatedAt)
+                .HasDatabaseName("IX_WalletTransactions_CreatedAt");
+
+            entity.HasIndex(e => e.RequestLogId)
+                .HasDatabaseName("IX_WalletTransactions_RequestLogId");
+
+            // 复合索引
+            entity.HasIndex(e => new { e.WalletId, e.CreatedAt })
+                .HasDatabaseName("IX_WalletTransactions_WalletId_CreatedAt");
+        });
+
+        // 配置 RedeemCode 实体
+        modelBuilder.Entity<RedeemCode>(entity =>
+        {
+            entity.ToTable("RedeemCodes");
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Code)
+                .IsRequired()
+                .HasMaxLength(20);
+
+            entity.Property(e => e.Type)
+                .IsRequired()
+                .HasMaxLength(20)
+                .HasDefaultValue("balance");
+
+            entity.Property(e => e.Amount)
+                .HasColumnType("decimal(18,4)")
+                .IsRequired();
+
+            entity.Property(e => e.Description)
+                .HasMaxLength(500);
+
+            entity.Property(e => e.IsUsed)
+                .HasDefaultValue(false);
+
+            entity.Property(e => e.IsEnabled)
+                .HasDefaultValue(true);
+
+            entity.Property(e => e.CreatedByUserId)
+                .IsRequired();
+
+            // 审计字段配置
+            entity.Property(e => e.CreatedAt)
+                .IsRequired();
+
+            entity.Property(e => e.CreatedBy)
+                .HasMaxLength(100);
+
+            entity.Property(e => e.ModifiedBy)
+                .HasMaxLength(100);
+
+            // 外键关系配置
+            entity.HasOne(e => e.UsedByUser)
+                .WithMany()
+                .HasForeignKey(e => e.UsedByUserId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(e => e.CreatedByUser)
+                .WithMany()
+                .HasForeignKey(e => e.CreatedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // 索引配置
+            entity.HasIndex(e => e.Code)
+                .IsUnique()
+                .HasDatabaseName("IX_RedeemCodes_Code");
+
+            entity.HasIndex(e => e.Type)
+                .HasDatabaseName("IX_RedeemCodes_Type");
+
+            entity.HasIndex(e => e.IsUsed)
+                .HasDatabaseName("IX_RedeemCodes_IsUsed");
+
+            entity.HasIndex(e => e.IsEnabled)
+                .HasDatabaseName("IX_RedeemCodes_IsEnabled");
+
+            entity.HasIndex(e => e.CreatedByUserId)
+                .HasDatabaseName("IX_RedeemCodes_CreatedByUserId");
+
+            entity.HasIndex(e => e.UsedByUserId)
+                .HasDatabaseName("IX_RedeemCodes_UsedByUserId");
+
+            entity.HasIndex(e => e.ExpiresAt)
+                .HasDatabaseName("IX_RedeemCodes_ExpiresAt");
+
+            // 复合索引
+            entity.HasIndex(e => new { e.IsUsed, e.IsEnabled, e.ExpiresAt })
+                .HasDatabaseName("IX_RedeemCodes_IsUsed_IsEnabled_ExpiresAt");
+        });
+
+        // 配置 InvitationRecord 实体
+        modelBuilder.Entity<InvitationRecord>(entity =>
+        {
+            entity.ToTable("InvitationRecords");
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.InviterUserId)
+                .IsRequired();
+
+            entity.Property(e => e.InvitedUserId)
+                .IsRequired();
+
+            entity.Property(e => e.InvitationCode)
+                .IsRequired()
+                .HasMaxLength(8);
+
+            entity.Property(e => e.InviterReward)
+                .HasColumnType("decimal(18,4)")
+                .IsRequired();
+
+            entity.Property(e => e.InvitedReward)
+                .HasColumnType("decimal(18,4)")
+                .IsRequired();
+
+            entity.Property(e => e.InvitedAt)
+                .IsRequired();
+
+            entity.Property(e => e.RewardProcessed)
+                .HasDefaultValue(false);
+
+            entity.Property(e => e.Notes)
+                .HasMaxLength(200);
+
+            // 审计字段配置
+            entity.Property(e => e.CreatedAt)
+                .IsRequired();
+
+            entity.Property(e => e.CreatedBy)
+                .HasMaxLength(100);
+
+            entity.Property(e => e.ModifiedBy)
+                .HasMaxLength(100);
+
+            // 外键关系配置
+            entity.HasOne(e => e.InviterUser)
+                .WithMany()
+                .HasForeignKey(e => e.InviterUserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.InvitedUser)
+                .WithMany()
+                .HasForeignKey(e => e.InvitedUserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // 索引配置
+            entity.HasIndex(e => e.InviterUserId)
+                .HasDatabaseName("IX_InvitationRecords_InviterUserId");
+
+            entity.HasIndex(e => e.InvitedUserId)
+                .HasDatabaseName("IX_InvitationRecords_InvitedUserId");
+
+            entity.HasIndex(e => e.InvitationCode)
+                .HasDatabaseName("IX_InvitationRecords_InvitationCode");
+
+            entity.HasIndex(e => e.InvitedAt)
+                .HasDatabaseName("IX_InvitationRecords_InvitedAt");
+
+            entity.HasIndex(e => e.RewardProcessed)
+                .HasDatabaseName("IX_InvitationRecords_RewardProcessed");
+
+            // 复合索引
+            entity.HasIndex(e => new { e.InviterUserId, e.InvitedAt })
+                .HasDatabaseName("IX_InvitationRecords_InviterUserId_InvitedAt");
+        });
+
+        // 配置 InvitationSettings 实体
+        modelBuilder.Entity<InvitationSettings>(entity =>
+        {
+            entity.ToTable("InvitationSettings");
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Key)
+                .IsRequired()
+                .HasMaxLength(50);
+
+            entity.Property(e => e.Value)
+                .IsRequired();
+
+            entity.Property(e => e.Description)
+                .HasMaxLength(200);
+
+            entity.Property(e => e.UpdatedAt)
+                .IsRequired();
+
+            // 审计字段配置
+            entity.Property(e => e.CreatedAt)
+                .IsRequired();
+
+            entity.Property(e => e.CreatedBy)
+                .HasMaxLength(100);
+
+            entity.Property(e => e.ModifiedBy)
+                .HasMaxLength(100);
+
+            // 索引配置
+            entity.HasIndex(e => e.Key)
+                .IsUnique()
+                .HasDatabaseName("IX_InvitationSettings_Key");
+        });
     }
 
     public async Task MigrateAsync()
     {
-        await base.Database.EnsureCreatedAsync();
+        await base.Database.MigrateAsync();
     }
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

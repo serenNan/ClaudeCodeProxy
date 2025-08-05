@@ -14,7 +14,22 @@ public interface IContext
     public DbSet<StatisticsSnapshot> StatisticsSnapshots { get; set; }
     
     public DbSet<ModelPricing> ModelPricings { get; set; }
-
+    
+    public DbSet<User> Users { get; set; }
+    
+    public DbSet<Role> Roles { get; set; }
+    
+    public DbSet<UserLoginHistory> UserLoginHistories { get; set; }
+    
+    public DbSet<Wallet> Wallets { get; set; }
+    
+    public DbSet<WalletTransaction> WalletTransactions { get; set; }
+    
+    public DbSet<RedeemCode> RedeemCodes { get; set; }
+    
+    public DbSet<InvitationRecord> InvitationRecords { get; set; }
+    
+    public DbSet<InvitationSettings> InvitationSettings { get; set; }
 
     /// <summary>
     /// 保存上下文数据

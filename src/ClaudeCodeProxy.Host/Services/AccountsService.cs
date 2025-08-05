@@ -436,17 +436,9 @@ public class AccountsService(IContext context, IMemoryCache memoryCache, ILogger
             .Where(x => x.IsEnabled &&
                 x.Status == "active" || x.Status == "rate_limited");
 
-        // 根据API Key的服务类型过滤
-        if (apiKey.IsClaude())
-        {
-            query = query.Where(x =>
-                x.Platform == "claude" || x.Platform == "claude-console" || x.Platform == "openai" ||
-                x.Platform == "thor");
-        }
-        else if (apiKey.IsGemini())
-        {
-            query = query.Where(x => x.Platform == "gemini");
-        }
+        query = query.Where(x =>
+            x.Platform == "claude" || x.Platform == "claude-console" || x.Platform == "openai" ||
+            x.Platform == "thor");
 
         var accounts = await query.ToListAsync(cancellationToken);
 

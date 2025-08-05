@@ -78,59 +78,6 @@ export default function RequestLogsPage() {
     } catch (error) {
       console.error('Failed to fetch request logs:', error);
       setError('获取请求日志失败');
-      // Mock data for demo
-      setRequestLogs([
-        {
-          id: '1',
-          apiKeyId: 'api-key-1',
-          apiKeyName: 'Production Key',
-          accountId: 'account-1',
-          accountName: 'Claude Production Account',
-          model: 'claude-3-5-sonnet-20241022',
-          platform: 'claude',
-          requestStartTime: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
-          requestEndTime: new Date(Date.now() - 1000 * 60 * 5 + 2000).toISOString(),
-          durationMs: 2000,
-          status: 'success',
-          httpStatusCode: 200,
-          inputTokens: 150,
-          outputTokens: 300,
-          totalTokens: 450,
-          cost: 0.0045,
-          isStreaming: false,
-          clientIp: '192.168.1.100',
-          requestId: 'req_123456789'
-        },
-        {
-          id: '2',
-          apiKeyId: 'api-key-2',
-          apiKeyName: 'Development Key',
-          accountId: 'account-2',
-          accountName: 'Test Account',
-          model: 'claude-3-haiku-20240307',
-          platform: 'claude',
-          requestStartTime: new Date(Date.now() - 1000 * 60 * 10).toISOString(),
-          requestEndTime: new Date(Date.now() - 1000 * 60 * 10 + 5000).toISOString(),
-          durationMs: 5000,
-          status: 'error',
-          errorMessage: 'Rate limit exceeded',
-          httpStatusCode: 429,
-          inputTokens: 100,
-          outputTokens: 0,
-          totalTokens: 100,
-          cost: 0.0001,
-          isStreaming: false,
-          clientIp: '10.0.0.50',
-          requestId: 'req_987654321'
-        }
-      ]);
-      setRequestStats([
-        { status: 'success', count: 1500, totalTokens: 450000, totalCost: 45.50, averageDurationMs: 2500 },
-        { status: 'error', count: 50, totalTokens: 5000, totalCost: 0.50, averageDurationMs: 1200 },
-        { status: 'timeout', count: 5, totalTokens: 500, totalCost: 0.05, averageDurationMs: 30000 }
-      ]);
-      setTotalCount(1555);
-      setTotalPages(78);
     } finally {
       setLoading(false);
     }

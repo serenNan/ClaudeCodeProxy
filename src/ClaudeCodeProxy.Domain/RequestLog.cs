@@ -7,6 +7,11 @@ namespace ClaudeCodeProxy.Domain;
 public sealed class RequestLog : Entity<Guid>
 {
     /// <summary>
+    /// 用户ID - 请求发起者
+    /// </summary>
+    public Guid UserId { get; set; }
+
+    /// <summary>
     /// API Key ID
     /// </summary>
     public Guid ApiKeyId { get; set; }
@@ -130,6 +135,21 @@ public sealed class RequestLog : Entity<Guid>
     /// 额外的元数据（JSON格式存储）
     /// </summary>
     public string? Metadata { get; set; }
+
+    /// <summary>
+    /// 导航属性 - 关联用户
+    /// </summary>
+    public User User { get; set; } = null!;
+
+    /// <summary>
+    /// 导航属性 - 关联API Key
+    /// </summary>
+    public ApiKey ApiKey { get; set; } = null!;
+
+    /// <summary>
+    /// 导航属性 - 关联钱包交易（如果有扣费）
+    /// </summary>
+    public WalletTransaction? WalletTransaction { get; set; }
 
     /// <summary>
     /// 计算总Token数量

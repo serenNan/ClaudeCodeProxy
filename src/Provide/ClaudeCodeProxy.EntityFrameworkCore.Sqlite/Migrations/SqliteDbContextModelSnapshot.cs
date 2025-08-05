@@ -290,6 +290,9 @@ namespace ClaudeCodeProxy.EntityFrameworkCore.Sqlite.Migrations
                         .HasColumnType("INTEGER")
                         .HasDefaultValue(0L);
 
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("TEXT");
+
                     b.HasKey("Id");
 
                     b.HasIndex("CreatedAt")
@@ -304,7 +307,127 @@ namespace ClaudeCodeProxy.EntityFrameworkCore.Sqlite.Migrations
                     b.HasIndex("Service")
                         .HasDatabaseName("IX_ApiKeys_Service");
 
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("IX_ApiKeys_UserId");
+
                     b.ToTable("ApiKeys", (string)null);
+                });
+
+            modelBuilder.Entity("ClaudeCodeProxy.Domain.InvitationRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("InvitationCode")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("InvitedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("InvitedReward")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<Guid>("InvitedUserId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("InviterReward")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<Guid>("InviterUserId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("RewardProcessed")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false);
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InvitationCode")
+                        .HasDatabaseName("IX_InvitationRecords_InvitationCode");
+
+                    b.HasIndex("InvitedAt")
+                        .HasDatabaseName("IX_InvitationRecords_InvitedAt");
+
+                    b.HasIndex("InvitedUserId")
+                        .HasDatabaseName("IX_InvitationRecords_InvitedUserId");
+
+                    b.HasIndex("InviterUserId")
+                        .HasDatabaseName("IX_InvitationRecords_InviterUserId");
+
+                    b.HasIndex("RewardProcessed")
+                        .HasDatabaseName("IX_InvitationRecords_RewardProcessed");
+
+                    b.HasIndex("InviterUserId", "InvitedAt")
+                        .HasDatabaseName("IX_InvitationRecords_InviterUserId_InvitedAt");
+
+                    b.ToTable("InvitationRecords", (string)null);
+                });
+
+            modelBuilder.Entity("ClaudeCodeProxy.Domain.InvitationSettings", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Key")
+                        .IsUnique()
+                        .HasDatabaseName("IX_InvitationSettings_Key");
+
+                    b.ToTable("InvitationSettings", (string)null);
                 });
 
             modelBuilder.Entity("ClaudeCodeProxy.Domain.ModelPricing", b =>
@@ -377,6 +500,97 @@ namespace ClaudeCodeProxy.EntityFrameworkCore.Sqlite.Migrations
                         .HasDatabaseName("IX_ModelPricings_Model");
 
                     b.ToTable("ModelPricings", (string)null);
+                });
+
+            modelBuilder.Entity("ClaudeCodeProxy.Domain.RedeemCode", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ExpiresAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(true);
+
+                    b.Property<bool>("IsUsed")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false);
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("balance");
+
+                    b.Property<DateTime?>("UsedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("UsedByUserId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique()
+                        .HasDatabaseName("IX_RedeemCodes_Code");
+
+                    b.HasIndex("CreatedByUserId")
+                        .HasDatabaseName("IX_RedeemCodes_CreatedByUserId");
+
+                    b.HasIndex("ExpiresAt")
+                        .HasDatabaseName("IX_RedeemCodes_ExpiresAt");
+
+                    b.HasIndex("IsEnabled")
+                        .HasDatabaseName("IX_RedeemCodes_IsEnabled");
+
+                    b.HasIndex("IsUsed")
+                        .HasDatabaseName("IX_RedeemCodes_IsUsed");
+
+                    b.HasIndex("Type")
+                        .HasDatabaseName("IX_RedeemCodes_Type");
+
+                    b.HasIndex("UsedByUserId")
+                        .HasDatabaseName("IX_RedeemCodes_UsedByUserId");
+
+                    b.HasIndex("IsUsed", "IsEnabled", "ExpiresAt")
+                        .HasDatabaseName("IX_RedeemCodes_IsUsed_IsEnabled_ExpiresAt");
+
+                    b.ToTable("RedeemCodes", (string)null);
                 });
 
             modelBuilder.Entity("ClaudeCodeProxy.Domain.RequestLog", b =>
@@ -506,6 +720,9 @@ namespace ClaudeCodeProxy.EntityFrameworkCore.Sqlite.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("TEXT");
 
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("TEXT");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ApiKeyId")
@@ -526,16 +743,72 @@ namespace ClaudeCodeProxy.EntityFrameworkCore.Sqlite.Migrations
                     b.HasIndex("Status")
                         .HasDatabaseName("IX_RequestLogs_Status");
 
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("IX_RequestLogs_UserId");
+
                     b.HasIndex("RequestDate", "ApiKeyId")
                         .HasDatabaseName("IX_RequestLogs_RequestDate_ApiKeyId");
 
                     b.HasIndex("RequestDate", "Model")
                         .HasDatabaseName("IX_RequestLogs_RequestDate_Model");
 
+                    b.HasIndex("RequestDate", "UserId")
+                        .HasDatabaseName("IX_RequestLogs_RequestDate_UserId");
+
                     b.HasIndex("RequestStartTime", "RequestHour")
                         .HasDatabaseName("IX_RequestLogs_RequestStartTime_RequestHour");
 
                     b.ToTable("RequestLogs", (string)null);
+                });
+
+            modelBuilder.Entity("ClaudeCodeProxy.Domain.Role", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsSystem")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false);
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Permissions")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IsSystem")
+                        .HasDatabaseName("IX_Roles_IsSystem");
+
+                    b.HasIndex("Name")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Roles_Name");
+
+                    b.ToTable("Roles", (string)null);
                 });
 
             modelBuilder.Entity("ClaudeCodeProxy.Domain.StatisticsSnapshot", b =>
@@ -642,6 +915,9 @@ namespace ClaudeCodeProxy.EntityFrameworkCore.Sqlite.Migrations
                     b.Property<int?>("UniqueUserCount")
                         .HasColumnType("INTEGER");
 
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("TEXT");
+
                     b.Property<long>("Version")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER")
@@ -661,6 +937,9 @@ namespace ClaudeCodeProxy.EntityFrameworkCore.Sqlite.Migrations
                     b.HasIndex("SnapshotType")
                         .HasDatabaseName("IX_StatisticsSnapshots_SnapshotType");
 
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("IX_StatisticsSnapshots_UserId");
+
                     b.HasIndex("SnapshotType", "SnapshotDate")
                         .HasDatabaseName("IX_StatisticsSnapshots_SnapshotType_SnapshotDate");
 
@@ -673,7 +952,511 @@ namespace ClaudeCodeProxy.EntityFrameworkCore.Sqlite.Migrations
                     b.HasIndex("SnapshotType", "SnapshotDate", "SnapshotHour")
                         .HasDatabaseName("IX_StatisticsSnapshots_SnapshotType_SnapshotDate_SnapshotHour");
 
+                    b.HasIndex("SnapshotType", "SnapshotDate", "UserId")
+                        .HasDatabaseName("IX_StatisticsSnapshots_SnapshotType_SnapshotDate_UserId");
+
                     b.ToTable("StatisticsSnapshots", (string)null);
+                });
+
+            modelBuilder.Entity("ClaudeCodeProxy.Domain.User", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Avatar")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("EmailConfirmed")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false);
+
+                    b.Property<string>("FirstName")
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("InvitationCode")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("InvitedByUserId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(true);
+
+                    b.Property<DateTime?>("LastLoginAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("LastName")
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PasswordHash")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Provider")
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ProviderId")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("RoleId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Username")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Email")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Users_Email");
+
+                    b.HasIndex("InvitationCode")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Users_InvitationCode");
+
+                    b.HasIndex("InvitedByUserId")
+                        .HasDatabaseName("IX_Users_InvitedByUserId");
+
+                    b.HasIndex("IsActive")
+                        .HasDatabaseName("IX_Users_IsActive");
+
+                    b.HasIndex("RoleId")
+                        .HasDatabaseName("IX_Users_RoleId");
+
+                    b.HasIndex("Username")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Users_Username");
+
+                    b.HasIndex("Provider", "ProviderId")
+                        .HasDatabaseName("IX_Users_Provider_ProviderId");
+
+                    b.ToTable("Users", (string)null);
+                });
+
+            modelBuilder.Entity("ClaudeCodeProxy.Domain.UserLoginHistory", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("City")
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Country")
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("FailureReason")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("IpAddress")
+                        .HasMaxLength(45)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("LoginType")
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Success")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(true);
+
+                    b.Property<string>("UserAgent")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt")
+                        .HasDatabaseName("IX_UserLoginHistories_CreatedAt");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("IX_UserLoginHistories_UserId");
+
+                    b.HasIndex("UserId", "CreatedAt")
+                        .HasDatabaseName("IX_UserLoginHistories_UserId_CreatedAt");
+
+                    b.ToTable("UserLoginHistories", (string)null);
+                });
+
+            modelBuilder.Entity("ClaudeCodeProxy.Domain.Wallet", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal>("Balance")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("decimal(18,4)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("LastRechargedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("LastUsedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("active");
+
+                    b.Property<decimal>("TotalRecharged")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("decimal(18,4)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<decimal>("TotalUsed")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("decimal(18,4)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LastUsedAt")
+                        .HasDatabaseName("IX_Wallets_LastUsedAt");
+
+                    b.HasIndex("Status")
+                        .HasDatabaseName("IX_Wallets_Status");
+
+                    b.HasIndex("UserId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Wallets_UserId");
+
+                    b.ToTable("Wallets", (string)null);
+                });
+
+            modelBuilder.Entity("ClaudeCodeProxy.Domain.WalletTransaction", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal>("BalanceAfter")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal>("BalanceBefore")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ExternalTransactionId")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PaymentMethod")
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("RequestLogId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("completed");
+
+                    b.Property<string>("TransactionType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("WalletId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt")
+                        .HasDatabaseName("IX_WalletTransactions_CreatedAt");
+
+                    b.HasIndex("RequestLogId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_WalletTransactions_RequestLogId");
+
+                    b.HasIndex("Status")
+                        .HasDatabaseName("IX_WalletTransactions_Status");
+
+                    b.HasIndex("TransactionType")
+                        .HasDatabaseName("IX_WalletTransactions_TransactionType");
+
+                    b.HasIndex("WalletId")
+                        .HasDatabaseName("IX_WalletTransactions_WalletId");
+
+                    b.HasIndex("WalletId", "CreatedAt")
+                        .HasDatabaseName("IX_WalletTransactions_WalletId_CreatedAt");
+
+                    b.ToTable("WalletTransactions", (string)null);
+                });
+
+            modelBuilder.Entity("ClaudeCodeProxy.Domain.ApiKey", b =>
+                {
+                    b.HasOne("ClaudeCodeProxy.Domain.User", "User")
+                        .WithMany("ApiKeys")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("ClaudeCodeProxy.Domain.InvitationRecord", b =>
+                {
+                    b.HasOne("ClaudeCodeProxy.Domain.User", "InvitedUser")
+                        .WithMany()
+                        .HasForeignKey("InvitedUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ClaudeCodeProxy.Domain.User", "InviterUser")
+                        .WithMany()
+                        .HasForeignKey("InviterUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("InvitedUser");
+
+                    b.Navigation("InviterUser");
+                });
+
+            modelBuilder.Entity("ClaudeCodeProxy.Domain.RedeemCode", b =>
+                {
+                    b.HasOne("ClaudeCodeProxy.Domain.User", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ClaudeCodeProxy.Domain.User", "UsedByUser")
+                        .WithMany()
+                        .HasForeignKey("UsedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("CreatedByUser");
+
+                    b.Navigation("UsedByUser");
+                });
+
+            modelBuilder.Entity("ClaudeCodeProxy.Domain.RequestLog", b =>
+                {
+                    b.HasOne("ClaudeCodeProxy.Domain.ApiKey", "ApiKey")
+                        .WithMany("RequestLogs")
+                        .HasForeignKey("ApiKeyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ClaudeCodeProxy.Domain.User", "User")
+                        .WithMany("RequestLogs")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ApiKey");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("ClaudeCodeProxy.Domain.StatisticsSnapshot", b =>
+                {
+                    b.HasOne("ClaudeCodeProxy.Domain.ApiKey", "ApiKey")
+                        .WithMany()
+                        .HasForeignKey("ApiKeyId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("ClaudeCodeProxy.Domain.User", "User")
+                        .WithMany("StatisticsSnapshots")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("ApiKey");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("ClaudeCodeProxy.Domain.User", b =>
+                {
+                    b.HasOne("ClaudeCodeProxy.Domain.User", "InvitedByUser")
+                        .WithMany("InvitedUsers")
+                        .HasForeignKey("InvitedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("ClaudeCodeProxy.Domain.Role", "Role")
+                        .WithMany("Users")
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("InvitedByUser");
+
+                    b.Navigation("Role");
+                });
+
+            modelBuilder.Entity("ClaudeCodeProxy.Domain.UserLoginHistory", b =>
+                {
+                    b.HasOne("ClaudeCodeProxy.Domain.User", "User")
+                        .WithMany("LoginHistories")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("ClaudeCodeProxy.Domain.Wallet", b =>
+                {
+                    b.HasOne("ClaudeCodeProxy.Domain.User", "User")
+                        .WithOne("Wallet")
+                        .HasForeignKey("ClaudeCodeProxy.Domain.Wallet", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("ClaudeCodeProxy.Domain.WalletTransaction", b =>
+                {
+                    b.HasOne("ClaudeCodeProxy.Domain.RequestLog", "RequestLog")
+                        .WithOne("WalletTransaction")
+                        .HasForeignKey("ClaudeCodeProxy.Domain.WalletTransaction", "RequestLogId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("ClaudeCodeProxy.Domain.Wallet", "Wallet")
+                        .WithMany("Transactions")
+                        .HasForeignKey("WalletId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("RequestLog");
+
+                    b.Navigation("Wallet");
+                });
+
+            modelBuilder.Entity("ClaudeCodeProxy.Domain.ApiKey", b =>
+                {
+                    b.Navigation("RequestLogs");
+                });
+
+            modelBuilder.Entity("ClaudeCodeProxy.Domain.RequestLog", b =>
+                {
+                    b.Navigation("WalletTransaction");
+                });
+
+            modelBuilder.Entity("ClaudeCodeProxy.Domain.Role", b =>
+                {
+                    b.Navigation("Users");
+                });
+
+            modelBuilder.Entity("ClaudeCodeProxy.Domain.User", b =>
+                {
+                    b.Navigation("ApiKeys");
+
+                    b.Navigation("InvitedUsers");
+
+                    b.Navigation("LoginHistories");
+
+                    b.Navigation("RequestLogs");
+
+                    b.Navigation("StatisticsSnapshots");
+
+                    b.Navigation("Wallet");
+                });
+
+            modelBuilder.Entity("ClaudeCodeProxy.Domain.Wallet", b =>
+                {
+                    b.Navigation("Transactions");
                 });
 #pragma warning restore 612, 618
         }

@@ -6,6 +6,7 @@ namespace ClaudeCodeProxy.Host.Models;
 public record CreateApiKeyRequest(
     string Name,
     string KeyValue,
+    Guid? UserId = null, // 如果为空，则由当前登录用户的ID填充
     string? Description = null,
     List<string>? Tags = null,
     int? TokenLimit = null,

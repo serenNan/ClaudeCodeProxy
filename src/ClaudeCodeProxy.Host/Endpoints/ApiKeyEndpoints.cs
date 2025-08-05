@@ -2,6 +2,7 @@ using ClaudeCodeProxy.Host.Models;
 using ClaudeCodeProxy.Host.Services;
 using ClaudeCodeProxy.Domain;
 using Microsoft.AspNetCore.Http.HttpResults;
+using System.Security.Claims;
 
 namespace ClaudeCodeProxy.Host.Endpoints;
 
@@ -132,13 +133,20 @@ public static class ApiKeyEndpoints
     /// <summary>
     /// 创建新的API Key
     /// </summary>
-    private static async Task<Results<Created<ApiKey>, BadRequest<string>>> CreateApiKey(
+    private static async Task<Results<Created<ApiKey>, BadRequest<string>, UnauthorizedHttpResult>> CreateApiKey(
         CreateApiKeyRequest request,
-        ApiKeyService apiKeyService)
+        ApiKeyService apiKeyService,
+        ClaimsPrincipal user)
     {
         try
         {
-            var apiKey = await apiKeyService.CreateApiKeyAsync(request);
+            var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!Guid.TryParse(userIdClaim, out var userId))
+            {
+                return TypedResults.Unauthorized();
+            }
+
+            var apiKey = await apiKeyService.CreateApiKeyAsync(request, userId);
             return TypedResults.Created($"/api/apikeys/{apiKey.Id}", apiKey);
         }
         catch (Exception ex)

@@ -24,9 +24,11 @@ public static class MessageEndpoints
         group.MapPost("/", (MessageService messageService,
                     HttpContext httpContext,
                     [FromServices] ApiKeyService keyService,
+                    [FromServices] RequestLogService requestLogService,
+                    [FromServices] WalletService walletService,
                     [FromBody] AnthropicInput request,
                     [FromServices] IAnthropicChatCompletionsService chatCompletionsService) =>
-                messageService.HandleAsync(httpContext, keyService, request, chatCompletionsService))
+                messageService.HandleAsync(httpContext, keyService, requestLogService, walletService, request, chatCompletionsService))
             .WithName("HandleMessage")
             .WithSummary("处理消息请求")
             .WithDescription("处理Claude消息请求，支持流式和非流式响应");

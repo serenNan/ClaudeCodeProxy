@@ -3,12 +3,117 @@ interface LoginRequest {
   password: string;
 }
 
+interface RegisterRequest {
+  username: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+  invitationCode?: string;
+}
+
+interface RegisterResponse {
+  accessToken: string;
+  refreshToken: string;
+  tokenType: string;
+  expiresIn: number;
+  user: {
+    id: string;
+    username: string;
+    email: string;
+    emailConfirmed: boolean;
+    isActive: boolean;
+    roleId: number;
+    roleName: string;
+    createdAt: string;
+    modifiedAt: string;
+  };
+}
+
 interface LoginResponse {
   accessToken: string;
   refreshToken: string;
   tokenType: string;
   expiresIn: number;
   username: string;
+  user?: {
+    id: string;
+    username: string;
+    email?: string;
+    firstName?: string;
+    lastName?: string;
+    avatar?: string;
+    isActive?: boolean;
+    emailConfirmed?: boolean;
+    lastLoginAt?: string;
+    provider?: string;
+    providerId?: string;
+    roleId?: number;
+    roleName?: string;
+    createdAt?: string;
+    modifiedAt?: string;
+    permissions?: string[];
+  };
+}
+
+// User management types
+interface User {
+  id: string;
+  username: string;
+  email: string;
+  displayName?: string;
+  role: UserRole;
+  roleName: string;
+  isActive: boolean;
+  isEmailVerified: boolean;
+  lastLoginAt?: string;
+  createdAt: string;
+  updatedAt: string;
+  avatar?: string;
+  description?: string;
+}
+
+interface UserRole {
+  id: string;
+  name: string;
+  permissions: string[];
+  description?: string;
+  isSystem: boolean;
+}
+
+interface CreateUserRequest {
+  username: string;
+  email: string;
+  password: string;
+  displayName?: string;
+  roleId: string;
+  description?: string;
+}
+
+interface UpdateUserRequest {
+  username?: string;
+  email?: string;
+  displayName?: string;
+  roleId?: string;
+  isEnabled?: boolean;
+  description?: string;
+}
+
+interface UsersRequest {
+  page: number;
+  pageSize: number;
+  searchTerm?: string;
+  roleId?: string;
+  isEnabled?: boolean;
+  sortBy?: string;
+  sortDirection?: 'asc' | 'desc';
+}
+
+interface UsersResponse {
+  data: User[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
 }
 
 // Dashboard 相关类型定义
@@ -244,7 +349,12 @@ class ApiService {
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      const result = await response.json();
+      if (result.message) {
+        throw new Error(result.message);
+      } else {
+        throw new Error(response.statusText);
+      }
     }
 
     // 对于204 No Content响应，不尝试解析JSON
@@ -255,7 +365,12 @@ class ApiService {
     // 检查响应是否有内容
     const contentType = response.headers.get('content-type');
     if (contentType && contentType.includes('application/json')) {
-      return response.json();
+      const result = await response.json();
+      if (result.success && result.data) {
+        return result.data;
+      } else {
+        return result;
+      }
     }
 
     return undefined as T;
@@ -268,11 +383,24 @@ class ApiService {
         method: 'POST',
         body: JSON.stringify(data),
       });
-      
+
       if (response.accessToken) {
         this.token = response.accessToken;
         localStorage.setItem('token', response.accessToken);
       }
+
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async register(data: RegisterRequest): Promise<RegisterResponse> {
+    try {
+      const response = await this.request<RegisterResponse>('/auth/register', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
 
       return response;
     } catch (error) {
@@ -294,75 +422,7 @@ class ApiService {
     try {
       return this.request<ApiKey[]>('/apikeys');
     } catch (error) {
-      // Mock data for demo
-      return [
-        {
-          id: '1',
-          name: 'Production Key',
-          keyValue: 'sk-ant-api03-1234567890abcdef',
-          description: 'Production API Key',
-          tags: ['production'],
-          tokenLimit: 1000000,
-          rateLimitWindow: 60,
-          rateLimitRequests: 1000,
-          concurrencyLimit: 10,
-          dailyCostLimit: 100,
-          monthlyCostLimit: 3000,
-          totalCostLimit: 10000,
-          dailyCostUsed: 25.50,
-          monthlyCostUsed: 450.75,
-          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-          permissions: 'all',
-          claudeAccountId: undefined,
-          claudeConsoleAccountId: undefined,
-          geminiAccountId: undefined,
-          enableModelRestriction: false,
-          restrictedModels: [],
-          enableClientRestriction: false,
-          allowedClients: [],
-          isEnabled: true,
-          lastUsedAt: new Date().toISOString(),
-          totalUsageCount: 0,
-          totalCost: 0,
-          model: 'claude-3-5-sonnet-20241022',
-          service: 'claude',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-        {
-          id: '2',
-          name: 'Development Key',
-          keyValue: 'sk-ant-api03-0987654321fedcba',
-          description: 'Development API Key',
-          tags: ['development'],
-          tokenLimit: 500000,
-          rateLimitWindow: 60,
-          rateLimitRequests: 500,
-          concurrencyLimit: 5,
-          dailyCostLimit: 50,
-          monthlyCostLimit: 1500,
-          totalCostLimit: 5000,
-          dailyCostUsed: 12.25,
-          monthlyCostUsed: 225.50,
-          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-          permissions: 'claude',
-          claudeAccountId: undefined,
-          claudeConsoleAccountId: undefined,
-          geminiAccountId: undefined,
-          enableModelRestriction: false,
-          restrictedModels: [],
-          enableClientRestriction: false,
-          allowedClients: [],
-          isEnabled: false,
-          lastUsedAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-          totalUsageCount: 25,
-          totalCost: 1.25,
-          model: 'claude-3-haiku-20240307',
-          service: 'claude',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        }
-      ];
+      throw error;
     }
   }
 
@@ -682,6 +742,173 @@ class ApiService {
     });
     return response.data;
   }
+
+  // User Management APIs
+  async getUsers(request: UsersRequest): Promise<any> {
+    try {
+      const query = new URLSearchParams();
+      Object.entries(request).forEach(([key, value]) => {
+        if (value !== undefined) {
+          query.append(key, value.toString() as string);
+        }
+      });
+      return this.request<any>(`/users?${query.toString()}`);
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async getUserById(id: string): Promise<User> {
+    return this.request<User>(`/users/${id}`);
+  }
+
+  async createUser(data: CreateUserRequest): Promise<User> {
+    return this.request<User>('/users', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateUser(id: string, data: UpdateUserRequest): Promise<User> {
+    return this.request<User>(`/users/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteUser(id: string): Promise<void> {
+    return this.request<void>(`/users/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async enableUser(id: string): Promise<void> {
+    return this.request<void>(`/users/${id}/enable`, {
+      method: 'PATCH',
+    });
+  }
+
+  async disableUser(id: string): Promise<void> {
+    return this.request<void>(`/users/${id}/disable`, {
+      method: 'PATCH',
+    });
+  }
+
+  async toggleUserEnabled(id: string): Promise<void> {
+    return this.request<void>(`/users/${id}/toggle`, {
+      method: 'PATCH',
+    });
+  }
+
+  async resetUserPassword(id: string, newPassword: string): Promise<void> {
+    return this.request<void>(`/users/${id}/reset-password`, {
+      method: 'PATCH',
+      body: JSON.stringify({ newPassword }),
+    });
+  }
+
+  // Role Management APIs
+  async getRoles(): Promise<UserRole[]> {
+    try {
+      return this.request<UserRole[]>('/roles');
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async createRole(data: { name: string; displayName: string; permissions: string[]; description?: string }): Promise<UserRole> {
+    return this.request<UserRole>('/roles', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateRole(id: string, data: { displayName?: string; permissions?: string[]; description?: string }): Promise<UserRole> {
+    return this.request<UserRole>(`/roles/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteRole(id: string): Promise<void> {
+    return this.request<void>(`/roles/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Profile Dashboard API
+  async getProfileDashboard(): Promise<ProfileDashboard> {
+    return this.request<ProfileDashboard>('/profile/dashboard');
+  }
+
+  // Redeem Code APIs
+  async useRedeemCode(code: string): Promise<RedeemCodeUseResult> {
+    return this.request<RedeemCodeUseResult>('/redeem-codes/use', {
+      method: 'POST',
+      body: JSON.stringify({ code }),
+    });
+  }
+
+  async getMyRedeemRecords(page: number = 1, pageSize: number = 20): Promise<{ success: boolean; data: RedeemRecord[] }> {
+    return this.request<{ success: boolean; data: RedeemRecord[] }>(`/redeem-codes/my-records?page=${page}&pageSize=${pageSize}`);
+  }
+
+  // Admin Redeem Code APIs
+  async createRedeemCodes(request: CreateRedeemCodeRequest): Promise<RedeemCode[]> {
+    return this.request<RedeemCode[]>('/admin/redeem-codes', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  }
+
+  async getRedeemCodeList(request: RedeemCodeListRequest): Promise<any> {
+    return this.request<any>('/admin/redeem-codes/list', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  }
+
+  async updateRedeemCodeStatus(id: string, isEnabled: boolean): Promise<{ success: boolean; message: string }> {
+    return this.request<{ success: boolean; message: string }>(`/admin/redeem-codes/${id}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ isEnabled }),
+    });
+  }
+
+  async deleteRedeemCode(id: string): Promise<{ success: boolean; message: string }> {
+    return this.request<{ success: boolean; message: string }>(`/admin/redeem-codes/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async getRedeemCodeStats(): Promise<RedeemCodeStats> {
+    return this.request<RedeemCodeStats>('/admin/redeem-codes/stats');
+  }
+
+  // Invitation APIs
+  async getInvitationStats(): Promise<InvitationStatsDto> {
+    return this.request<InvitationStatsDto>('/invitation/stats');
+  }
+
+  async getInvitationLink(): Promise<{ invitationLink: string }> {
+    return this.request<{ invitationLink: string }>('/invitation/link');
+  }
+
+  async getInvitationRecords(): Promise<InvitationRecordDto[]> {
+    return this.request<InvitationRecordDto[]>('/invitation/records');
+  }
+
+  // Invitation Settings APIs (Admin only)
+  async getInvitationSettings(): Promise<InvitationSettings> {
+    return this.request<InvitationSettings>('/invitation/settings');
+  }
+
+  async updateInvitationSettings(settings: UpdateInvitationSettingsRequest): Promise<void> {
+    return this.request<void>('/invitation/settings', {
+      method: 'PUT',
+      body: JSON.stringify(settings),
+    });
+  }
 }
 
 // Dashboard Response Types
@@ -939,13 +1166,182 @@ export interface PricingResult {
   unitPrice: number;
 }
 
+// Personal Dashboard Types
+export interface ProfileDashboard {
+  userId: number;
+  wallet: WalletStatistics;
+  requests: UserRequestStatistics;
+  apiKeyCount: number;
+  activeApiKeyCount: number;
+  lastUpdateTime: string;
+}
+
+export interface WalletStatistics {
+  userId: number;
+  currentBalance: number;
+  totalRecharged: number;
+  totalUsed: number;
+  recentTransactionCount: number;
+  dailyAverageUsage: number;
+  lastUsedAt?: string;
+  lastRechargedAt?: string;
+}
+
+export interface UserRequestStatistics {
+  userId: number;
+  startDate: string;
+  endDate: string;
+  totalRequests: number;
+  successfulRequests: number;
+  failedRequests: number;
+  successRate: number;
+  totalTokens: number;
+  totalCost: number;
+  averageResponseTime: number;
+  modelUsage: ModelUsage[];
+  dailyUsage: DailyUsage[];
+}
+
+export interface ModelUsage {
+  model: string;
+  requestCount: number;
+  totalTokens: number;
+  totalCost: number;
+}
+
+export interface DailyUsage {
+  date: string;
+  requestCount: number;
+  totalTokens: number;
+  totalCost: number;
+  successfulRequests: number;
+  failedRequests: number;
+}
+
+// Redeem Code Types
+export interface RedeemCode {
+  id: string;
+  code: string;
+  type: string;
+  amount: number;
+  description?: string;
+  isUsed: boolean;
+  usedByUserId?: string;
+  usedByUserName?: string;
+  usedAt?: string;
+  expiresAt?: string;
+  isEnabled: boolean;
+  createdByUserId: string;
+  createdByUserName: string;
+  createdAt: string;
+  modifiedAt?: string;
+}
+
+export interface CreateRedeemCodeRequest {
+  type: string;
+  amount: number;
+  description?: string;
+  expiresAt?: string;
+  count: number;
+}
+
+export interface RedeemCodeUseResult {
+  success: boolean;
+  message: string;
+  amount: number;
+  type: string;
+  newBalance: number;
+}
+
+export interface RedeemCodeListRequest {
+  page: number;
+  pageSize: number;
+  code?: string;
+  type?: string;
+  isUsed?: boolean;
+  isEnabled?: boolean;
+  createdByUserId?: string;
+  usedByUserId?: string;
+  startDate?: string;
+  endDate?: string;
+  sortBy: string;
+  sortDirection: string;
+}
+
+export interface RedeemCodeListResponse {
+  data: RedeemCode[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export interface RedeemRecord {
+  id: string;
+  code: string;
+  type: string;
+  amount: number;
+  description: string;
+  usedAt: string;
+}
+
+export interface RedeemCodeStats {
+  totalCodes: number;
+  usedCodes: number;
+  unusedCodes: number;
+  expiredCodes: number;
+  totalRedeemedAmount: number;
+  usageRate: number;
+}
+
+// Invitation Types
+export interface InvitationStatsDto {
+  totalInvited: number;
+  maxInvitations: number;
+  totalReward: number;
+  invitationLink: string;
+}
+
+export interface InvitationRecordDto {
+  id: string;
+  invitedUsername: string;
+  invitedEmail: string;
+  invitedAt: string; // ISO date string
+  inviterReward: number;
+  invitedReward: number;
+  rewardProcessed: boolean;
+  notes?: string;
+}
+
+export interface InvitationSettings {
+  inviterReward: number;
+  invitedReward: number;
+  maxInvitations: number;
+  invitationEnabled: boolean;
+}
+
+export interface UpdateInvitationSettingsRequest {
+  inviterReward: number;
+  invitedReward: number;
+  maxInvitations: number;
+  invitationEnabled: boolean;
+}
+
 export const apiService = new ApiService();
-export type { 
-  LoginRequest, 
-  LoginResponse, 
-  ApiKey, 
-  Account, 
-  ProxyConfig, 
-  OAuthTokenInfo, 
-  AuthUrlResponse 
+export type {
+  LoginRequest,
+  LoginResponse,
+  RegisterRequest,
+  RegisterResponse,
+  ApiKey,
+  Account,
+  ProxyConfig,
+  OAuthTokenInfo,
+  AuthUrlResponse,
+  User,
+  UserRole,
+  CreateUserRequest,
+  UpdateUserRequest,
+  UsersRequest,
+  UsersResponse
 };
