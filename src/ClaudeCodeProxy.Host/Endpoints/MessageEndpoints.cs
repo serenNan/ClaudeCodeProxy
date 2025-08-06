@@ -1,4 +1,5 @@
 using ClaudeCodeProxy.Abstraction.Chats;
+using ClaudeCodeProxy.Core;
 using ClaudeCodeProxy.Host.Services;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
@@ -27,8 +28,9 @@ public static class MessageEndpoints
                     [FromServices] RequestLogService requestLogService,
                     [FromServices] WalletService walletService,
                     [FromBody] AnthropicInput request,
+                    [FromServices] IContext context,
                     [FromServices] IAnthropicChatCompletionsService chatCompletionsService) =>
-                messageService.HandleAsync(httpContext, keyService, requestLogService, walletService, request, chatCompletionsService))
+                messageService.HandleAsync(httpContext, keyService, requestLogService, walletService, request,context, chatCompletionsService))
             .WithName("HandleMessage")
             .WithSummary("处理消息请求")
             .WithDescription("处理Claude消息请求，支持流式和非流式响应");

@@ -14,6 +14,7 @@ import {
   DollarSign,
   User,
   Gift,
+  Bell,
 } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 
@@ -98,6 +99,15 @@ const generateNavMain = (hasPermission: (permission: string) => boolean, user: a
     url: "/request-logs",
     icon: FileText,
   });
+
+  // 公告管理 - 管理员功能
+  if (user?.roleName === 'Admin') {
+    navItems.push({
+      title: "公告管理",
+      url: "/announcements",
+      icon: Bell,
+    });
+  }
 
   // 系统设置 - 需要系统设置权限或管理员角色
   if (hasPermission('system.settings') || hasPermission('system:config') || user?.roleName === 'Admin') {

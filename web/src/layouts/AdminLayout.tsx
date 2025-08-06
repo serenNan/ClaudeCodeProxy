@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/sidebar"
 import { ThemeToggle } from "@/components/ui/theme-toggle"
 import { UpdateNotification } from "@/components/ui/update-notification"
+import { AnnouncementBanner } from "@/components/AnnouncementBanner"
 import { Outlet } from "react-router-dom"
 
 export default function Page() {
@@ -50,6 +51,8 @@ export default function Page() {
         <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
             <Outlet />
         </div>
+        {/* 系统公告 */}
+        <AnnouncementBanner />
         {/* 版本更新通知 */}
         <UpdateNotification />
       </SidebarInset>

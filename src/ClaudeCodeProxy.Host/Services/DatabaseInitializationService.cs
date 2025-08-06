@@ -3,6 +3,7 @@ using ClaudeCodeProxy.Domain;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using ClaudeCodeProxy.Host.Env;
 
 namespace ClaudeCodeProxy.Host.Services;
 
@@ -105,9 +106,9 @@ public class DatabaseInitializationService(
         logger.LogInformation("创建默认管理员用户...");
 
         // 从环境变量或配置获取管理员用户名和密码
-        var adminUsername = configuration["ADMIN_USERNAME"] ?? configuration["Admin:Username"] ?? "admin";
-        var adminPassword = configuration["ADMIN_PASSWORD"] ?? configuration["Admin:Password"] ?? "123456";
-        var adminEmail = configuration["ADMIN_EMAIL"] ?? configuration["Admin:Email"] ?? "admin@claudecodeproxy.com";
+        var adminUsername = EnvHelper.UserName;
+        var adminPassword = EnvHelper.Password;
+        var adminEmail = "239573049@qq.com";
 
         var adminUser = new User
         {

@@ -87,7 +87,7 @@ export default function UserModal({ open, editingUser, roles, onSuccess, onClose
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
@@ -95,7 +95,7 @@ export default function UserModal({ open, editingUser, roles, onSuccess, onClose
     setLoading(true);
     try {
       let user: User;
-      
+
       if (editingUser) {
         const updateData: UpdateUserRequest = {
           username: formData.username,
@@ -105,12 +105,12 @@ export default function UserModal({ open, editingUser, roles, onSuccess, onClose
           isActive: formData.isActive,
           description: formData.description || undefined
         };
-        
+
         // Add password if provided
         if (formData.password.trim()) {
           (updateData as any).password = formData.password;
         }
-        
+
         user = await apiService.updateUser(editingUser.id, updateData);
         showToast('用户更新成功', 'success');
       } else {
@@ -122,11 +122,11 @@ export default function UserModal({ open, editingUser, roles, onSuccess, onClose
           roleId: formData.roleId,
           description: formData.description || undefined
         };
-        
+
         user = await apiService.createUser(createData);
         showToast('用户创建成功', 'success');
       }
-      
+
       onSuccess(user);
     } catch (error: any) {
       console.error('Failed to save user:', error);
@@ -230,32 +230,26 @@ export default function UserModal({ open, editingUser, roles, onSuccess, onClose
         {/* Role */}
         <div className="space-y-2">
           <Label htmlFor="role">用户角色 *</Label>
-          <Select 
-            value={formData.roleId} 
-            onValueChange={(value) => handleInputChange('roleId', value)}
+          <Select
+            value={formData.roleId}
+            onValueChange={(value) => {
+              console.log('选择了角色:', value);
+              handleInputChange('roleId', value);
+            }}
             disabled={loading}
           >
-            <SelectTrigger className={errors.roleId ? 'border-destructive' : ''}>
+            <SelectTrigger className={errors.roleId ? 'border-destructive' : ''} style={{}}>
               <SelectValue placeholder="选择用户角色" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent style={{ zIndex: 9999 }}>
               {roles.map((role) => (
-                <SelectItem key={role.id} value={role.id}>
-                  <div className="flex items-center space-x-2">
-                    <span>{role.name}</span>
-                  </div>
+                <SelectItem value={role.id} >
+                  {role.name}
+                  1
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
-          {errors.roleId && (
-            <p className="text-sm text-destructive">{errors.roleId}</p>
-          )}
-          {formData.roleId && (
-            <div className="text-sm text-muted-foreground">
-              {roles.find(r => r.id === formData.roleId)?.description}
-            </div>
-          )}
         </div>
 
         {/* Description */}

@@ -11,6 +11,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { useToast } from '@/contexts/ToastContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { ModelPricingCard } from '@/components/pricing/ModelPricingCard';
 import { ExchangeRateCard } from '@/components/pricing/ExchangeRateCard';
 import { CostCalculator } from '@/components/pricing/CostCalculator';
@@ -24,6 +25,10 @@ export default function PricingPage() {
   const [displayUnit, setDisplayUnit] = useState<'K' | 'M'>('M');
   const [targetCurrency, setTargetCurrency] = useState<string>('USD');
   const { showToast } = useToast();
+  const { user, hasRole } = useAuth();
+  
+  // 检查是否是管理员
+  const isAdmin = hasRole('Admin') || user?.roleName === 'Admin';
 
   // 加载价格数据
   const loadPricingData = async () => {
@@ -168,6 +173,7 @@ export default function PricingPage() {
                           targetCurrency={targetCurrency}
                           onCurrencyToggle={handleCurrencyToggle}
                           exchangeRate={getExchangeRate(model.currency, targetCurrency)}
+                          isAdmin={isAdmin}
                         />
                       ))}
                     </div>

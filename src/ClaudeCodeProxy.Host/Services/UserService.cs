@@ -172,18 +172,43 @@ public class UserService(IContext context,IMapper mapper)
             InvitationCode = GenerateInvitationCode()
         };
 
-        context.Users.Add(user);
-        await context.SaveAsync();
-
-        // 创建用户钱包
-        var wallet = new Wallet
+        try
         {
-            UserId = user.Id,
-            Balance = 0,
-            Status = "active"
-        };
-        context.Wallets.Add(wallet);
-        await context.SaveAsync();
+            context.Users.Add(user);
+            await context.SaveAsync();
+
+            // 创建用户钱包，使用环境变量配置的初始余额
+            var wallet = new Wallet
+            {
+                UserId = user.Id,
+                Balance = ClaudeCodeProxy.Host.Env.EnvHelper.InitialUserBalance,
+                Status = "active"
+            };
+            context.Wallets.Add(wallet);
+            await context.SaveAsync();
+
+            // 记录初始余额充值记录
+            if (ClaudeCodeProxy.Host.Env.EnvHelper.InitialUserBalance > 0)
+            {
+                var initialTransaction = new WalletTransaction
+                {
+                    WalletId = wallet.Id,
+                    TransactionType = "initial_bonus",
+                    Amount = ClaudeCodeProxy.Host.Env.EnvHelper.InitialUserBalance,
+                    BalanceBefore = 0,
+                    BalanceAfter = ClaudeCodeProxy.Host.Env.EnvHelper.InitialUserBalance,
+                    Description = "新用户注册奖励",
+                    Status = "completed"
+                };
+                context.WalletTransactions.Add(initialTransaction);
+                await context.SaveAsync();
+            }
+
+        }
+        catch
+        {
+            throw;
+        }
 
         // 处理邀请码
         if (!string.IsNullOrEmpty(request.InvitationCode) && invitationService != null)
@@ -355,15 +380,32 @@ public class UserService(IContext context,IMapper mapper)
             context.Users.Add(user);
             await context.SaveAsync();
 
-            // 创建用户钱包
+            // 创建用户钱包，使用环境变量配置的初始余额
             var wallet = new Wallet
             {
                 UserId = user.Id,
-                Balance = 0,
+                Balance = ClaudeCodeProxy.Host.Env.EnvHelper.InitialUserBalance,
                 Status = "active"
             };
             context.Wallets.Add(wallet);
             await context.SaveAsync();
+
+            // 记录初始余额充值记录
+            if (ClaudeCodeProxy.Host.Env.EnvHelper.InitialUserBalance > 0)
+            {
+                var initialTransaction = new WalletTransaction
+                {
+                    WalletId = wallet.Id,
+                    TransactionType = "initial_bonus",
+                    Amount = ClaudeCodeProxy.Host.Env.EnvHelper.InitialUserBalance,
+                    BalanceBefore = 0,
+                    BalanceAfter = ClaudeCodeProxy.Host.Env.EnvHelper.InitialUserBalance,
+                    Description = "新用户注册奖励",
+                    Status = "completed"
+                };
+                context.WalletTransactions.Add(initialTransaction);
+                await context.SaveAsync();
+            }
 
             // 处理邀请码
             if (!string.IsNullOrEmpty(invitationCode) && invitationService != null)

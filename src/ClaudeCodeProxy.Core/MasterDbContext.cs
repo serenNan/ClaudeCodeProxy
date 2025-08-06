@@ -21,6 +21,7 @@ public class MasterDbContext<TDbContext>(DbContextOptions<TDbContext> options)
     public DbSet<RedeemCode> RedeemCodes { get; set; }
     public DbSet<InvitationRecord> InvitationRecords { get; set; }
     public DbSet<InvitationSettings> InvitationSettings { get; set; }
+    public DbSet<Announcement> Announcements { get; set; }
 
     public async Task SaveAsync(CancellationToken cancellationToken = default)
     {
@@ -1136,6 +1137,71 @@ public class MasterDbContext<TDbContext>(DbContextOptions<TDbContext> options)
             entity.HasIndex(e => e.Key)
                 .IsUnique()
                 .HasDatabaseName("IX_InvitationSettings_Key");
+        });
+
+        // 配置 Announcement 实体
+        modelBuilder.Entity<Announcement>(entity =>
+        {
+            entity.ToTable("Announcements");
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Title)
+                .IsRequired()
+                .HasMaxLength(200);
+
+            entity.Property(e => e.Content)
+                .IsRequired()
+                .HasMaxLength(2000);
+
+            entity.Property(e => e.IsVisible)
+                .HasDefaultValue(true);
+
+            entity.Property(e => e.BackgroundColor)
+                .HasMaxLength(50)
+                .HasDefaultValue("bg-blue-50");
+
+            entity.Property(e => e.TextColor)
+                .HasMaxLength(50)
+                .HasDefaultValue("text-blue-800");
+
+            entity.Property(e => e.Priority)
+                .HasDefaultValue(0);
+
+            entity.Property(e => e.StartTime)
+                .IsRequired(false);
+
+            entity.Property(e => e.EndTime)
+                .IsRequired(false);
+
+            // 审计字段配置
+            entity.Property(e => e.CreatedAt)
+                .IsRequired();
+
+            entity.Property(e => e.CreatedBy)
+                .HasMaxLength(100);
+
+            entity.Property(e => e.ModifiedBy)
+                .HasMaxLength(100);
+
+            // 索引配置
+            entity.HasIndex(e => e.IsVisible)
+                .HasDatabaseName("IX_Announcements_IsVisible");
+
+            entity.HasIndex(e => e.Priority)
+                .HasDatabaseName("IX_Announcements_Priority");
+
+            entity.HasIndex(e => e.StartTime)
+                .HasDatabaseName("IX_Announcements_StartTime");
+
+            entity.HasIndex(e => e.EndTime)
+                .HasDatabaseName("IX_Announcements_EndTime");
+
+            entity.HasIndex(e => e.CreatedAt)
+                .HasDatabaseName("IX_Announcements_CreatedAt");
+
+            // 复合索引（用于获取当前可见的公告）
+            entity.HasIndex(e => new { e.IsVisible, e.Priority, e.CreatedAt })
+                .HasDatabaseName("IX_Announcements_IsVisible_Priority_CreatedAt");
         });
     }
 

@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { UpdateCheckButton } from '@/components/ui/update-notification';
-import { Settings2, Save, Database, Shield, Bell, Palette, Download, Users } from 'lucide-react';
+import { Settings2, Save, Download, Users } from 'lucide-react';
 import { apiService, type InvitationSettings, type UpdateInvitationSettingsRequest } from '@/services/api';
 import { useToast } from '@/contexts/ToastContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -49,7 +49,7 @@ export default function SettingsPage() {
 
   const loadInvitationSettings = async () => {
     if (!isAdmin) return;
-    
+
     setLoadingInvitation(true);
     try {
       const data = await apiService.getInvitationSettings();
@@ -79,30 +79,30 @@ export default function SettingsPage() {
 
   const validateInvitationSettings = (settings: InvitationSettings): Record<string, string> => {
     const errors: Record<string, string> = {};
-    
+
     if (settings.inviterReward < 0) {
       errors.inviterReward = '邀请者奖励不能为负数';
     }
-    
+
     if (settings.invitedReward < 0) {
       errors.invitedReward = '被邀请者奖励不能为负数';
     }
-    
+
     if (settings.maxInvitations < 1) {
       errors.maxInvitations = '最大邀请数量必须大于0';
     }
-    
+
     if (settings.maxInvitations > 1000) {
       errors.maxInvitations = '最大邀请数量不能超过1000';
     }
-    
+
     return errors;
   };
 
   const handleInvitationSave = async () => {
     const errors = validateInvitationSettings(invitationSettings);
     setInvitationErrors(errors);
-    
+
     if (Object.keys(errors).length > 0) {
       showToast('请修正表单错误', 'error');
       return;
@@ -116,7 +116,7 @@ export default function SettingsPage() {
         maxInvitations: invitationSettings.maxInvitations,
         invitationEnabled: invitationSettings.invitationEnabled,
       };
-      
+
       await apiService.updateInvitationSettings(updateRequest);
       showToast('邀请设置保存成功', 'success');
     } catch (error) {
@@ -138,11 +138,7 @@ export default function SettingsPage() {
     showToast('邀请设置已重置', 'info');
   };
 
-  const updateSetting = (key: string, value: any) => {
-    setSettings(prev => ({ ...prev, [key]: value }));
-  };
-
-  const updateInvitationSetting = (key: keyof InvitationSettings, value: any) => {
+  const updateInvitationSetting = (key: keyof InvitationSettings, value: string | number | boolean) => {
     setInvitationSettings(prev => ({ ...prev, [key]: value }));
     // Clear error for this field when user starts typing
     if (invitationErrors[key as string]) {
@@ -164,201 +160,6 @@ export default function SettingsPage() {
       </div>
 
       <div className="grid gap-6">
-        {/* 基础设置 */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Settings2 className="h-5 w-5" />
-              <span>基础设置</span>
-            </CardTitle>
-            <CardDescription>
-              系统的基本配置选项
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="systemName">系统名称</Label>
-                <Input
-                  id="systemName"
-                  value={settings.systemName}
-                  onChange={(e) => updateSetting('systemName', e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="maxConcurrentRequests">最大并发请求数</Label>
-                <Input
-                  id="maxConcurrentRequests"
-                  type="number"
-                  value={settings.maxConcurrentRequests}
-                  onChange={(e) => updateSetting('maxConcurrentRequests', parseInt(e.target.value))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="requestTimeout">请求超时时间 (秒)</Label>
-                <Input
-                  id="requestTimeout"
-                  type="number"
-                  value={settings.requestTimeout}
-                  onChange={(e) => updateSetting('requestTimeout', parseInt(e.target.value))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="sessionTimeout">会话超时时间 (小时)</Label>
-                <Input
-                  id="sessionTimeout"
-                  type="number"
-                  value={settings.sessionTimeout}
-                  onChange={(e) => updateSetting('sessionTimeout', parseInt(e.target.value))}
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* 性能设置 */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Database className="h-5 w-5" />
-              <span>性能设置</span>
-            </CardTitle>
-            <CardDescription>
-              系统性能相关的配置
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label htmlFor="apiRateLimit">API 速率限制 (每分钟)</Label>
-                <Input
-                  id="apiRateLimit"
-                  type="number"
-                  value={settings.apiRateLimit}
-                  onChange={(e) => updateSetting('apiRateLimit', parseInt(e.target.value))}
-                />
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>启用日志记录</Label>
-                  <p className="text-sm text-muted-foreground">
-                    记录系统操作日志
-                  </p>
-                </div>
-                <Switch
-                  checked={settings.enableLogging}
-                  onCheckedChange={(checked) => updateSetting('enableLogging', checked)}
-                />
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>启用性能监控</Label>
-                  <p className="text-sm text-muted-foreground">
-                    收集系统性能指标
-                  </p>
-                </div>
-                <Switch
-                  checked={settings.enableMetrics}
-                  onCheckedChange={(checked) => updateSetting('enableMetrics', checked)}
-                />
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>自动备份</Label>
-                  <p className="text-sm text-muted-foreground">
-                    每日自动备份数据
-                  </p>
-                </div>
-                <Switch
-                  checked={settings.autoBackup}
-                  onCheckedChange={(checked) => updateSetting('autoBackup', checked)}
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* 安全设置 */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Shield className="h-5 w-5" />
-              <span>安全设置</span>
-            </CardTitle>
-            <CardDescription>
-              系统安全相关的配置
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-4">
-              <div className="p-4 border rounded-lg bg-muted/50">
-                <h4 className="font-medium mb-2">安全提示</h4>
-                <ul className="text-sm text-muted-foreground space-y-1">
-                  <li>• 定期更换API密钥</li>
-                  <li>• 启用请求日志以便审计</li>
-                  <li>• 设置合理的速率限制</li>
-                  <li>• 定期备份重要数据</li>
-                </ul>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* 通知设置 */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Bell className="h-5 w-5" />
-              <span>通知设置</span>
-            </CardTitle>
-            <CardDescription>
-              系统通知和提醒配置
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label>启用系统通知</Label>
-                <p className="text-sm text-muted-foreground">
-                  接收系统状态和错误通知
-                </p>
-              </div>
-              <Switch
-                checked={settings.enableNotifications}
-                onCheckedChange={(checked) => updateSetting('enableNotifications', checked)}
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* 界面设置 */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Palette className="h-5 w-5" />
-              <span>界面设置</span>
-            </CardTitle>
-            <CardDescription>
-              用户界面相关的配置
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label>深色模式</Label>
-                <p className="text-sm text-muted-foreground">
-                  切换到深色主题
-                </p>
-              </div>
-              <Switch
-                checked={settings.darkMode}
-                onCheckedChange={(checked) => updateSetting('darkMode', checked)}
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* 邀请系统设置 - 仅管理员可见 */}
         {isAdmin && (
           <Card>
             <CardHeader>
@@ -411,7 +212,7 @@ export default function SettingsPage() {
                         成功邀请他人注册后，邀请者获得的奖励金额
                       </p>
                     </div>
-                    
+
                     <div className="space-y-2">
                       <Label htmlFor="invitedReward">
                         被邀请者奖励 (元)
@@ -509,7 +310,7 @@ export default function SettingsPage() {
               </div>
               <UpdateCheckButton />
             </div>
-            
+
             <div className="p-4 border rounded-lg bg-muted/50">
               <h4 className="font-medium mb-2">版本说明</h4>
               <ul className="text-sm text-muted-foreground space-y-1">
