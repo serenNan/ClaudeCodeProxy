@@ -42,7 +42,7 @@ export default function RoleModal({ open, editingRole, onSuccess, onClose }: Rol
     if (editingRole) {
       setFormData({
         name: editingRole.name,
-        displayName: editingRole.displayName,
+        displayName: editingRole.name,
         description: editingRole.description || '',
         permissions: editingRole.permissions
       });
@@ -142,7 +142,7 @@ export default function RoleModal({ open, editingRole, onSuccess, onClose }: Rol
       isOpen={open}
       onClose={onClose}
       title={editingRole ? '编辑角色' : '添加角色'}
-      subtitle={editingRole ? `编辑角色 ${editingRole.displayName}` : '创建新用户角色'}
+      subtitle={editingRole ? `编辑角色 ${editingRole.name}` : '创建新用户角色'}
       icon={<Shield className="w-6 h-6 text-primary-foreground" />}
       size="lg"
     >

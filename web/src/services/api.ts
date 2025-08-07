@@ -94,8 +94,9 @@ interface UpdateUserRequest {
   email?: string;
   displayName?: string;
   roleId?: string;
-  isEnabled?: boolean;
+  isActive?: boolean;
   description?: string;
+
 }
 
 interface UsersRequest {
