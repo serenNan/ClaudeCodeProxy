@@ -19,6 +19,7 @@ import ProfilePage from '@/pages/profile';
 import PersonalDashboardPage from '@/pages/personal-dashboard';
 import RedeemCodesPage from '@/pages/redeem-codes';
 import InviteFriendsPage from '@/pages/invite-friends';
+import AnnouncementsPage from '@/pages/announcements';
 import './App.css';
 
 const router = createBrowserRouter([
@@ -54,6 +55,7 @@ const router = createBrowserRouter([
       { path: 'personal-dashboard', element: <PersonalDashboardPage /> },
       { path: 'redeem-codes', element: <RedeemCodesPage /> },
       { path: 'invite-friends', element: <InviteFriendsPage /> },
+      { path: 'announcements', element: <AnnouncementsPage /> },
     ],
   },
   {

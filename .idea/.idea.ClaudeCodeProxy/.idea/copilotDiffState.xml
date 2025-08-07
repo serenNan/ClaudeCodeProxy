@@ -35,14 +35,6 @@
             </PendingDiffInfo>
           </value>
         </entry>
-        <entry key="$PROJECT_DIR$/src/ClaudeCodeProxy.Host/Models/LoginResponse.cs">
-          <value>
-            <PendingDiffInfo>
-              <option name="filePath" value="$PROJECT_DIR$/src/ClaudeCodeProxy.Host/Models/LoginResponse.cs" />
-              <option name="updatedContent" value="namespace ClaudeCodeProxy.Host.Models;&#10;&#10;/// &lt;summary&gt;&#10;/// 登录响应模型&#10;/// &lt;/summary&gt;&#10;public class LoginResponse&#10;{&#10;    /// &lt;summary&gt;&#10;    /// 访问令牌&#10;    /// &lt;/summary&gt;&#10;    public string AccessToken { get; set; } = string.Empty;&#10;&#10;    /// &lt;summary&gt;&#10;    /// 刷新令牌&#10;    /// &lt;/summary&gt;&#10;    public string RefreshToken { get; set; } = string.Empty;&#10;&#10;    /// &lt;summary&gt;&#10;    /// 令牌类型&#10;    /// &lt;/summary&gt;&#10;    public string TokenType { get; set; } = &quot;Bearer&quot;;&#10;&#10;    /// &lt;summary&gt;&#10;    /// 过期时间（秒）&#10;    /// &lt;/summary&gt;&#10;    public int ExpiresIn { get; set; }&#10;&#10;    /// &lt;summary&gt;&#10;    /// 用户名&#10;    /// &lt;/summary&gt;&#10;    public string Username { get; set; } = string.Empty;&#10;}" />
-            </PendingDiffInfo>
-          </value>
-        </entry>
       </map>
     </option>
   </component>

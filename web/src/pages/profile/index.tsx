@@ -7,11 +7,10 @@ import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { User, CreditCard, Activity, Key, FileText, Gift, Clock } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
-import { apiService, type RedeemRecord } from '@/services/api'
+import { apiService } from '@/services/api'
 
 interface ProfileData {
   id: string
@@ -45,8 +44,6 @@ const ProfilePage: React.FC = () => {
   // 兑换码相关状态
   const [redeemCode, setRedeemCode] = useState('')
   const [redeemLoading, setRedeemLoading] = useState(false)
-  const [redeemRecords, setRedeemRecords] = useState<RedeemRecord[]>([])
-  const [recordsLoading, setRecordsLoading] = useState(false)
   const [showRedeemDialog, setShowRedeemDialog] = useState(false)
   const [showRecordsDialog, setShowRecordsDialog] = useState(false)
 
@@ -313,7 +310,7 @@ const ProfilePage: React.FC = () => {
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
-                  {recordsLoading ? (
+                  {/* {recordsLoading ? (
                     <div className="flex items-center justify-center py-8">
                       <div className="text-sm text-muted-foreground">加载中...</div>
                     </div>
@@ -348,7 +345,7 @@ const ProfilePage: React.FC = () => {
                         ))}
                       </TableBody>
                     </Table>
-                  )}
+                  )} */}
                 </div>
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setShowRecordsDialog(false)}>

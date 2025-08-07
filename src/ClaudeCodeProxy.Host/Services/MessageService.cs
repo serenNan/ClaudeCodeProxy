@@ -1,5 +1,6 @@
 ﻿using ClaudeCodeProxy.Abstraction;
 using ClaudeCodeProxy.Abstraction.Chats;
+using ClaudeCodeProxy.Core;
 using ClaudeCodeProxy.Core.AI;
 using ClaudeCodeProxy.Host.Env;
 using ClaudeCodeProxy.Host.Extensions;
@@ -28,6 +29,7 @@ public partial class MessageService(
         [FromServices] RequestLogService requestLogService,
         [FromServices] WalletService walletService,
         [FromBody] AnthropicInput request,
+        [FromServices] IContext context,
         [FromServices] IAnthropicChatCompletionsService chatCompletionsService)
     {
         var apiKey = httpContext.Request.Headers["x-api-key"].FirstOrDefault() ??
@@ -87,16 +89,30 @@ public partial class MessageService(
             return;
         }
 
+        var modelPricing = context.ModelPricings
+            .FirstOrDefault(p => p.Model == request.Model);
+
+        if (modelPricing is { IsEnabled: false })
+        {
+            httpContext.Response.StatusCode = 403; // Forbidden
+            await httpContext.Response.WriteAsJsonAsync(new
+            {
+                message = $"模型 {request.Model} 已被管理员禁用",
+                code = "403"
+            }, cancellationToken: httpContext.RequestAborted);
+            return;
+        }
+
         // 获取用户信息
         var userId = apiKeyValue.UserId;
         var userName = apiKeyValue.User?.Username ?? "Unknown";
 
         // 预估请求费用
         var estimatedCost = EstimateRequestCost(request, httpContext);
-        
+
         // 获取用户当前余额信息
         var walletDto = await walletService.GetOrCreateWalletAsync(userId);
-        
+
         // 检查用户钱包余额（使用预估费用）
         var hasSufficientBalance = await walletService.CheckSufficientBalanceAsync(userId, estimatedCost);
         if (!hasSufficientBalance)
@@ -127,11 +143,11 @@ public partial class MessageService(
             var limitMessage = costLimitType switch
             {
                 "daily" => "API Key已达到每日费用限制",
-                "monthly" => "API Key已达到月度费用限制", 
+                "monthly" => "API Key已达到月度费用限制",
                 "total" => "API Key已达到总费用限制",
                 _ => "API Key已达到费用限制"
             };
-            
+
             httpContext.Response.StatusCode = 429; // Too Many Requests
             await httpContext.Response.WriteAsJsonAsync(new
             {
@@ -162,7 +178,7 @@ public partial class MessageService(
         {
             // 记录模型映射日志
             var logger = httpContext.RequestServices.GetRequiredService<ILogger<MessageService>>();
-            logger.LogInformation("🔄 模型映射: {OriginalModel} -> {MappedModel} for account {AccountName}", 
+            logger.LogInformation("🔄 模型映射: {OriginalModel} -> {MappedModel} for account {AccountName}",
                 request.Model, mappedModel, account?.Name);
             request.Model = mappedModel;
         }
@@ -327,7 +343,7 @@ public partial class MessageService(
                         Address = account.ApiUrl,
                     },
                     cancellationToken);
-                    
+
                 // 从非流式响应中提取Usage信息
                 if (response?.Usage != null)
                 {
@@ -335,13 +351,14 @@ public partial class MessageService(
                     outputTokens = response.Usage.output_tokens ?? 0;
                     cacheCreateTokens = response.Usage.cache_creation_input_tokens ?? 0;
                     cacheReadTokens = response.Usage.cache_read_input_tokens ?? 0;
-                    
+
                     // 记录Usage提取日志
                     var logger = httpContext.RequestServices.GetRequiredService<ILogger<MessageService>>();
-                    logger.LogDebug("非流式响应Usage提取: Input={InputTokens}, Output={OutputTokens}, CacheCreate={CacheCreate}, CacheRead={CacheRead}", 
+                    logger.LogDebug(
+                        "非流式响应Usage提取: Input={InputTokens}, Output={OutputTokens}, CacheCreate={CacheCreate}, CacheRead={CacheRead}",
                         inputTokens, outputTokens, cacheCreateTokens, cacheReadTokens);
                 }
-                
+
                 await httpContext.Response.WriteAsJsonAsync(response, cancellationToken: cancellationToken);
             }
 
@@ -371,11 +388,12 @@ public partial class MessageService(
             if (account != null)
             {
                 var rateLimitedUntil = rateLimitEx.RateLimitInfo.RateLimitedUntil;
-                await accountsService.SetRateLimitAsync(account.Id, rateLimitedUntil, rateLimitEx.Message, cancellationToken);
-                
+                await accountsService.SetRateLimitAsync(account.Id, rateLimitedUntil, rateLimitEx.Message,
+                    cancellationToken);
+
                 // 记录限流日志
                 var logger = httpContext.RequestServices.GetRequiredService<ILogger<MessageService>>();
-                logger.LogWarning("账户 {AccountName} (ID: {AccountId}) 达到限流，限流解除时间：{RateLimitedUntil}", 
+                logger.LogWarning("账户 {AccountName} (ID: {AccountId}) 达到限流，限流解除时间：{RateLimitedUntil}",
                     account.Name, account.Id, rateLimitedUntil);
             }
 
@@ -390,7 +408,7 @@ public partial class MessageService(
             // 返回429限流错误
             httpContext.Response.StatusCode = 429;
             httpContext.Response.Headers["Retry-After"] = rateLimitEx.RateLimitInfo.RetryAfterSeconds.ToString();
-            
+
             await httpContext.Response.WriteAsJsonAsync(new
             {
                 error = new
@@ -645,7 +663,7 @@ public partial class MessageService(
                         Address = account.ApiUrl,
                     },
                     cancellationToken);
-                    
+
                 // 从非流式响应中提取Usage信息
                 if (response?.Usage != null)
                 {
@@ -653,13 +671,14 @@ public partial class MessageService(
                     outputTokens = response.Usage.output_tokens ?? 0;
                     cacheCreateTokens = response.Usage.cache_creation_input_tokens ?? 0;
                     cacheReadTokens = response.Usage.cache_read_input_tokens ?? 0;
-                    
+
                     // 记录Usage提取日志
                     var logger = httpContext.RequestServices.GetRequiredService<ILogger<MessageService>>();
-                    logger.LogDebug("非流式响应Usage提取: Input={InputTokens}, Output={OutputTokens}, CacheCreate={CacheCreate}, CacheRead={CacheRead}", 
+                    logger.LogDebug(
+                        "非流式响应Usage提取: Input={InputTokens}, Output={OutputTokens}, CacheCreate={CacheCreate}, CacheRead={CacheRead}",
                         inputTokens, outputTokens, cacheCreateTokens, cacheReadTokens);
                 }
-                
+
                 await httpContext.Response.WriteAsJsonAsync(response, cancellationToken: cancellationToken);
             }
 
@@ -689,11 +708,12 @@ public partial class MessageService(
             if (account != null)
             {
                 var rateLimitedUntil = rateLimitEx.RateLimitInfo.RateLimitedUntil;
-                await accountsService.SetRateLimitAsync(account.Id, rateLimitedUntil, rateLimitEx.Message, cancellationToken);
-                
+                await accountsService.SetRateLimitAsync(account.Id, rateLimitedUntil, rateLimitEx.Message,
+                    cancellationToken);
+
                 // 记录限流日志
                 var logger = httpContext.RequestServices.GetRequiredService<ILogger<MessageService>>();
-                logger.LogWarning("账户 {AccountName} (ID: {AccountId}) 达到限流，限流解除时间：{RateLimitedUntil}", 
+                logger.LogWarning("账户 {AccountName} (ID: {AccountId}) 达到限流，限流解除时间：{RateLimitedUntil}",
                     account.Name, account.Id, rateLimitedUntil);
             }
 
@@ -708,7 +728,7 @@ public partial class MessageService(
             // 返回429限流错误
             httpContext.Response.StatusCode = 429;
             httpContext.Response.Headers["Retry-After"] = rateLimitEx.RateLimitInfo.RetryAfterSeconds.ToString();
-            
+
             await httpContext.Response.WriteAsJsonAsync(new
             {
                 error = new
@@ -751,7 +771,7 @@ public partial class MessageService(
     {
         // 获取价格服务
         var pricingService = httpContext.RequestServices.GetRequiredService<PricingService>();
-        
+
         // 计算费用
         var cost = pricingService.CalculateTokenCost(
             model, inputTokens, outputTokens, cacheCreateTokens, cacheReadTokens);
@@ -772,7 +792,7 @@ public partial class MessageService(
         {
             // 粗略估算输入token数量（按字符数 / 4 估算，这是一个简化的方法）
             var estimatedInputTokens = 0;
-            
+
             if (request.Messages != null)
             {
                 foreach (var message in request.Messages)
@@ -800,8 +820,8 @@ public partial class MessageService(
             // 使用PricingService计算费用
             var pricingService = httpContext.RequestServices.GetRequiredService<PricingService>();
             var estimatedCost = pricingService.CalculateTokenCost(
-                request.Model, 
-                estimatedInputTokens, 
+                request.Model,
+                estimatedInputTokens,
                 (int)estimatedOutputTokens);
 
             // 添加20%的安全余量
@@ -850,7 +870,7 @@ public partial class MessageService(
                 {
                     var sourceModel = parts[0].Trim();
                     var targetModel = parts[1].Trim();
-                    
+
                     // 如果找到匹配的源模型，返回目标模型
                     if (string.Equals(sourceModel, requestedModel, StringComparison.OrdinalIgnoreCase))
                     {

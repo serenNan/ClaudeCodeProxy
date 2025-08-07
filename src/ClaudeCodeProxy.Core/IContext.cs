@@ -30,6 +30,8 @@ public interface IContext
     public DbSet<InvitationRecord> InvitationRecords { get; set; }
     
     public DbSet<InvitationSettings> InvitationSettings { get; set; }
+    
+    public DbSet<Announcement> Announcements { get; set; }
 
     /// <summary>
     /// 保存上下文数据

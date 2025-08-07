@@ -16,6 +16,7 @@ using Microsoft.EntityFrameworkCore.Sqlite;
 using Scalar.AspNetCore;
 using Serilog;
 using System.Runtime.InteropServices;
+using ClaudeCodeProxy.Domain;
 using ClaudeCodeProxy.Host.Middlewares;
 using Mapster;
 
@@ -59,6 +60,7 @@ public static class Program
 
         await MigrateDatabaseAsync(app);
         await InitializeModelPricingAsync(app);
+        await InitializeInvitationSettingsAsync(app);
 
         // 如果是Windows且未安装服务，提示用户
         if (WindowsServiceHelper.IsWindows() && !await WindowsServiceHelper.IsServiceInstalledAsync())
@@ -149,7 +151,6 @@ public static class Program
             await dbContext.MigrateAsync();
         }
 
-
         var dbInitService = scope.ServiceProvider.GetRequiredService<DatabaseInitializationService>();
         await dbInitService.InitializeAsync();
     }
@@ -167,6 +168,54 @@ public static class Program
         catch (Exception ex)
         {
             Log.Error(ex, "初始化模型定价数据失败");
+            // 不抛出异常，允许应用程序继续启动
+        }
+    }
+
+    private static async Task InitializeInvitationSettingsAsync(WebApplication app)
+    {
+        try
+        {
+            await using var scope = app.Services.CreateAsyncScope();
+            var invitationService = scope.ServiceProvider.GetRequiredService<IInvitationService>();
+            var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+
+            // 优先使用环境变量，其次使用配置文件
+            var inviterReward = EnvHelper.InviterReward;
+            var invitedReward = EnvHelper.InvitedReward;
+            var maxInvitations = EnvHelper.MaxInvitations;
+
+            // 只有当数据库中没有设置时才初始化
+            var existingInviterReward = await invitationService.GetInvitationSettingAsync(InvitationSettings.Keys.DefaultInviterReward);
+            if (string.IsNullOrEmpty(existingInviterReward))
+            {
+                await invitationService.SetInvitationSettingsAsync(InvitationSettings.Keys.DefaultInviterReward, inviterReward.ToString());
+            }
+
+            var existingInvitedReward = await invitationService.GetInvitationSettingAsync(InvitationSettings.Keys.DefaultInvitedReward);
+            if (string.IsNullOrEmpty(existingInvitedReward))
+            {
+                await invitationService.SetInvitationSettingsAsync(InvitationSettings.Keys.DefaultInvitedReward, invitedReward.ToString());
+            }
+
+            var existingMaxInvitations = await invitationService.GetInvitationSettingAsync(InvitationSettings.Keys.DefaultMaxInvitations);
+            if (string.IsNullOrEmpty(existingMaxInvitations))
+            {
+                await invitationService.SetInvitationSettingsAsync(InvitationSettings.Keys.DefaultMaxInvitations, maxInvitations.ToString());
+            }
+
+            var existingInvitationEnabled = await invitationService.GetInvitationSettingAsync(InvitationSettings.Keys.InvitationEnabled);
+            if (string.IsNullOrEmpty(existingInvitationEnabled))
+            {
+                await invitationService.SetInvitationSettingsAsync(InvitationSettings.Keys.InvitationEnabled, "true");
+            }
+
+            Log.Information("邀请设置初始化完成: 邀请人奖励={InviterReward}, 被邀请人奖励={InvitedReward}, 最大邀请数={MaxInvitations}", 
+                inviterReward, invitedReward, maxInvitations);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "初始化邀请设置失败");
             // 不抛出异常，允许应用程序继续启动
         }
     }
@@ -273,7 +322,11 @@ public static class Program
         });
 
         // 添加授权和认证服务
-        services.AddAuthorization();
+        services.AddAuthorization(options =>
+        {
+            options.AddPolicy("AdminOnly", policy =>
+                policy.RequireRole("Admin"));
+        });
         services.AddJwtSupport(configuration);
 
         services.AddCors();
@@ -327,6 +380,7 @@ public static class Program
         app.MapDashboardEndpoints();
         app.MapPricingEndpoints();
         app.MapVersionEndpoints();
+        app.MapAnnouncementEndpoints();
 
         // 健康检查端点
         app.MapGet("/health", () => Results.Ok(new { Status = "Healthy", Timestamp = DateTime.Now }))

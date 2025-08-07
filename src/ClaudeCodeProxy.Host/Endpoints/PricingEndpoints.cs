@@ -33,6 +33,20 @@ public static class PricingEndpoints
             .Produces<ApiResponse<object>>()
             .Produces(400);
 
+        // 启用模型
+        group.MapPost("models/{modelName}/enable", EnableModel)
+            .WithName("EnableModel")
+            .WithSummary("启用指定模型")
+            .Produces<ApiResponse<object>>()
+            .Produces(400);
+
+        // 禁用模型
+        group.MapPost("models/{modelName}/disable", DisableModel)
+            .WithName("DisableModel")
+            .WithSummary("禁用指定模型")
+            .Produces<ApiResponse<object>>()
+            .Produces(400);
+
         // 获取所有汇率配置
         group.MapGet("exchange-rates", GetAllExchangeRates)
             .WithName("GetAllExchangeRates")
@@ -52,7 +66,7 @@ public static class PricingEndpoints
             .WithSummary("计算费用预览")
             .Produces<ApiResponse<PricingResult>>()
             .Produces(400);
-            
+
         // 货币转换
         group.MapPost("convert-currency", ConvertCurrency)
             .WithName("ConvertCurrency")
@@ -77,7 +91,7 @@ public static class PricingEndpoints
     /// <summary>
     /// 更新模型价格配置
     /// </summary>
-    private static IResult UpdateModelPricing(ModelPricing pricing, PricingService pricingService)
+    private static async Task<IResult> UpdateModelPricing(ModelPricing pricing, PricingService pricingService)
     {
         if (string.IsNullOrEmpty(pricing.Model))
         {
@@ -87,11 +101,65 @@ public static class PricingEndpoints
             });
         }
 
-        // 目前不支持动态更新模型价格，返回提示信息
-        return Results.BadRequest(new ApiResponse<object>
+        try
         {
-            Message = "暂不支持动态更新模型价格配置，请通过数据库修改"
-        });
+            await pricingService.UpdateModelPricingAsync(pricing);
+            return Results.Ok(new ApiResponse<object>
+            {
+                Message = $"模型 {pricing.Model} 的价格配置已更新"
+            });
+        }
+        catch (Exception ex)
+        {
+            return Results.BadRequest(new ApiResponse<object>
+            {
+                Message = $"更新模型价格配置失败: {ex.Message}"
+            });
+        }
+    }
+
+    /// <summary>
+    /// 启用模型
+    /// </summary>
+    private static async Task<IResult> EnableModel(string modelName, PricingService pricingService)
+    {
+        if (string.IsNullOrEmpty(modelName))
+        {
+            return Results.BadRequest(new ApiResponse<object>
+            {
+                Message = "模型名称不能为空"
+            });
+        }
+
+        try
+        {
+            await pricingService.SetModelEnabledAsync(modelName);
+            return Results.Ok(new ApiResponse<object>
+            {
+                Message = $"模型 {modelName} 已启用"
+            });
+        }
+        catch (Exception ex)
+        {
+            return Results.BadRequest(new ApiResponse<object>
+            {
+                Message = $"启用模型失败: {ex.Message}"
+            });
+        }
+    }
+
+    /// <summary>
+    /// 禁用模型
+    /// </summary>
+    private static async Task<bool> DisableModel(string modelName, PricingService pricingService)
+    {
+        if (string.IsNullOrEmpty(modelName))
+        {
+            return false;
+        }
+
+        await pricingService.SetModelEnabledAsync(modelName);
+        return true;
     }
 
     /// <summary>
@@ -129,7 +197,7 @@ public static class PricingEndpoints
         }
 
         pricingService.UpdateExchangeRate(request.FromCurrency, request.ToCurrency, request.Rate);
-        
+
         return Results.Ok(new ApiResponse<object>
         {
             Message = "汇率更新成功"
@@ -150,20 +218,22 @@ public static class PricingEndpoints
         }
 
         var totalCost = pricingService.CalculateTokenCost(
-            request.Model, 
-            request.InputTokens, 
-            request.OutputTokens, 
-            request.CacheCreateTokens, 
+            request.Model,
+            request.InputTokens,
+            request.OutputTokens,
+            request.CacheCreateTokens,
             request.CacheReadTokens);
-            
+
         // 后端统一返回USD金额，前端根据需要进行汇率转换
         var result = new PricingResult
         {
             Model = request.Model,
             TotalCost = totalCost,
             Currency = "USD", // 后端统一返回USD
-            WeightedTokens = request.InputTokens + request.OutputTokens + request.CacheCreateTokens + request.CacheReadTokens,
-            UnitPrice = totalCost / Math.Max(1, request.InputTokens + request.OutputTokens + request.CacheCreateTokens + request.CacheReadTokens)
+            WeightedTokens = request.InputTokens + request.OutputTokens + request.CacheCreateTokens +
+                             request.CacheReadTokens,
+            UnitPrice = totalCost / Math.Max(1,
+                request.InputTokens + request.OutputTokens + request.CacheCreateTokens + request.CacheReadTokens)
         };
 
         return Results.Ok(new ApiResponse<PricingResult>

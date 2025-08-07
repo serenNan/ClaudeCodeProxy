@@ -4,7 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Edit, Save, X, ToggleLeft, ToggleRight, DollarSign } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Edit, Save, X, ToggleLeft, ToggleRight, DollarSign, Power, PowerOff } from 'lucide-react';
 
 interface ModelPricing {
   model: string;
@@ -14,6 +15,7 @@ interface ModelPricing {
   cacheReadPrice: number;
   currency: string;
   description?: string;
+  isEnabled?: boolean;
 }
 
 interface ModelPricingCardProps {
@@ -25,6 +27,7 @@ interface ModelPricingCardProps {
   targetCurrency?: string;
   onCurrencyToggle?: () => void;
   exchangeRate?: number;
+  isAdmin?: boolean; // 是否是管理员，控制操作按钮的显示
 }
 
 export function ModelPricingCard({ 
@@ -35,7 +38,8 @@ export function ModelPricingCard({
   onUnitToggle,
   targetCurrency = 'USD',
   onCurrencyToggle,
-  exchangeRate = 1
+  exchangeRate = 1,
+  isAdmin = false
 }: ModelPricingCardProps) {
   const [editing, setEditing] = useState(false);
   const [editedModel, setEditedModel] = useState<ModelPricing>({ ...model });
@@ -55,7 +59,23 @@ export function ModelPricingCard({
     setEditing(false);
   };
 
-  const updateField = (field: keyof ModelPricing, value: string | number) => {
+  const handleToggleEnabled = async () => {
+    const isCurrentlyEnabled = model.isEnabled !== false;
+    
+    // 使用单独的启用/禁用接口
+    const { apiService } = await import('@/services/api');
+    
+    if (isCurrentlyEnabled) {
+      await apiService.disableModel(model.model);
+    } else {
+      await apiService.enableModel(model.model);
+    }
+    
+    // 触发父组件重新加载数据
+    await onUpdate(model);
+  };
+
+  const updateField = (field: keyof ModelPricing, value: string | number | boolean) => {
     setEditedModel(prev => ({
       ...prev,
       [field]: value
@@ -103,7 +123,12 @@ export function ModelPricingCard({
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
           <div className="space-y-2">
-            <CardTitle className="text-lg">{model.model}</CardTitle>
+            <div className="flex items-center space-x-2">
+              <CardTitle className="text-lg">{model.model}</CardTitle>
+              <Badge variant={model.isEnabled !== false ? "default" : "secondary"}>
+                {model.isEnabled !== false ? "启用" : "禁用"}
+              </Badge>
+            </div>
             {model.description && (
               <CardDescription>{model.description}</CardDescription>
             )}
@@ -112,15 +137,26 @@ export function ModelPricingCard({
             <Badge className={getPlatformColor(model.model)}>
               {model.currency}
             </Badge>
-            {!editing && (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={handleEdit}
-                disabled={saving}
-              >
-                <Edit className="h-4 w-4" />
-              </Button>
+            {isAdmin && !editing && (
+              <>
+                <Button 
+                  variant={model.isEnabled !== false ? "outline" : "default"}
+                  size="sm" 
+                  onClick={() => handleToggleEnabled()}
+                  disabled={saving}
+                  title={model.isEnabled !== false ? "禁用模型" : "启用模型"}
+                >
+                  {model.isEnabled !== false ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleEdit}
+                  disabled={saving}
+                >
+                  <Edit className="h-4 w-4" />
+                </Button>
+              </>
             )}
           </div>
         </div>
@@ -194,6 +230,15 @@ export function ModelPricingCard({
                 placeholder="模型描述（可选）"
               />
             </div>
+            {isAdmin && (
+              <div className="flex items-center space-x-2">
+                <Switch
+                  checked={editedModel.isEnabled !== false}
+                  onCheckedChange={(checked) => updateField('isEnabled', checked)}
+                />
+                <Label>启用此模型</Label>
+              </div>
+            )}
             <div className="flex justify-end space-x-2">
               <Button 
                 variant="outline" 

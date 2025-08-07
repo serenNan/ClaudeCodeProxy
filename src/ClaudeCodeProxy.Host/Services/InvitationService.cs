@@ -117,19 +117,37 @@ public class InvitationService : IInvitationService
     public async Task<decimal> GetInviterRewardAsync()
     {
         var setting = await GetInvitationSettingAsync(InvitationSettings.Keys.DefaultInviterReward);
-        return decimal.TryParse(setting, out var reward) ? reward : 10.0m; // 默认10元
+        if (decimal.TryParse(setting, out var reward))
+        {
+            return reward;
+        }
+
+        // 优先使用环境变量配置
+        return ClaudeCodeProxy.Host.Env.EnvHelper.InviterReward;
     }
 
     public async Task<decimal> GetInvitedRewardAsync()
     {
         var setting = await GetInvitationSettingAsync(InvitationSettings.Keys.DefaultInvitedReward);
-        return decimal.TryParse(setting, out var reward) ? reward : 5.0m; // 默认5元
+        if (decimal.TryParse(setting, out var reward))
+        {
+            return reward;
+        }
+
+        // 优先使用环境变量配置
+        return ClaudeCodeProxy.Host.Env.EnvHelper.InvitedReward;
     }
 
     public async Task<int> GetMaxInvitationsAsync()
     {
         var setting = await GetInvitationSettingAsync(InvitationSettings.Keys.DefaultMaxInvitations);
-        return int.TryParse(setting, out var max) ? max : 10; // 默认10人
+        if (int.TryParse(setting, out var max))
+        {
+            return max;
+        }
+
+        // 优先使用环境变量配置
+        return ClaudeCodeProxy.Host.Env.EnvHelper.MaxInvitations;
     }
 
     public async Task<bool> CanUserInviteMoreAsync(Guid userId)
@@ -177,16 +195,17 @@ public class InvitationService : IInvitationService
         const string chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // 排除易混淆字符
         var random = new Random();
         var code = new char[8];
-        
+
         for (int i = 0; i < 8; i++)
         {
             code[i] = chars[random.Next(chars.Length)];
         }
-        
+
         return new string(code);
     }
 
-    private async Task ProcessInvitationRewardsAsync(Guid inviterId, Guid invitedId, decimal inviterReward, decimal invitedReward)
+    private async Task ProcessInvitationRewardsAsync(Guid inviterId, Guid invitedId, decimal inviterReward,
+        decimal invitedReward)
     {
         // 给邀请人发放奖励
         if (inviterReward > 0)
@@ -207,7 +226,7 @@ public class InvitationService : IInvitationService
 
                 inviterWallet.Balance += inviterReward;
                 inviterWallet.TotalRecharged += inviterReward;
-                
+
                 _context.WalletTransactions.Add(inviterTransaction);
             }
         }
@@ -231,9 +250,11 @@ public class InvitationService : IInvitationService
 
                 invitedWallet.Balance += invitedReward;
                 invitedWallet.TotalRecharged += invitedReward;
-                
+
                 _context.WalletTransactions.Add(invitedTransaction);
             }
         }
+
+        await _context.SaveAsync();
     }
 }

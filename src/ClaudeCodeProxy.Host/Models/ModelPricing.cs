@@ -43,6 +43,11 @@ public class ModelPricing
     public string? Description { get; set; }
 
     /// <summary>
+    /// 是否启用
+    /// </summary>
+    public bool IsEnabled { get; set; } = true;
+
+    /// <summary>
     /// 获取所有模型的定价数据
     /// </summary>
     public static readonly List<ModelPricing> AllModels = new()
@@ -86,6 +91,26 @@ public class ModelPricing
             CacheReadPrice = 0.0000003m,
             Currency = "USD",
             Description = "Claude Sonnet 4 - $0.000003/输入, $0.000015/输出"
+        },
+        new ModelPricing
+        {
+            Model = "claude-opus-4-20250514",
+            InputPrice = 0.000015m,
+            OutputPrice = 0.000075m,
+            CacheWritePrice = 0.00001875m,
+            CacheReadPrice =  0.0000015m,
+            Currency = "USD",
+            Description = "Claude Opus 4 - $0.000015/输入, $0.000075/输出"
+        },
+        new ModelPricing
+        {
+            Model = "claude-opus-4-1-20250805",
+            InputPrice = 0.000003m,
+            OutputPrice = 0.000015m,
+            CacheWritePrice = 0.00001875m,
+            CacheReadPrice =  0.0000015m,
+            Currency = "USD",
+            Description = "Claude Opus 4.1 - $0.000003/输入, $0.000015/输出"
         },
         new ModelPricing
         {

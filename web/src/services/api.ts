@@ -75,6 +75,7 @@ interface User {
 interface UserRole {
   id: string;
   name: string;
+  displayName: string;
   permissions: string[];
   description?: string;
   isSystem: boolean;
@@ -278,7 +279,10 @@ interface Account {
   platform: 'claude' | 'claude-console' | 'gemini' | 'openai' | 'thor';
   sessionKey?: string;
   isEnabled: boolean;
+  status: 'active' | 'rate_limited' | 'error' | 'disabled';
   lastUsedAt?: string;
+  rateLimitedUntil?: string;
+  lastError?: string;
   createdAt: string;
   updatedAt: string;
   description?: string;
@@ -482,6 +486,7 @@ class ApiService {
           platform: 'claude',
           sessionKey: 'sk_live_1234567890abcdef1234567890abcdef',
           isEnabled: true,
+          status: 'active',
           lastUsedAt: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
@@ -492,6 +497,9 @@ class ApiService {
           platform: 'gemini',
           sessionKey: 'AIzaSyA1234567890abcdef1234567890abcdef',
           isEnabled: true,
+          status: 'rate_limited',
+          rateLimitedUntil: new Date(Date.now() + 1800000).toISOString(), // 30 minutes from now
+          lastError: 'Rate limit exceeded. Please wait before making more requests.',
           lastUsedAt: new Date(Date.now() - 7200000).toISOString(), // 2 hours ago
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
@@ -720,6 +728,18 @@ class ApiService {
     });
   }
 
+  async enableModel(modelName: string): Promise<void> {
+    await this.request<void>(`/pricing/models/${encodeURIComponent(modelName)}/enable`, {
+      method: 'POST',
+    });
+  }
+
+  async disableModel(modelName: string): Promise<void> {
+    await this.request<void>(`/pricing/models/${encodeURIComponent(modelName)}/disable`, {
+      method: 'POST',
+    });
+  }
+
   async getExchangeRates(): Promise<ExchangeRate[]> {
     const response = await this.request<{ data: ExchangeRate[] }>('/pricing/exchange-rates');
     return response.data;
@@ -908,6 +928,41 @@ class ApiService {
     return this.request<void>('/invitation/settings', {
       method: 'PUT',
       body: JSON.stringify(settings),
+    });
+  }
+
+  // Announcements
+  async getAnnouncements(): Promise<any[]> {
+    return this.request<any[]>('/announcements');
+  }
+
+  async getCurrentAnnouncements(): Promise<any[]> {
+    return this.request<any[]>('/announcements/current');
+  }
+
+  async createAnnouncement(data: any): Promise<any> {
+    return this.request<any>('/announcements', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateAnnouncement(id: number, data: any): Promise<any> {
+    return this.request<any>(`/announcements/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteAnnouncement(id: number): Promise<void> {
+    return this.request<void>(`/announcements/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async toggleAnnouncementVisibility(id: number): Promise<any> {
+    return this.request<any>(`/announcements/${id}/toggle`, {
+      method: 'PATCH',
     });
   }
 }
@@ -1137,6 +1192,7 @@ export interface ModelPricing {
   cacheReadPrice: number;
   currency: string;
   description?: string;
+  isEnabled?: boolean;
 }
 
 export interface ExchangeRate {

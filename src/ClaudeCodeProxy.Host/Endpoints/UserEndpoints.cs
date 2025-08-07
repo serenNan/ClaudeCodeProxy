@@ -31,21 +31,7 @@ public static class UserEndpoints
         group.MapGet("/{id:Guid}", async (Guid id, UserService userService) =>
             {
                 var user = await userService.GetUserByIdAsync(id);
-                if (user == null)
-                {
-                    return Results.NotFound(new ApiResponse<object>
-                    {
-                        Success = false,
-                        Message = "用户不存在"
-                    });
-                }
-
-                return Results.Ok(new ApiResponse<UserDto>
-                {
-                    Success = true,
-                    Data = user,
-                    Message = "获取用户信息成功"
-                });
+                return user;
             })
             .WithName("GetUserById")
             .WithSummary("根据ID获取用户")
@@ -54,24 +40,8 @@ public static class UserEndpoints
         // 创建用户
         group.MapPost("/", async (CreateUserRequest request, UserService userService) =>
             {
-                try
-                {
-                    var user = await userService.CreateUserAsync(request);
-                    return Results.Created($"/api/users/{user.Id}", new ApiResponse<UserDto>
-                    {
-                        Success = true,
-                        Data = user,
-                        Message = "创建用户成功"
-                    });
-                }
-                catch (ArgumentException ex)
-                {
-                    return Results.BadRequest(new ApiResponse<object>
-                    {
-                        Success = false,
-                        Message = ex.Message
-                    });
-                }
+                var user = await userService.CreateUserAsync(request);
+                return user;
             })
             .WithName("CreateUser")
             .WithSummary("创建用户")
@@ -81,33 +51,8 @@ public static class UserEndpoints
         // 更新用户
         group.MapPut("/{id:Guid}", async (Guid id, UpdateUserRequest request, UserService userService) =>
             {
-                try
-                {
-                    var user = await userService.UpdateUserAsync(id, request);
-                    if (user == null)
-                    {
-                        return Results.NotFound(new ApiResponse<object>
-                        {
-                            Success = false,
-                            Message = "用户不存在"
-                        });
-                    }
-
-                    return Results.Ok(new ApiResponse<UserDto>
-                    {
-                        Success = true,
-                        Data = user,
-                        Message = "更新用户成功"
-                    });
-                }
-                catch (ArgumentException ex)
-                {
-                    return Results.BadRequest(new ApiResponse<object>
-                    {
-                        Success = false,
-                        Message = ex.Message
-                    });
-                }
+                var user = await userService.UpdateUserAsync(id, request);
+                return user;
             })
             .WithName("UpdateUser")
             .WithSummary("更新用户")
@@ -118,32 +63,8 @@ public static class UserEndpoints
         // 删除用户
         group.MapDelete("/{id:int}", async (int id, UserService userService) =>
             {
-                try
-                {
-                    var result = await userService.DeleteUserAsync(id);
-                    if (!result)
-                    {
-                        return Results.NotFound(new ApiResponse<object>
-                        {
-                            Success = false,
-                            Message = "用户不存在"
-                        });
-                    }
-
-                    return Results.Ok(new ApiResponse<object>
-                    {
-                        Success = true,
-                        Message = "删除用户成功"
-                    });
-                }
-                catch (ArgumentException ex)
-                {
-                    return Results.BadRequest(new ApiResponse<object>
-                    {
-                        Success = false,
-                        Message = ex.Message
-                    });
-                }
+                var result = await userService.DeleteUserAsync(id);
+                return true;
             })
             .WithName("DeleteUser")
             .WithSummary("删除用户")
@@ -154,32 +75,8 @@ public static class UserEndpoints
         // 修改密码
         group.MapPut("/{id:Guid}/password", async (Guid id, ChangePasswordRequest request, UserService userService) =>
             {
-                try
-                {
-                    var result = await userService.ChangePasswordAsync(id, request);
-                    if (!result)
-                    {
-                        return Results.NotFound(new ApiResponse<object>
-                        {
-                            Success = false,
-                            Message = "用户不存在"
-                        });
-                    }
-
-                    return Results.Ok(new ApiResponse<object>
-                    {
-                        Success = true,
-                        Message = "修改密码成功"
-                    });
-                }
-                catch (ArgumentException ex)
-                {
-                    return Results.BadRequest(new ApiResponse<object>
-                    {
-                        Success = false,
-                        Message = ex.Message
-                    });
-                }
+                var result = await userService.ChangePasswordAsync(id, request);
+                return true;
             })
             .WithName("ChangePassword")
             .WithSummary("修改密码")
