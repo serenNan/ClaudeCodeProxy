@@ -3,6 +3,7 @@ using ClaudeCodeProxy.Host.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using ClaudeCodeProxy.Core;
 
 namespace ClaudeCodeProxy.Host.Endpoints;
 
@@ -69,12 +70,12 @@ public static class RedeemCodeEndpoints
     /// 使用兑换码
     /// </summary>
     private static async Task<IResult> UseRedeemCode(
-        ClaimsPrincipal user,
+        IUserContext userContext,
         RedeemCodeService redeemCodeService,
         [FromBody] UseRedeemCodeRequest request)
     {
-        var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (!Guid.TryParse(userIdClaim, out var userId))
+        var userId = userContext.GetCurrentUserId();
+        if (userId == null)
         {
             return Results.Unauthorized();
         }
@@ -86,7 +87,7 @@ public static class RedeemCodeEndpoints
 
         try
         {
-            var result = await redeemCodeService.UseRedeemCodeAsync(request.Code.Trim().ToUpper(), userId);
+            var result = await redeemCodeService.UseRedeemCodeAsync(request.Code.Trim().ToUpper(), userId.Value);
             return Results.Ok(result);
         }
         catch (Exception ex)
@@ -99,13 +100,13 @@ public static class RedeemCodeEndpoints
     /// 获取用户兑换记录
     /// </summary>
     private static async Task<IResult> GetMyRedeemRecords(
-        ClaimsPrincipal user,
+        IUserContext userContext,
         RedeemCodeService redeemCodeService,
         int page = 1,
         int pageSize = 20)
     {
-        var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (!Guid.TryParse(userIdClaim, out var userId))
+        var userId = userContext.GetCurrentUserId();
+        if (userId == null)
         {
             return Results.Unauthorized();
         }
@@ -113,8 +114,8 @@ public static class RedeemCodeEndpoints
         try
         {
             var records = await redeemCodeService.GetUserRedeemRecordsAsync(
-                userId, 
-                page - 1, 
+                userId.Value,
+                page - 1,
                 pageSize);
 
             return Results.Ok(new { success = true, data = records });
@@ -129,12 +130,12 @@ public static class RedeemCodeEndpoints
     /// 创建兑换码（管理员）
     /// </summary>
     private static async Task<IResult> CreateRedeemCodes(
-        ClaimsPrincipal user,
+        IUserContext userContext,
         RedeemCodeService redeemCodeService,
         [FromBody] CreateRedeemCodeRequest request)
     {
-        var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (!Guid.TryParse(userIdClaim, out var createdByUserId))
+        var userId = userContext.GetCurrentUserId();
+        if (userId == null)
         {
             return Results.Unauthorized();
         }
@@ -151,7 +152,7 @@ public static class RedeemCodeEndpoints
 
         try
         {
-            var redeemCodes = await redeemCodeService.CreateRedeemCodesAsync(request, createdByUserId);
+            var redeemCodes = await redeemCodeService.CreateRedeemCodesAsync(request, userId.Value);
             return Results.Ok(new { success = true, data = redeemCodes, message = $"成功创建 {redeemCodes.Count} 个兑换码" });
         }
         catch (ArgumentException ex)
@@ -195,7 +196,7 @@ public static class RedeemCodeEndpoints
             // 从请求体中提取isEnabled
             var requestDict = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(
                 System.Text.Json.JsonSerializer.Serialize(requestBody));
-            
+
             if (!requestDict.TryGetValue("isEnabled", out var isEnabledObj) ||
                 !bool.TryParse(isEnabledObj.ToString(), out var isEnabled))
             {
@@ -203,7 +204,7 @@ public static class RedeemCodeEndpoints
             }
 
             var success = await redeemCodeService.UpdateRedeemCodeStatusAsync(id, isEnabled);
-            
+
             if (success)
             {
                 return Results.Ok(new { success = true, message = $"兑换码已{(isEnabled ? "启用" : "禁用")}" });
@@ -229,7 +230,7 @@ public static class RedeemCodeEndpoints
         try
         {
             var success = await redeemCodeService.DeleteRedeemCodeAsync(id);
-            
+
             if (success)
             {
                 return Results.Ok(new { success = true, message = "兑换码删除成功" });

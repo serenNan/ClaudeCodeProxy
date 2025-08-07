@@ -301,6 +301,9 @@ public static class Program
 
         services.AddScoped<MessageService>();
 
+        services.AddHttpContextAccessor();
+        services.AddScoped<IUserContext, UserContext>();
+
         services.AddCoreServices();
         
         services.AddMapster();

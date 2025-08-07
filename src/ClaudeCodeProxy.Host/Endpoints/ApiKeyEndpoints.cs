@@ -3,6 +3,8 @@ using ClaudeCodeProxy.Host.Services;
 using ClaudeCodeProxy.Domain;
 using Microsoft.AspNetCore.Http.HttpResults;
 using System.Security.Claims;
+using ClaudeCodeProxy.Core;
+using Microsoft.AspNetCore.Mvc;
 
 namespace ClaudeCodeProxy.Host.Endpoints;
 
@@ -93,25 +95,24 @@ public static class ApiKeyEndpoints
     /// <summary>
     /// 获取所有API Keys
     /// </summary>
-    private static async Task<Results<Ok<List<ApiKey>>, BadRequest<string>>> GetApiKeys(
+    private static async Task<List<ApiKey>> GetApiKeys(
+        [FromServices] IUserContext userContext,
         ApiKeyService apiKeyService)
     {
-        try
+        var apiKeys = await apiKeyService.GetAllApiKeysAsync(userContext);
+        
+        apiKeys.ForEach(x =>
         {
-            var apiKeys = await apiKeyService.GetAllApiKeysAsync();
-            return TypedResults.Ok(apiKeys);
-        }
-        catch (Exception ex)
-        {
-            return TypedResults.BadRequest($"获取API Keys失败: {ex.Message}");
-        }
+            x.User.ApiKeys = null;
+        });
+        return apiKeys;
     }
 
     /// <summary>
     /// 根据ID获取API Key
     /// </summary>
     private static async Task<Results<Ok<ApiKey>, NotFound<string>>> GetApiKeyById(
-        Guid id, 
+        Guid id,
         ApiKeyService apiKeyService)
     {
         try
@@ -121,7 +122,7 @@ public static class ApiKeyEndpoints
             {
                 return TypedResults.NotFound($"未找到ID为 {id} 的API Key");
             }
-            
+
             return TypedResults.Ok(apiKey);
         }
         catch (Exception ex)
@@ -136,17 +137,17 @@ public static class ApiKeyEndpoints
     private static async Task<Results<Created<ApiKey>, BadRequest<string>, UnauthorizedHttpResult>> CreateApiKey(
         CreateApiKeyRequest request,
         ApiKeyService apiKeyService,
-        ClaimsPrincipal user)
+        IUserContext userContext)
     {
         try
         {
-            var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (!Guid.TryParse(userIdClaim, out var userId))
+            var userId = userContext.GetCurrentUserId();
+            if (userId == null)
             {
                 return TypedResults.Unauthorized();
             }
 
-            var apiKey = await apiKeyService.CreateApiKeyAsync(request, userId);
+            var apiKey = await apiKeyService.CreateApiKeyAsync(request, userId.Value);
             return TypedResults.Created($"/api/apikeys/{apiKey.Id}", apiKey);
         }
         catch (Exception ex)
@@ -170,7 +171,7 @@ public static class ApiKeyEndpoints
             {
                 return TypedResults.NotFound($"未找到ID为 {id} 的API Key");
             }
-            
+
             return TypedResults.Ok(apiKey);
         }
         catch (Exception ex)
@@ -193,7 +194,7 @@ public static class ApiKeyEndpoints
             {
                 return TypedResults.NotFound($"未找到ID为 {id} 的API Key");
             }
-            
+
             return TypedResults.NoContent();
         }
         catch (Exception ex)

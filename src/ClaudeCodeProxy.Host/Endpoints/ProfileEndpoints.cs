@@ -3,6 +3,7 @@ using ClaudeCodeProxy.Host.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using ClaudeCodeProxy.Core;
 
 namespace ClaudeCodeProxy.Host.Endpoints;
 
@@ -40,25 +41,25 @@ public static class ProfileEndpoints
     /// 获取个人资料信息
     /// </summary>
     private static async Task<IResult> GetProfile(
-        ClaimsPrincipal user,
+        IUserContext userContext,
         UserService userService,
         WalletService walletService)
     {
-        var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (!Guid.TryParse(userIdClaim, out var userId))
+        var userId = userContext.GetCurrentUserId();
+        if (userId.HasValue == false)
         {
             return Results.Unauthorized();
         }
 
         try
         {
-            var userInfo = await userService.GetUserByIdAsync(userId);
+            var userInfo = await userService.GetUserByIdAsync(userId.Value);
             if (userInfo == null)
             {
                 return Results.NotFound("用户不存在");
             }
 
-            var wallet = await walletService.GetOrCreateWalletAsync(userId);
+            var wallet = await walletService.GetOrCreateWalletAsync(userId.Value);
 
             var profile = new UserProfileDto
             {
@@ -100,12 +101,12 @@ public static class ProfileEndpoints
     /// 更新个人资料
     /// </summary>
     private static async Task<IResult> UpdateProfile(
-        ClaimsPrincipal user,
+        IUserContext userContext,
         UserService userService,
         [FromBody] UpdateProfileRequest request)
     {
-        var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (!Guid.TryParse(userIdClaim, out var userId))
+        var userId = userContext.GetCurrentUserId();
+        if (userId == null)
         {
             return Results.Unauthorized();
         }
@@ -123,7 +124,7 @@ public static class ProfileEndpoints
             };
 
             // 获取当前用户信息以保持现有的角色和状态
-            var currentUser = await userService.GetUserByIdAsync(userId);
+            var currentUser = await userService.GetUserByIdAsync(userId.Value);
             if (currentUser == null)
             {
                 return Results.NotFound("用户不存在");
@@ -133,7 +134,7 @@ public static class ProfileEndpoints
             updateRequest.EmailConfirmed = currentUser.EmailConfirmed;
             updateRequest.RoleId = currentUser.RoleId;
 
-            var updatedUser = await userService.UpdateUserAsync(userId, updateRequest);
+            var updatedUser = await userService.UpdateUserAsync(userId.Value, updateRequest);
             if (updatedUser == null)
             {
                 return Results.NotFound("用户不存在");
@@ -151,19 +152,19 @@ public static class ProfileEndpoints
     /// 修改密码
     /// </summary>
     private static async Task<IResult> ChangePassword(
-        ClaimsPrincipal user,
+        IUserContext userContext,
         UserService userService,
         [FromBody] ChangePasswordRequest request)
     {
-        var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (!Guid.TryParse(userIdClaim, out var userId))
+        var userId = userContext.GetCurrentUserId();
+        if (userId.HasValue == false)
         {
             return Results.Unauthorized();
         }
 
         try
         {
-            var success = await userService.ChangePasswordAsync(userId, request);
+            var success = await userService.ChangePasswordAsync(userId.Value, request);
             if (success)
             {
                 return Results.Ok(new { success = true, message = "密码修改成功" });
@@ -187,13 +188,13 @@ public static class ProfileEndpoints
     /// 获取个人仪表板信息
     /// </summary>
     private static async Task<IResult> GetProfileDashboard(
-        ClaimsPrincipal user,
+        IUserContext userContext,
         WalletService walletService,
         RequestLogService requestLogService,
         ApiKeyService apiKeyService)
     {
-        var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (!Guid.TryParse(userIdClaim, out var userId))
+        var userId = userContext.GetCurrentUserId();
+        if (userId == null)
         {
             return Results.Unauthorized();
         }
@@ -201,18 +202,18 @@ public static class ProfileEndpoints
         try
         {
             // 获取钱包统计
-            var walletStats = await walletService.GetWalletStatisticsAsync(userId);
+            var walletStats = await walletService.GetWalletStatisticsAsync(userId.Value);
 
             // 获取请求统计（最近30天）
-            var requestStats = await requestLogService.GetUserRequestStatisticsAsync(userId);
+            var requestStats = await requestLogService.GetUserRequestStatisticsAsync(userId.Value);
 
             // 获取API Key数量
-            var apiKeys = await apiKeyService.GetUserApiKeysAsync(userId);
+            var apiKeys = await apiKeyService.GetUserApiKeysAsync(userId.Value);
             var activeApiKeys = apiKeys.Count(k => k.IsEnabled);
 
             var dashboard = new ProfileDashboardDto
             {
-                UserId = userId,
+                UserId = userId.Value,
                 Wallet = new WalletStatisticsDto
                 {
                     UserId = walletStats.UserId,

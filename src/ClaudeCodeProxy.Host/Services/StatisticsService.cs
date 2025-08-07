@@ -132,9 +132,9 @@ public class StatisticsService
         }
 
         // 检查是否需要重置月度使用量
-        var lastUsedMonth = apiKey.LastUsedAt.HasValue ? 
-            new DateTime(apiKey.LastUsedAt.Value.Year, apiKey.LastUsedAt.Value.Month, 1) : 
-            DateTime.MinValue;
+        var lastUsedMonth = apiKey.LastUsedAt.HasValue
+            ? new DateTime(apiKey.LastUsedAt.Value.Year, apiKey.LastUsedAt.Value.Month, 1)
+            : DateTime.MinValue;
         if (lastUsedMonth < currentMonth)
         {
             apiKey.MonthlyCostUsed = 0;
@@ -142,12 +142,12 @@ public class StatisticsService
 
         // 增加使用次数
         apiKey.TotalUsageCount++;
-        
+
         // 累加各种费用
         apiKey.TotalCost += cost;
         apiKey.DailyCostUsed += cost;
         apiKey.MonthlyCostUsed += cost;
-        
+
         // 更新最后使用时间
         apiKey.LastUsedAt = now;
 
@@ -157,55 +157,91 @@ public class StatisticsService
     /// <summary>
     /// 获取Dashboard统计数据
     /// </summary>
-    public async Task<DashboardResponse> GetDashboardDataAsync(CancellationToken cancellationToken = default)
+    public async Task<DashboardResponse> GetDashboardDataAsync(
+        bool admin,
+        Guid currentUserId,
+        CancellationToken cancellationToken = default)
     {
         var today = DateTime.Now.Date;
         var now = DateTime.Now;
 
         // 并行查询提高性能
-        var totalApiKeysTask = _context.ApiKeys.CountAsync(cancellationToken);
-        var activeApiKeysTask = _context.ApiKeys.CountAsync(x => x.IsEnabled && (x.ExpiresAt == null || x.ExpiresAt > DateTime.Now), cancellationToken);
-        var totalAccountsTask = _context.Accounts.CountAsync(cancellationToken);
-        var activeAccountsTask = _context.Accounts.CountAsync(x => x.IsEnabled && x.Status == "active", cancellationToken);
-        var rateLimitedAccountsTask = _context.Accounts.CountAsync(x => x.Status == "rate_limited", cancellationToken);
-        var todayRequestsTask = _context.RequestLogs.Where(x => x.RequestDate == today).LongCountAsync(cancellationToken);
-        var totalRequestsTask = _context.RequestLogs.LongCountAsync(cancellationToken);
-        var todayInputTokensTask = _context.RequestLogs.Where(x => x.RequestDate == today).SumAsync(x => (long)x.InputTokens, cancellationToken);
-        var todayOutputTokensTask = _context.RequestLogs.Where(x => x.RequestDate == today).SumAsync(x => (long)x.OutputTokens, cancellationToken);
-        var todayCacheCreateTokensTask = _context.RequestLogs.Where(x => x.RequestDate == today).SumAsync(x => (long)x.CacheCreateTokens, cancellationToken);
-        var todayCacheReadTokensTask = _context.RequestLogs.Where(x => x.RequestDate == today).SumAsync(x => (long)x.CacheReadTokens, cancellationToken);
-        var totalInputTokensTask = _context.RequestLogs.SumAsync(x => (long)x.InputTokens, cancellationToken);
-        var totalOutputTokensTask = _context.RequestLogs.SumAsync(x => (long)x.OutputTokens, cancellationToken);
-        var totalCacheCreateTokensTask = _context.RequestLogs.SumAsync(x => (long)x.CacheCreateTokens, cancellationToken);
+        var totalApiKeysTask = _context.ApiKeys
+            .Where(x => x.UserId == currentUserId)
+            .CountAsync(cancellationToken);
+        var activeApiKeysTask =
+            _context.ApiKeys
+                .Where(x => x.UserId == currentUserId)
+                .CountAsync(x => x.IsEnabled && (x.ExpiresAt == null || x.ExpiresAt > DateTime.Now),
+                    cancellationToken);
+
+        int totalAccountsTask = 0;
+        int activeAccountsTask = 0;
+        int rateLimitedAccountsTask = 0;
+        if (admin)
+        {
+            totalAccountsTask = await _context.Accounts
+                .CountAsync(cancellationToken);
+            activeAccountsTask =
+                await _context.Accounts.CountAsync(x => x.IsEnabled && x.Status == "active", cancellationToken);
+            rateLimitedAccountsTask =
+                await _context.Accounts.CountAsync(x => x.Status == "rate_limited", cancellationToken);
+        }
+
+        var todayRequestsTask =
+            _context.RequestLogs
+                .Where(x=>x.UserId == currentUserId)
+                .Where(x => x.RequestDate == today).LongCountAsync(cancellationToken);
+        var totalRequestsTask = _context.RequestLogs
+            .Where(x=>x.UserId == currentUserId).LongCountAsync(cancellationToken);
+        var todayInputTokensTask = _context.RequestLogs
+            .Where(x=>x.UserId == currentUserId).Where(x => x.RequestDate == today)
+            .SumAsync(x => (long)x.InputTokens, cancellationToken);
+        var todayOutputTokensTask = _context.RequestLogs
+            .Where(x=>x.UserId == currentUserId).Where(x => x.RequestDate == today)
+            .SumAsync(x => (long)x.OutputTokens, cancellationToken);
+        var todayCacheCreateTokensTask = _context.RequestLogs
+            .Where(x=>x.UserId == currentUserId).Where(x => x.RequestDate == today)
+            .SumAsync(x => (long)x.CacheCreateTokens, cancellationToken);
+        var todayCacheReadTokensTask = _context.RequestLogs
+            .Where(x=>x.UserId == currentUserId).Where(x => x.RequestDate == today)
+            .SumAsync(x => (long)x.CacheReadTokens, cancellationToken);
+        var totalInputTokensTask = _context.RequestLogs
+            .Where(x=>x.UserId == currentUserId).SumAsync(x => (long)x.InputTokens, cancellationToken);
+        var totalOutputTokensTask = _context.RequestLogs
+            .Where(x=>x.UserId == currentUserId).SumAsync(x => (long)x.OutputTokens, cancellationToken);
+        var totalCacheCreateTokensTask =
+            _context.RequestLogs
+                .Where(x=>x.UserId == currentUserId).SumAsync(x => (long)x.CacheCreateTokens, cancellationToken);
         var totalCacheReadTokensTask = _context.RequestLogs.SumAsync(x => (long)x.CacheReadTokens, cancellationToken);
 
         await Task.WhenAll(
-            totalApiKeysTask, activeApiKeysTask, totalAccountsTask, activeAccountsTask, rateLimitedAccountsTask,
-            todayRequestsTask, totalRequestsTask, todayInputTokensTask, todayOutputTokensTask, 
-            todayCacheCreateTokensTask, todayCacheReadTokensTask, totalInputTokensTask, 
+            totalApiKeysTask, activeApiKeysTask,
+            todayRequestsTask, totalRequestsTask, todayInputTokensTask, todayOutputTokensTask,
+            todayCacheCreateTokensTask, todayCacheReadTokensTask, totalInputTokensTask,
             totalOutputTokensTask, totalCacheCreateTokensTask, totalCacheReadTokensTask
         );
 
         // 计算实时RPM和TPM
-        var (rpm, tpm, isHistorical) = await CalculateRealtimeMetricsAsync(5, cancellationToken);
+        var (rpm, tpm, isHistorical) = await CalculateRealtimeMetricsAsync(currentUserId,5, cancellationToken);
 
         return new DashboardResponse
         {
-            TotalApiKeys = totalApiKeysTask.Result,
-            ActiveApiKeys = activeApiKeysTask.Result,
-            TotalAccounts = totalAccountsTask.Result,
-            ActiveAccounts = activeAccountsTask.Result,
-            RateLimitedAccounts = rateLimitedAccountsTask.Result,
-            TodayRequests = todayRequestsTask.Result,
-            TotalRequests = totalRequestsTask.Result,
-            TodayInputTokens = todayInputTokensTask.Result,
-            TodayOutputTokens = todayOutputTokensTask.Result,
-            TodayCacheCreateTokens = todayCacheCreateTokensTask.Result,
-            TodayCacheReadTokens = todayCacheReadTokensTask.Result,
-            TotalInputTokens = totalInputTokensTask.Result,
-            TotalOutputTokens = totalOutputTokensTask.Result,
-            TotalCacheCreateTokens = totalCacheCreateTokensTask.Result,
-            TotalCacheReadTokens = totalCacheReadTokensTask.Result,
+            TotalApiKeys = await totalApiKeysTask,
+            ActiveApiKeys = await activeApiKeysTask,
+            TotalAccounts = totalAccountsTask,
+            ActiveAccounts = activeAccountsTask,
+            RateLimitedAccounts = rateLimitedAccountsTask,
+            TodayRequests = await todayRequestsTask,
+            TotalRequests = await totalRequestsTask,
+            TodayInputTokens = await todayInputTokensTask,
+            TodayOutputTokens = await todayOutputTokensTask,
+            TodayCacheCreateTokens = await todayCacheCreateTokensTask,
+            TodayCacheReadTokens = await todayCacheReadTokensTask,
+            TotalInputTokens = await totalInputTokensTask,
+            TotalOutputTokens = await totalOutputTokensTask,
+            TotalCacheCreateTokens = await totalCacheCreateTokensTask,
+            TotalCacheReadTokens = await totalCacheReadTokensTask,
             RealtimeRPM = rpm,
             RealtimeTPM = tpm,
             MetricsWindow = 5,
@@ -335,8 +371,9 @@ public class StatisticsService
         var topApiKeysData = await _context.RequestLogs
             .Where(x => x.RequestDate >= startDate && x.RequestDate <= endDate)
             .GroupBy(x => new { x.ApiKeyId, x.ApiKeyName })
-            .Select(g => new { 
-                ApiKeyId = g.Key.ApiKeyId, 
+            .Select(g => new
+            {
+                ApiKeyId = g.Key.ApiKeyId,
                 ApiKeyName = g.Key.ApiKeyName,
                 TotalTokens = g.Sum(x => (long)x.TotalTokens),
                 TotalCost = g.Sum(x => (decimal)x.Cost)
@@ -360,11 +397,13 @@ public class StatisticsService
 
         if (granularity == TrendGranularity.Hour)
         {
-            trendData = await GetApiKeysHourlyTrendDataAsync(topApiKeyIds, metric, startDate.Value, endDate.Value, cancellationToken);
+            trendData = await GetApiKeysHourlyTrendDataAsync(topApiKeyIds, metric, startDate.Value, endDate.Value,
+                cancellationToken);
         }
         else
         {
-            trendData = await GetApiKeysDailyTrendDataAsync(topApiKeyIds, metric, startDate.Value, endDate.Value, cancellationToken);
+            trendData = await GetApiKeysDailyTrendDataAsync(topApiKeyIds, metric, startDate.Value, endDate.Value,
+                cancellationToken);
         }
 
         return new ApiKeysTrendResponse
@@ -378,7 +417,7 @@ public class StatisticsService
     /// <summary>
     /// 计算实时RPM和TPM
     /// </summary>
-    private async Task<(double rpm, double tpm, bool isHistorical)> CalculateRealtimeMetricsAsync(
+    private async Task<(double rpm, double tpm, bool isHistorical)> CalculateRealtimeMetricsAsync(Guid currentUserId,
         int windowMinutes,
         CancellationToken cancellationToken = default)
     {
@@ -386,13 +425,15 @@ public class StatisticsService
         var windowEnd = DateTime.Now;
 
         var recentRequests = await _context.RequestLogs
+            .Where(x=>x.UserId == currentUserId)
             .Where(x => x.RequestStartTime >= windowStart && x.RequestStartTime <= windowEnd)
             .ToListAsync(cancellationToken);
 
         if (!recentRequests.Any())
         {
             // 如果没有最近的请求，查看是否有历史数据
-            var hasHistoricalData = await _context.RequestLogs.AnyAsync(cancellationToken);
+            var hasHistoricalData = await _context.RequestLogs
+                .Where(x=>x.UserId == currentUserId).AnyAsync(cancellationToken);
             return (0, 0, hasHistoricalData);
         }
 
@@ -550,7 +591,8 @@ public class StatisticsService
         var topApiKeyGuids = topApiKeyIds.Select(Guid.Parse).ToList();
 
         var query = _context.RequestLogs
-            .Where(x => x.RequestStartTime >= startDate && x.RequestStartTime <= endDate.AddDays(1) && topApiKeyGuids.Contains(x.ApiKeyId))
+            .Where(x => x.RequestStartTime >= startDate && x.RequestStartTime <= endDate.AddDays(1) &&
+                        topApiKeyGuids.Contains(x.ApiKeyId))
             .GroupBy(x => new { x.RequestDate, x.RequestHour, x.ApiKeyId, x.ApiKeyName })
             .Select(g => new
             {
@@ -623,7 +665,7 @@ public class StatisticsService
     /// <summary>
     /// 获取API Key到模型的成本流向数据
     /// </summary>
-    public async Task<List<ApiKeyModelFlowData>> GetApiKeyModelFlowDataAsync(
+    public async Task<List<ApiKeyModelFlowData>> GetApiKeyModelFlowDataAsync(Guid currentUserId,
         DateTime? startDate = null,
         DateTime? endDate = null,
         CancellationToken cancellationToken = default)
@@ -632,6 +674,7 @@ public class StatisticsService
         endDate ??= DateTime.Now.Date.AddDays(1);
 
         var groupedData = await _context.RequestLogs
+            .Where(x => x.UserId == currentUserId)
             .Where(x => x.RequestStartTime >= startDate && x.RequestStartTime < endDate)
             .GroupBy(x => new { x.ApiKeyId, x.ApiKeyName, x.Model })
             .Select(g => new ApiKeyModelFlowData
@@ -654,4 +697,4 @@ public class StatisticsService
 
         return flowData;
     }
-} 
+}

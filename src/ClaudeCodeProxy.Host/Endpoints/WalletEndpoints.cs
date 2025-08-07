@@ -3,6 +3,7 @@ using ClaudeCodeProxy.Host.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using ClaudeCodeProxy.Core;
 
 namespace ClaudeCodeProxy.Host.Endpoints;
 
@@ -75,18 +76,18 @@ public static class WalletEndpoints
     /// 获取当前用户钱包信息
     /// </summary>
     private static async Task<IResult> GetUserWallet(
-        ClaimsPrincipal user,
+        IUserContext userContext,
         WalletService walletService)
     {
-        var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (!Guid.TryParse(userIdClaim, out var userId))
+        var userId = userContext.GetCurrentUserId();
+        if (userId == null)
         {
             return Results.Unauthorized();
         }
 
         try
         {
-            var wallet = await walletService.GetOrCreateWalletAsync(userId);
+            var wallet = await walletService.GetOrCreateWalletAsync(userId.Value);
             return Results.Ok(wallet);
         }
         catch (Exception ex)
@@ -99,21 +100,21 @@ public static class WalletEndpoints
     /// 获取用户钱包交易记录
     /// </summary>
     private static async Task<IResult> GetWalletTransactions(
-        ClaimsPrincipal user,
+        IUserContext userContext,
         WalletService walletService,
         int pageIndex = 0,
         int pageSize = 20,
         string? transactionType = null)
     {
-        var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (!Guid.TryParse(userIdClaim, out var userId))
+        var userId = userContext.GetCurrentUserId();
+        if (userId == null)
         {
             return Results.Unauthorized();
         }
 
         try
         {
-            var transactions = await walletService.GetWalletTransactionsAsync(userId, pageIndex, pageSize, transactionType);
+            var transactions = await walletService.GetWalletTransactionsAsync(userId.Value, pageIndex, pageSize, transactionType);
             return Results.Ok(transactions);
         }
         catch (Exception ex)
@@ -126,19 +127,19 @@ public static class WalletEndpoints
     /// 获取钱包统计信息
     /// </summary>
     private static async Task<IResult> GetWalletStatistics(
-        ClaimsPrincipal user,
+        IUserContext userContext,
         WalletService walletService,
         int days = 30)
     {
-        var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (!Guid.TryParse(userIdClaim, out var userId))
+        var userId = userContext.GetCurrentUserId();
+        if (userId == null)
         {
             return Results.Unauthorized();
         }
 
         try
         {
-            var statistics = await walletService.GetWalletStatisticsAsync(userId, days);
+            var statistics = await walletService.GetWalletStatisticsAsync(userId.Value, days);
             return Results.Ok(statistics);
         }
         catch (Exception ex)
@@ -151,12 +152,12 @@ public static class WalletEndpoints
     /// 充值钱包（当前用户）
     /// </summary>
     private static async Task<IResult> RechargeWallet(
-        ClaimsPrincipal user,
+        IUserContext userContext,
         WalletService walletService,
         [FromBody] WalletRechargeRequest request)
     {
-        var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (!Guid.TryParse(userIdClaim, out var userId))
+        var userId = userContext.GetCurrentUserId();
+        if (userId == null)
         {
             return Results.Unauthorized();
         }
@@ -164,7 +165,7 @@ public static class WalletEndpoints
         try
         {
             var success = await walletService.RechargeWalletAsync(
-                userId, 
+                userId.Value, 
                 request.Amount, 
                 request.Description, 
                 request.PaymentMethod, 

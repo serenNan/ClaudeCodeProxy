@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using ClaudeCodeProxy.Host.Services;
+using ClaudeCodeProxy.Core;
 
 namespace ClaudeCodeProxy.Host.Endpoints;
 
@@ -52,7 +53,7 @@ public static class RequestLogEndpoints
     /// 获取当前用户请求日志
     /// </summary>
     private static async Task<IResult> GetUserRequestLogs(
-        ClaimsPrincipal user,
+        IUserContext userContext,
         RequestLogService requestLogService,
         int pageIndex = 0,
         int pageSize = 20,
@@ -61,8 +62,8 @@ public static class RequestLogEndpoints
         DateTime? startDate = null,
         DateTime? endDate = null)
     {
-        var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (!Guid.TryParse(userIdClaim, out var userId))
+        var userId = userContext.GetCurrentUserId();
+        if (userId == null)
         {
             return Results.Unauthorized();
         }
@@ -70,7 +71,7 @@ public static class RequestLogEndpoints
         try
         {
             var logs = await requestLogService.GetUserRequestLogsAsync(
-                userId, pageIndex, pageSize, status, model, startDate, endDate);
+                userId.Value, pageIndex, pageSize, status, model, startDate, endDate);
             return Results.Ok(logs);
         }
         catch (Exception ex)
@@ -83,20 +84,20 @@ public static class RequestLogEndpoints
     /// 获取当前用户请求统计
     /// </summary>
     private static async Task<IResult> GetUserRequestStatistics(
-        ClaimsPrincipal user,
+        IUserContext userContext,
         RequestLogService requestLogService,
         DateTime? startDate = null,
         DateTime? endDate = null)
     {
-        var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (!Guid.TryParse(userIdClaim, out var userId))
+        var userId = userContext.GetCurrentUserId();
+        if (userId == null)
         {
             return Results.Unauthorized();
         }
 
         try
         {
-            var statistics = await requestLogService.GetUserRequestStatisticsAsync(userId, startDate, endDate);
+            var statistics = await requestLogService.GetUserRequestStatisticsAsync(userId.Value, startDate, endDate);
             return Results.Ok(statistics);
         }
         catch (Exception ex)

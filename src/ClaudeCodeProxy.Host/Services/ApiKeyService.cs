@@ -30,9 +30,11 @@ public class ApiKeyService(IContext context)
     /// <summary>
     /// 获取所有API Keys
     /// </summary>
-    public async Task<List<ApiKey>> GetAllApiKeysAsync(CancellationToken cancellationToken = default)
+    public async Task<List<ApiKey>> GetAllApiKeysAsync(IUserContext userContext,
+        CancellationToken cancellationToken = default)
     {
         return await context.ApiKeys
+            .Where(x=>x.UserId == userContext.GetCurrentUserId())
             .Include(x => x.User)
             .AsNoTracking()
             .OrderByDescending(x => x.CreatedAt)

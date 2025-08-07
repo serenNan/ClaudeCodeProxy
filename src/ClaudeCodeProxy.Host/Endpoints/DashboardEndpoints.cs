@@ -106,11 +106,12 @@ public static class DashboardEndpoints
     /// </summary>
     private static async Task<Results<Ok<DashboardResponse>, BadRequest<string>>> GetDashboardData(
         [FromServices] StatisticsService statisticsService,
+        [FromServices] IUserContext userContext,
         CancellationToken cancellationToken = default)
     {
         try
         {
-            var dashboardData = await statisticsService.GetDashboardDataAsync(cancellationToken);
+            var dashboardData = await statisticsService.GetDashboardDataAsync(userContext.IsAdmin(),userContext.GetCurrentUserId().Value,cancellationToken);
             return TypedResults.Ok(dashboardData);
         }
         catch (Exception ex)
@@ -187,9 +188,9 @@ public static class DashboardEndpoints
             }
 
             var trendData = await statisticsService.GetTrendDataAsync(
-                request.Granularity, 
-                startDate, 
-                endDate, 
+                request.Granularity,
+                startDate,
+                endDate,
                 cancellationToken);
 
             return TypedResults.Ok(trendData);
@@ -241,7 +242,7 @@ public static class DashboardEndpoints
     private static Ok<UptimeResponse> GetSystemUptime()
     {
         var uptime = DateTime.Now - Process.GetCurrentProcess().StartTime.ToUniversalTime();
-        
+
         var days = (int)uptime.TotalDays;
         var hours = uptime.Hours;
         var minutes = uptime.Minutes;
@@ -267,12 +268,15 @@ public static class DashboardEndpoints
     private static async Task<Results<Ok<RequestLogsResponse>, BadRequest<string>>> GetRequestLogs(
         [FromServices] StatisticsService statisticsService,
         [FromServices] IContext context,
+        [FromServices] IUserContext userContext,
         [FromBody] RequestLogsRequest request,
         CancellationToken cancellationToken = default)
     {
         try
         {
-            var query = context.RequestLogs.AsQueryable();
+            var query = context.RequestLogs
+                .Where(x => x.UserId == userContext.GetCurrentUserId())
+                .AsQueryable();
 
             // 应用过滤条件
             if (request.DateFilter != null)
@@ -306,7 +310,7 @@ public static class DashboardEndpoints
 
             if (!string.IsNullOrEmpty(request.SearchTerm))
             {
-                query = query.Where(x => 
+                query = query.Where(x =>
                     x.ApiKeyName.Contains(request.SearchTerm) ||
                     x.AccountName!.Contains(request.SearchTerm) ||
                     x.RequestId!.Contains(request.SearchTerm) ||
@@ -319,7 +323,7 @@ public static class DashboardEndpoints
             // 应用排序
             query = request.SortBy?.ToLower() switch
             {
-                "requeststarttime" => request.SortDirection == "desc" 
+                "requeststarttime" => request.SortDirection == "desc"
                     ? query.OrderByDescending(x => x.RequestStartTime)
                     : query.OrderBy(x => x.RequestStartTime),
                 "durationms" => request.SortDirection == "desc"
@@ -384,11 +388,13 @@ public static class DashboardEndpoints
     private static async Task<Results<Ok<RequestLog>, NotFound<string>, BadRequest<string>>> GetRequestLogDetail(
         [FromServices] IContext context,
         Guid id,
+        [FromServices] IUserContext userContext,
         CancellationToken cancellationToken = default)
     {
         try
         {
             var log = await context.RequestLogs
+                .Where(x => x.UserId == userContext.GetCurrentUserId())
                 .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
             if (log == null)
@@ -409,12 +415,15 @@ public static class DashboardEndpoints
     /// </summary>
     private static async Task<Results<Ok<List<RequestStatusStat>>, BadRequest<string>>> GetRequestStatusStats(
         [FromServices] IContext context,
+        [FromServices] IUserContext userContext,
         [FromBody] DateFilterRequest? dateFilter = null,
         CancellationToken cancellationToken = default)
     {
         try
         {
-            var query = context.RequestLogs.AsQueryable();
+            var query = context.RequestLogs
+                .Where(x => x.UserId == userContext.GetCurrentUserId())
+                .AsQueryable();
 
             if (dateFilter != null)
             {
@@ -448,6 +457,7 @@ public static class DashboardEndpoints
     /// </summary>
     private static async Task<Results<Ok<RealtimeRequestsResponse>, BadRequest<string>>> GetRealtimeRequests(
         [FromServices] IContext context,
+        [FromServices] IUserContext userContext,
         int minutes = 10,
         CancellationToken cancellationToken = default)
     {
@@ -456,7 +466,9 @@ public static class DashboardEndpoints
             var cutoffTime = DateTime.Now.AddMinutes(-minutes);
 
             var recentRequests = await context.RequestLogs
-                .Where(x => x.RequestStartTime >= cutoffTime)
+                .Where(x =>
+                    x.UserId == userContext.GetCurrentUserId() &&
+                    x.RequestStartTime >= cutoffTime)
                 .OrderByDescending(x => x.RequestStartTime)
                 .Take(50)
                 .Select(x => new RealtimeRequestSummary
@@ -476,18 +488,22 @@ public static class DashboardEndpoints
 
             // 计算统计数据
             var totalRequests = await context.RequestLogs
+                .Where(x => x.UserId == userContext.GetCurrentUserId())
                 .Where(x => x.RequestStartTime >= cutoffTime)
                 .CountAsync(cancellationToken);
 
             var successRequests = await context.RequestLogs
+                .Where(x => x.UserId == userContext.GetCurrentUserId())
                 .Where(x => x.RequestStartTime >= cutoffTime && x.Status == "success")
                 .CountAsync(cancellationToken);
 
             var totalTokens = await context.RequestLogs
+                .Where(x => x.UserId == userContext.GetCurrentUserId())
                 .Where(x => x.RequestStartTime >= cutoffTime)
                 .SumAsync(x => (long)x.TotalTokens, cancellationToken);
 
             var avgResponseTime = await context.RequestLogs
+                .Where(x => x.UserId == userContext.GetCurrentUserId())
                 .Where(x => x.RequestStartTime >= cutoffTime && x.DurationMs.HasValue)
                 .AverageAsync(x => (double?)x.DurationMs, cancellationToken) ?? 0;
 
@@ -518,6 +534,7 @@ public static class DashboardEndpoints
     private static async Task<Results<Ok<List<ApiKeyModelFlowData>>, BadRequest<string>>> GetApiKeyModelFlowData(
         [FromServices] StatisticsService statisticsService,
         [FromBody] DateFilterRequest? request,
+        [FromServices] IUserContext userContext,
         CancellationToken cancellationToken = default)
     {
         try
@@ -532,7 +549,8 @@ public static class DashboardEndpoints
                 endDate = parsedEndDate;
             }
 
-            var flowData = await statisticsService.GetApiKeyModelFlowDataAsync(startDate, endDate, cancellationToken);
+            var flowData = await statisticsService.GetApiKeyModelFlowDataAsync(userContext.GetCurrentUserId()!.Value,
+                startDate, endDate, cancellationToken);
             return TypedResults.Ok(flowData);
         }
         catch (Exception ex)
@@ -598,4 +616,4 @@ public class UptimeResponse
     /// 系统启动时间
     /// </summary>
     public DateTime StartTime { get; set; }
-} 
+}
