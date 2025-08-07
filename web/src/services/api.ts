@@ -97,6 +97,7 @@ interface UpdateUserRequest {
   roleId?: string;
   isActive?: boolean;
   description?: string;
+
 }
 
 interface UsersRequest {

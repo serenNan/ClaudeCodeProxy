@@ -48,6 +48,8 @@ const ProfilePage: React.FC = () => {
   const [showRecordsDialog, setShowRecordsDialog] = useState(false)
 
   useEffect(() => {
+    setRedeemRecords([]);
+    setRecordsLoading(false)
     fetchProfileData()
     fetchDashboardStats()
   }, [])
@@ -64,18 +66,6 @@ const ProfilePage: React.FC = () => {
           isActive: response.isActive,
           createdTime: response.createdAt,
           lastLoginTime: response.lastLoginAt
-        }
-        setProfileData(profileData)
-      } else {
-        // Fallback to user context data
-        const profileData = {
-          id: user?.id || '',
-          username: user?.username || '',
-          email: user?.email || '',
-          role: user?.roleName || 'User',
-          isActive: user?.isActive || true,
-          createdTime: user?.createdAt || new Date().toISOString(),
-          lastLoginTime: user?.lastLoginAt
         }
         setProfileData(profileData)
       }
